@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDA JS | Data Repository</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        :root { 
+            --primary: #1e2b4a; 
+            --accent: #2f80ed; 
+            --white: #ffffff;
+            --danger: #ef4444;
+            --success: #059669;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%); 
+            color: var(--primary); 
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 40px 5% 20px;
+        }
+
+        .back-link { text-decoration: none; color: var(--primary); font-size: 14px; font-weight: 600; display: block; margin-bottom: 20px; }
+        .header-title { font-size: 42px; font-weight: 800; margin-bottom: 8px; }
+        .header-desc { color: #64748b; margin-bottom: 35px; }
+
+        .tab-nav { display: flex; gap: 30px; border-bottom: 1px solid rgba(30, 43, 74, 0.1); margin-bottom: 30px; }
+        .tab-item { padding-bottom: 15px; cursor: pointer; font-weight: 700; color: #94a3b8; display: flex; align-items: center; gap: 8px; border-bottom: 3px solid transparent; transition: 0.3s; }
+        .tab-item.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 20px 50px rgba(30, 43, 74, 0.05); display: flex; min-height: 650px; overflow: hidden; flex: 1; }
+
+        .sidebar { width: 320px; border-right: 1px solid #eef2f6; background: #fff; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 25px; display: flex; flex-direction: column; gap: 15px; border-bottom: 1px solid #f8fafc; }
+        .sidebar-label { font-size: 10px; font-weight: 800; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase; }
+        .btn-add { background: #f0f7ff; color: var(--accent); border: 2px dashed var(--accent); padding: 10px; border-radius: 10px; font-size: 11px; font-weight: 800; cursor: pointer; transition: 0.2s; text-align: center; }
+        .btn-add:hover { background: var(--accent); color: white; border-style: solid; }
+
+        .st-list { overflow-y: auto; flex: 1; }
+        .st-item { padding: 20px 25px; cursor: pointer; border-bottom: 1px solid #f8fafc; border-left: 4px solid transparent; transition: 0.2s; display: flex; justify-content: space-between; align-items: center; }
+        .st-item:hover { background: #f8fafc; }
+        .st-item.active { background: #eff6ff; border-left-color: var(--accent); }
+        .st-item h4 { font-size: 13px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; }
+        .st-item span { font-size: 10px; color: #94a3b8; }
+        
+        .btn-del-st { color: #cbd5e1; padding: 5px; border-radius: 5px; transition: 0.2s; }
+        .btn-del-st:hover { color: var(--danger); background: #fee2e2; }
+
+        .editor { flex: 1; padding: 45px; display: none; }
+        .editor.active { display: block; }
+        .placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: #94a3b8; flex-direction: column; gap: 10px; }
+
+        .editor-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 35px; }
+        .btn-primary-action { background: var(--accent); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-primary-action:hover { background: #1a66d1; }
+
+        .table-container { max-height: 400px; overflow-y: auto; border: 1px solid #f1f5f9; border-radius: 12px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 11px; color: #94a3b8; text-transform: uppercase; padding: 15px; border-bottom: 1px solid #eee; position: sticky; top: 0; background: #fff; z-index: 10; }
+        td { padding: 12px 15px; border-bottom: 1px solid #f8fafc; font-weight: 600; font-size: 14px; }
+
+        .input-val { border: 1px solid transparent; padding: 8px; border-radius: 6px; width: 100%; font-weight: 700; transition: 0.2s; font-family: inherit; }
+        .input-val:focus { outline: none; border-color: var(--accent); background: #fff; }
+        .input-val.unsync { border-color: var(--danger); background: #fffcfc; }
+
+        .badge { font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 6px; }
+        .badge-sync { background: #dcfce7; color: var(--success); }
+        .badge-unsync { background: #fee2e2; color: var(--danger); }
+
+        .btn-sync { background: var(--primary); color: white; border: none; padding: 18px; border-radius: 12px; font-weight: 700; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        
+        .action-row { display: flex; gap: 10px; justify-content: center; }
+        .btn-row-del { color: #cbd5e1; cursor: pointer; transition: 0.2s; }
+        .btn-row-del:hover { color: var(--danger); transform: scale(1.2); }
+
+        footer { margin-top: 40px; padding: 20px; text-align: center; border-top: 1px solid rgba(0,0,0,0.05); }
+        .footer-text { font-size: 12px; color: #94a3b8; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <a href="#" class="back-link">← Kembali ke Menu Utama</a>
+    <h1 class="header-title">DATA REPOSITORY</h1>
+    <p class="header-desc">Sistem Manajemen Database Hidrologi & Katalog Teknis SDA Jakarta Selatan.</p>
+
+    <div class="tab-nav">
+        <div class="tab-item active" id="tabHujan" onclick="switchTab('hujan')"><i data-lucide="cloud-rain"></i> Data Hujan</div>
+        <div class="tab-item" id="tabKatalog" onclick="switchTab('katalog')"><i data-lucide="box"></i> Dimensi Precast Saluran</div>
+        <div class="tab-item" id="tabKoefisien" onclick="switchTab('koefisien')"><i data-lucide="layers"></i> Koefisien Teknis</div>
+    </div>
+
+    <div class="glass-card">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-label" id="sideLabel">Stasiun Hujan</span>
+                <button class="btn-add" id="btnAdd" onclick="addItem()">+ TAMBAH DATA BARU</button>
+            </div>
+            <div class="st-list" id="itemList"></div>
+        </div>
+
+        <div id="placeholder" class="placeholder">
+            <i data-lucide="database" size="40"></i>
+            <p>Pilih item di samping untuk melihat detail data.</p>
+        </div>
+
+        <div id="mainEditor" class="editor">
+            <div class="editor-header">
+                <div>
+                    <h2 id="activeTitle" style="font-size: 28px; font-weight: 800;">-</h2>
+                    <p id="activeSubtitle" style="color: #64748b; font-size: 14px; font-weight: 600;">-</p>
+                </div>
+                <div class="btn-group">
+                    <button class="btn-primary-action" id="btnTambahBaris" onclick="addNewRow()"><i data-lucide="plus"></i> Tambah Baris</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="dataTable">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+
+            <button class="btn-sync" id="btnSync" onclick="syncAll()">SINKRONKAN DATA KE SISTEM <i data-lucide="save"></i></button>
+        </div>
+    </div>
+
+    <footer>
+        <p class="footer-text">© 2026 Seksi Perencanaan - Suku Dinas Sumber Daya Air Jakarta Selatan</p>
+    </footer>
+
+    <script>
+        // --- DATABASE ASLI LENGKAP ---
+        const rawRain = {
+            "st_01": { n: "Kemayoran", lat: -6.15559, lng: 106.840, d: [94.8, 82.2, 168.5, 199.7, 129.3, 124.1, 72.0, 234.7, 192.7, 122.5, 93.0, 119.2, 105.2, 193.4, 147.9, 277.5, 124.5, 179.7, 104.6, 90.5, 277.5, 94.1, 204.0, 79.5, 140.9] },
+            "st_02": { n: "Halim", lat: -6.27036, lng: 106.889, d: [54.3, 92.8, 107.6, 104.7, 115.3, 100.9, 87.5, 175.4, 115.6, 110.4, 100.9, 305.0, 94.4, 161.0, 113.8, 116.4, 115.8, 105.6, 125.4, 111.4, 160.7, 162.0, 105.0, 112.0, 132.5] },
+            "st_03": { n: "Bogor", lat: -6.50000, lng: 106.750, d: [93.8, 107.5, 127.0, 114.2, 115.0, 99.9, 104.5, 142.1, 105.4, 102.5, 99.9, 97.6, 116.0, 103.3, 104.5, 124.5, 105.6, 118.4, 104.5, 102.4, 124.5, 102.4, 115.2, 105.6, 146.6] },
+            "st_04": { n: "Banten", lat: -6.26151, lng: 106.750, d: [103.4, 104.0, 109.2, 102.3, 105.4, 96.5, 102.1, 124.5, 110.2, 104.5, 96.5, 61.9, 79.8, 96.0, 102.4, 115.4, 118.4, 141.9, 104.5, 102.4, 138.4, 96.5, 112.4, 98.4, 108.5] },
+            "st_05": { n: "Katulampa", lat: -6.63317, lng: 106.837, d: [91.9, 106.3, 126.1, 114.3, 116.2, 141.5, 124.5, 132.5, 115.4, 103.4, 141.5, 103.4, 113.1, 108.2, 112.4, 115.4, 141.9, 138.4, 124.5, 112.4, 154.2, 141.5, 132.4, 109.5, 109.0] },
+            "st_06": { n: "Depok", lat: -6.40065, lng: 106.831, d: [90.4, 102.7, 125.6, 113.4, 115.0, 118.4, 114.5, 124.5, 112.4, 105.4, 118.4, 119.9, 108.9, 114.7, 115.4, 134.5, 138.4, 96.5, 115.4, 108.2, 141.5, 118.4, 124.5, 105.6, 115.0] },
+            "st_07": { n: "Manggarai", lat: -6.20742, lng: 106.848, d: [84.5, 88.6, 148.9, 134.5, 115.0, 141.9, 124.5, 202.4, 115.4, 112.4, 141.9, 156.4, 102.7, 182.2, 141.5, 154.2, 124.5, 94.2, 115.4, 112.4, 212.5, 141.9, 124.5, 105.6, 115.0] },
+            "st_08": { n: "Karet", lat: -6.19810, lng: 106.810, d: [83.6, 87.8, 145.4, 132.4, 112.4, 138.4, 115.4, 194.5, 112.4, 110.2, 138.4, 162.8, 102.1, 178.5, 138.4, 152.1, 118.4, 93.2, 112.4, 109.5, 208.4, 138.4, 121.4, 102.4, 119.0] },
+            "st_09": { n: "Setiabudi Timur", lat: -6.20462, lng: 106.829, d: [82.3, 91.2, 145.4, 132.4, 112.4, 96.5, 112.4, 182.4, 112.4, 110.2, 96.5, 188.5, 102.1, 175.4, 138.4, 152.1, 108.4, 108.4, 112.4, 109.5, 208.4, 96.5, 121.4, 102.4, 131.0] },
+            "st_10": { n: "Melati", lat: -6.20084, lng: 106.817, d: [82.6, 90.5, 145.4, 132.4, 112.4, 94.2, 112.4, 182.4, 112.4, 110.2, 94.2, 179.3, 101.9, 175.4, 138.4, 152.1, 98.2, 98.2, 112.4, 109.5, 208.4, 94.2, 121.4, 102.4, 105.0] },
+            "st_11": { n: "Istana", lat: -6.17165, lng: 106.827, d: [87.2, 86.4, 150.2, 141.5, 118.4, 93.2, 115.4, 204.5, 118.4, 115.4, 93.2, 165.7, 102.9, 182.5, 145.2, 162.4, 94.2, 94.2, 118.4, 115.4, 215.6, 93.2, 132.4, 110.5, 180.0] },
+            "st_12": { n: "Krukut Hulu", lat: -6.34434, lng: 106.799, d: [92.1, 105.8, 126.4, 114.2, 115.2, 108.4, 108.4, 141.5, 112.4, 105.4, 108.4, 101.4, 114.9, 110.2, 115.4, 132.4, 93.4, 108.4, 112.4, 105.4, 152.1, 108.4, 124.5, 108.4, 113.0] },
+            "st_13": { n: "Sunter Hulu", lat: -6.31785, lng: 106.921, d: [83.1, 96.5, 141.2, 132.4, 112.4, 98.2, 105.4, 182.4, 112.4, 110.2, 98.2, 145.2, 102.4, 152.4, 138.4, 141.5, 102.4, 98.2, 112.4, 109.5, 182.4, 98.2, 121.4, 102.4, 79.0] },
+            "st_14": { n: "Pesanggrahan", lat: -6.39708, lng: 106.771, d: [92.2, 105.4, 126.4, 114.2, 115.2, 94.2, 108.4, 141.5, 112.4, 105.4, 94.2, 102.4, 115.1, 110.2, 115.4, 132.4, 102.4, 94.2, 112.4, 105.4, 152.1, 94.2, 124.5, 108.4, 89.0] },
+            "st_15": { n: "Angke Hulu", lat: -6.21835, lng: 106.694, d: [91.1, 102.5, 125.6, 112.4, 114.5, 93.4, 104.5, 138.4, 112.4, 104.5, 93.4, 108.2, 112.4, 108.4, 114.2, 124.5, 110.5, 93.4, 112.4, 104.5, 145.2, 93.4, 121.4, 105.6, 53.0] },
+            "st_16": { n: "Tanjungan", lat: -6.10669, lng: 106.725, d: [96.2, 89.5, 172.4, 182.4, 124.5, 102.4, 108.4, 212.4, 132.4, 115.4, 102.4, 145.4, 102.4, 162.4, 141.5, 182.4, 112.4, 102.4, 132.4, 112.4, 245.2, 102.4, 162.4, 112.4, 208.0] },
+            "st_17": { n: "Tomang Barat", lat: -6.16710, lng: 106.780, d: [92.3, 86.4, 162.4, 172.4, 121.4, 101.4, 112.4, 204.5, 128.4, 112.4, 101.4, 135.2, 102.1, 158.4, 138.4, 165.4, 110.5, 101.4, 128.4, 109.5, 232.4, 101.4, 152.4, 108.4, 123.0] },
+            "st_18": { n: "Teluk Gong", lat: -6.13320, lng: 106.777, d: [94.8, 87.2, 168.5, 182.4, 128.4, 100.2, 115.4, 212.4, 132.4, 118.4, 100.2, 125.6, 103.5, 162.4, 145.2, 182.4, 115.6, 100.2, 132.4, 112.4, 245.2, 100.2, 162.4, 112.4, 70.0] },
+            "st_19": { n: "Pulo Gadung", lat: -6.19010, lng: 106.904, d: [78.4, 92.5, 138.4, 132.4, 110.5, 102.5, 102.4, 178.5, 108.4, 105.4, 102.5, 172.5, 101.4, 145.2, 132.4, 141.5, 110.4, 102.5, 108.4, 102.4, 175.4, 102.5, 118.4, 102.4, 120.0] },
+            "st_20": { n: "Sunter Kodamar", lat: -6.15550, lng: 106.886, d: [83.8, 88.5, 145.2, 132.4, 112.4, 103.9, 105.4, 185.4, 112.4, 110.2, 103.9, 155.4, 100.2, 152.4, 138.4, 152.1, 108.5, 103.9, 112.4, 109.5, 192.4, 103.9, 121.4, 105.6, 136.0] },
+            "st_21": { n: "Sunter III Rawa Badak", lat: -6.12190, lng: 106.896, d: [88.7, 85.4, 152.4, 145.2, 118.4, 102.5, 108.4, 204.5, 118.4, 115.4, 102.5, 138.6, 102.5, 162.4, 145.2, 165.4, 110.4, 102.5, 118.4, 115.4, 212.4, 102.5, 132.4, 108.4, 118.0] },
+            "st_22": { n: "Pompa Cideng", lat: -6.17320, lng: 106.806, d: [89.5, 85.6, 152.4, 145.2, 118.4, 103.9, 108.4, 204.5, 118.4, 115.4, 103.9, 142.0, 103.9, 162.4, 145.2, 165.4, 110.4, 103.9, 118.4, 115.4, 212.4, 103.9, 132.4, 108.4, 140.0] }
+        };
+
+        const rainDB = {};
+        Object.keys(rawRain).forEach(id => {
+            const item = rawRain[id];
+            rainDB[id] = { n: item.n, lat: item.lat, lng: item.lng, d: [] };
+            item.d.forEach((val, idx) => { rainDB[id].d.push({ y: 2000 + idx, v: val, s: 'sync' }); });
+        });
+
+        const catalogDB = {
+            "ud_40": { type: "U-Ditch", n: "U-Ditch 400x400", b: 0.4, h: 0.4, l: 1.2, sb: 'sync', sh: 'sync', sl: 'sync' },
+            "ud_60": { type: "U-Ditch", n: "U-Ditch 600x600", b: 0.6, h: 0.6, l: 1.2, sb: 'sync', sh: 'sync', sl: 'sync' },
+            "ud_80": { type: "U-Ditch", n: "U-Ditch 800x800", b: 0.8, h: 0.8, l: 1.2, sb: 'sync', sh: 'sync', sl: 'sync' },
+            "ud_100": { type: "U-Ditch", n: "U-Ditch 1000x1000", b: 1.0, h: 1.0, l: 1.2, sb: 'sync', sh: 'sync', sl: 'sync' },
+            "ud_120": { type: "U-Ditch", n: "U-Ditch 1200x1200", b: 1.2, h: 1.2, l: 1.2, sb: 'sync', sh: 'sync', sl: 'sync' },
+            "bc_100": { type: "Box Culvert", n: "Box Culvert 1000x1000", b: 1.0, h: 1.0, l: 1.0, sb: 'sync', sh: 'sync', sl: 'sync' },
+            "bc_150": { type: "Box Culvert", n: "Box Culvert 1500x1500", b: 1.5, h: 1.5, l: 1.0, sb: 'sync', sh: 'sync', sl: 'sync' },
+            "bc_200": { type: "Box Culvert", n: "Box Culvert 2000x2000", b: 2.0, h: 2.0, l: 1.0, sb: 'sync', sh: 'sync', sl: 'sync' }
+        };
+
+        const coefDB = {
+            "c_val": { 
+                n: "Koefisien Pengaliran (C)", 
+                type: "Koefisien Aliran", 
+                data: [
+                    { k: "Daerah Perdagangan - Kota", v: 0.80, s: 'sync' },
+                    { k: "Perkerasan Aspal/Beton", v: 0.85, s: 'sync' },
+                    { k: "Atap Bangunan", v: 0.90, s: 'sync' },
+                    { k: "Tanah Terbuka / Padang Rumput", v: 0.20, s: 'sync' },
+                    { k: "Pemukiman Padat", v: 0.70, s: 'sync' },
+                    { k: "Taman Lingkungan", v: 0.30, s: 'sync' }
+                ] 
+            },
+            "n_val": {
+                n: "Koefisien Manning (n)",
+                type: "Kekasaran Saluran",
+                data: [
+                    { k: "Beton (Halus/Precast)", v: 0.013, s: 'sync' },
+                    { k: "Pasangan Batu Kali", v: 0.025, s: 'sync' },
+                    { k: "Tanah (Lurus & Rapi)", v: 0.020, s: 'sync' },
+                    { k: "Saluran Berumput", v: 0.030, s: 'sync' },
+                    { k: "Beton Kasar", v: 0.015, s: 'sync' }
+                ]
+            }
+        };
+
+        // --- LOGIC ---
+        let currentMode = 'hujan';
+        let currentId = null;
+
+        function switchTab(mode) {
+            currentMode = mode;
+            currentId = null;
+            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+            
+            document.getElementById('btnAdd').innerText = mode === 'koefisien' ? "+ TAMBAH KOEFISIEN BARU" : "+ TAMBAH DATA BARU";
+            
+            document.getElementById('placeholder').style.display = 'flex';
+            document.getElementById('mainEditor').classList.remove('active');
+            renderSidebar();
+        }
+
+        function renderSidebar() {
+            let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
+            document.getElementById('sideLabel').innerText = currentMode === 'hujan' ? "Stasiun Hujan" : (currentMode === 'katalog' ? "Katalog Precast" : "Parameter Teknis");
+            
+            const list = document.getElementById('itemList');
+            list.innerHTML = "";
+            Object.keys(db).forEach(id => {
+                const item = document.createElement('div');
+                item.className = 'st-item' + (currentId === id ? ' active' : '');
+                item.onclick = (e) => { if(!e.target.closest('.btn-del-st')) selectItem(id); };
+                item.innerHTML = `<div><h4>${db[id].n}</h4><span>${db[id].type || 'ID: ' + id.toUpperCase()}</span></div>
+                                  <div class="btn-del-st" onclick="deleteStation('${id}')"><i data-lucide="trash-2" size="14"></i></div>`;
+                list.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+        function selectItem(id) {
+            currentId = id;
+            document.getElementById('placeholder').style.display = 'none';
+            document.getElementById('mainEditor').classList.add('active');
+            
+            if(currentMode === 'hujan') {
+                const item = rainDB[id];
+                document.getElementById('activeTitle').innerText = item.n;
+                document.getElementById('activeSubtitle').innerText = `Koordinat: ${item.lat}, ${item.lng}`;
+                renderHujanTable();
+            } else if(currentMode === 'katalog') {
+                const item = catalogDB[id];
+                document.getElementById('activeTitle').innerText = item.n;
+                document.getElementById('activeSubtitle').innerText = `Spesifikasi Material Precast`;
+                renderKatalogTable();
+            } else if(currentMode === 'koefisien') {
+                const item = coefDB[id];
+                document.getElementById('activeTitle').innerText = item.n;
+                document.getElementById('activeSubtitle').innerText = item.type;
+                renderCoefTable();
+            }
+            renderSidebar();
+        }
+
+        function renderHujanTable() {
+            document.getElementById('tableHead').innerHTML = `<tr><th>Tahun</th><th>Curah Hujan Maks(mm)</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = "";
+            rainDB[currentId].d.sort((a,b) => b.y - a.y).forEach((item, idx) => {
+                tbody.innerHTML += `<tr>
+                    <td><input type="number" class="input-val" value="${item.y}" onchange="updateData(${idx}, 'y', this.value)"></td>
+                    <td><input type="number" step="0.1" class="input-val ${item.s==='unsync'?'unsync':''}" value="${item.v}" oninput="updateData(${idx}, 'v', this.value)"></td>
+                    <td><span class="badge badge-${item.s}">${item.s.toUpperCase()}ED</span></td>
+                    <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+                </tr>`;
+            });
+            lucide.createIcons();
+        }
+
+        function renderKatalogTable() {
+            document.getElementById('tableHead').innerHTML = `<tr><th>Parameter</th><th>Nilai (Meter)</th><th>Satuan</th><th>Status</th></tr>`;
+            const item = catalogDB[currentId];
+            document.getElementById('tableBody').innerHTML = `
+                <tr><td>Lebar Dalam (B)</td><td><input type="number" step="0.01" class="input-val ${item.sb==='unsync'?'unsync':''}" value="${item.b}" oninput="updateKatalog('b', this.value, 0)"></td><td>meter</td><td><span class="badge badge-${item.sb}">${item.sb.toUpperCase()}ED</span></td></tr>
+                <tr><td>Tinggi Dalam (H)</td><td><input type="number" step="0.01" class="input-val ${item.sh==='unsync'?'unsync':''}" value="${item.h}" oninput="updateKatalog('h', this.value, 1)"></td><td>meter</td><td><span class="badge badge-${item.sh}">${item.sh.toUpperCase()}ED</span></td></tr>
+                <tr><td>Panjang Efektif (L)</td><td><input type="number" step="0.01" class="input-val ${item.sl==='unsync'?'unsync':''}" value="${item.l}" oninput="updateKatalog('l', this.value, 2)"></td><td>meter</td><td><span class="badge badge-${item.sl}">${item.sl.toUpperCase()}ED</span></td></tr>`;
+        }
+
+        function renderCoefTable() {
+            document.getElementById('tableHead').innerHTML = `<tr><th>Deskripsi / Jenis Permukaan</th><th>Nilai Koefisien</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = "";
+            coefDB[currentId].data.forEach((item, idx) => {
+                tbody.innerHTML += `<tr>
+                    <td><input type="text" class="input-val" value="${item.k}" onchange="updateCoef(${idx}, 'k', this.value)"></td>
+                    <td><input type="number" step="0.001" class="input-val ${item.s==='unsync'?'unsync':''}" value="${item.v}" oninput="updateCoef(${idx}, 'v', this.value)"></td>
+                    <td><span class="badge badge-${item.s}">${item.s.toUpperCase()}ED</span></td>
+                    <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+                </tr>`;
+            });
+            lucide.createIcons();
+        }
+
+        // --- ACTIONS ---
+        function updateData(idx, key, val) {
+            rainDB[currentId].d[idx][key] = parseFloat(val);
+            rainDB[currentId].d[idx].s = 'unsync';
+            renderHujanTable();
+        }
+
+        function updateKatalog(key, val) {
+            catalogDB[currentId][key] = parseFloat(val);
+            catalogDB[currentId]['s' + key] = 'unsync';
+            renderKatalogTable();
+        }
+
+        function updateCoef(idx, key, val) {
+            coefDB[currentId].data[idx][key] = key === 'v' ? parseFloat(val) : val;
+            coefDB[currentId].data[idx].s = 'unsync';
+            renderCoefTable();
+        }
+
+        function addNewRow() {
+            if(currentMode === 'hujan') {
+                const maxYear = rainDB[currentId].d.length > 0 ? Math.max(...rainDB[currentId].d.map(x=>x.y)) : 2024;
+                rainDB[currentId].d.push({ y: maxYear + 1, v: 0, s: 'unsync' });
+                renderHujanTable();
+            } else if(currentMode === 'koefisien') {
+                coefDB[currentId].data.push({ k: "Nama Baru", v: 0, s: 'unsync' });
+                renderCoefTable();
+            }
+        }
+
+        function deleteRow(idx) {
+            if(!confirm("Hapus baris ini?")) return;
+            if(currentMode === 'hujan') rainDB[currentId].d.splice(idx, 1);
+            else if(currentMode === 'koefisien') coefDB[currentId].data.splice(idx, 1);
+            currentMode === 'hujan' ? renderHujanTable() : renderCoefTable();
+        }
+
+        function deleteStation(id) {
+            if(!confirm("Hapus item ini secara permanen?")) return;
+            const db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
+            delete db[id];
+            if(currentId === id) { currentId = null; document.getElementById('mainEditor').classList.remove('active'); document.getElementById('placeholder').style.display = 'flex'; }
+            renderSidebar();
+        }
+
+        function addItem() {
+            if(currentMode === 'koefisien') {
+                const name = prompt("Nama Koefisien (Contoh: Koefisien Manning Baru):");
+                if(!name) return;
+                const type = prompt("Keterangan/Tipe (Contoh: Koefisien Pengaliran):");
+                if(!type) return;
+                const newId = "item_" + Date.now();
+                coefDB[newId] = { n: name, type: type, data: [] };
+                renderSidebar();
+                selectItem(newId);
+            } else {
+                const name = prompt("Masukkan Nama Item Baru:");
+                if(!name) return;
+                const newId = "item_" + Date.now();
+                if(currentMode === 'hujan') rainDB[newId] = { n: name, lat: 0, lng: 0, d: [] };
+                else if(currentMode === 'katalog') catalogDB[newId] = { type: "Custom", n: name, b: 0, h: 0, l: 0, sb: 'unsync', sh: 'unsync', sl: 'unsync' };
+                renderSidebar();
+                selectItem(newId);
+            }
+        }
+
+        function syncAll() {
+            alert("Berhasil menyinkronkan data ke database SDA Jakarta Selatan!");
+            if(currentMode === 'hujan') rainDB[currentId].d.forEach(i => i.s = 'sync');
+            else if(currentMode === 'katalog') { catalogDB[currentId].sb = 'sync'; catalogDB[currentId].sh = 'sync'; catalogDB[currentId].sl = 'sync'; }
+            else if(currentMode === 'koefisien') coefDB[currentId].data.forEach(i => i.s = 'sync');
+            selectItem(currentId);
+        }
+
+        switchTab('hujan');
+    </script>
+</body>
+</html>
