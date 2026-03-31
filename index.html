@@ -343,7 +343,11 @@ function goToWelcome(){
     document.getElementById("welcome-page").classList.add("active");
     window.scrollTo(0,0);
 }
-
+window.onload = function() {
+    if(window.location.hash === "#menu-page") {
+        goToMenu();
+    }
+}
 lucide.createIcons();
 </script>
 
