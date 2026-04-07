@@ -359,7 +359,25 @@
                 coefDB[newId] = { n: name, type: type, data: [] };
                 renderSidebar();
                 selectItem(newId);
-            } else {
+                
+            } 
+            else if(currentMode === 'hujan') {
+                const name = prompt("Nama Stasiun Hujan:");
+                if(!name) return;
+                const lat = prompt("Masukkan Latitude (Contoh: -6.214):", "-6.2");
+                const lng = prompt("Masukkan Longitude (Contoh: 106.845):", "106.8");
+        
+                const newId = "st_" + Date.now();
+                rainDB[newId] = { 
+                    n: name, 
+                    lat: parseFloat(lat) || 0, 
+                    lng: parseFloat(lng) || 0, 
+                    d: [] 
+                };
+                renderSidebar();
+                selectItem(newId);
+            }
+            else {
                 const name = prompt("Masukkan Nama Item Baru:");
                 if(!name) return;
                 const newId = "item_" + Date.now();
