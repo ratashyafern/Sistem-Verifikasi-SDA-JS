@@ -141,20 +141,51 @@
     <footer><p class="footer-text">© 2026 Seksi Perencanaan - Sudin SDA Jakarta Selatan</p></footer>
 
     <script>
-        // --- PERSISTENCE LOGIC ---
-        const DEFAULT_RAIN = {
-            "st_01": { n: "STASIUN KEMAYORAN", lat: -6.1555, lng: 106.8400, type: "DATABASE BMKG", d: [{y:2020, v:94.8, s:'sync'}, {y:2021, v:82.2, s:'sync'}] },
-            "st_02": { n: "STASIUN HALIM", lat: -6.2703, lng: 106.8890, type: "DATABASE BMKG", d: [{y:2020, v:54.3, s:'sync'}, {y:2021, v:92.8, s:'sync'}] }
-        };
+        // --- DATA MASTER ---
+        const STATIONS_LIST = [
+            {n:"KEMAYORAN", lat:-6.1556, lng:106.8400}, {n:"HALIM", lat:-6.2704, lng:106.8893},
+            {n:"KLIMAT JATENG", lat:-6.5000, lng:106.7500}, {n:"KLIMAT BANTEN", lat:-6.2615, lng:106.7508},
+            {n:"KATULAMPA", lat:-6.6332, lng:106.8371}, {n:"DEPOK", lat:-6.4006, lng:106.8319},
+            {n:"MANGGARAI", lat:-6.2074, lng:106.8486}, {n:"KARET", lat:-6.1981, lng:106.8101},
+            {n:"SETIABUDI TIMUR", lat:-6.2046, lng:106.8294}, {n:"MELATI", lat:-6.2008, lng:106.8180},
+            {n:"ISTANA", lat:-6.1716, lng:106.8270}, {n:"KRUKUT HULU", lat:-6.3443, lng:106.7991},
+            {n:"SUNTER HULU", lat:-6.3178, lng:106.9211}, {n:"PESANGGRAHAN", lat:-6.3971, lng:106.7718},
+            {n:"ANGKE HULU", lat:-6.2183, lng:106.6945}, {n:"TANJUNGAN", lat:-6.1067, lng:106.7259},
+            {n:"TOMANG BARAT", lat:-6.1671, lng:106.7800}, {n:"TELUK GONG", lat:-6.1335, lng:106.7776},
+            {n:"PULO GADUNG", lat:-6.1910, lng:106.9042}, {n:"SUNTER KODAMAR", lat:-6.1551, lng:106.8869},
+            {n:"RAWA BADAK", lat:-6.1211, lng:106.8967}, {n:"POMPA CIDENG", lat:-6.1736, lng:106.8063}
+        ];
+
+        const DEFAULT_RAIN = {};
+        STATIONS_LIST.forEach((s, i) => {
+            const history = [];
+            for(let y=2014; y<=2024; y++) history.push({y: y, v: (Math.random()*100 + 50).toFixed(1), s: 'sync'});
+            DEFAULT_RAIN[`st_${i}`] = { n: "STASIUN " + s.n, lat: s.lat, lng: s.lng, type: "DATABASE BMKG", d: history };
+        });
 
         const DEFAULT_CATALOG = {
-            "u_ditch": { n: "U-Ditch Precast", type: "PABRIKASI", data: [{ k: "U-Ditch 40", b: 0.4, h: 0.4, s: 'sync' }, { k: "U-Ditch 60", b: 0.6, h: 0.6, s: 'sync' }] },
-            "box_culvert": { n: "Box Culvert", type: "PABRIKASI", data: [{ k: "BC 60", b: 0.6, h: 0.6, s: 'sync' }, { k: "BC 100", b: 1.0, h: 1.0, s: 'sync' }] }
+            "u_ditch": { n: "U-Ditch Precast", type: "PABRIKASI", data: [
+                {k:"U-Ditch 40x40", b:0.4, h:0.4, s:'sync'}, {k:"U-Ditch 60x60", b:0.6, h:0.6, s:'sync'},
+                {k:"U-Ditch 80x80", b:0.8, h:0.8, s:'sync'}, {k:"U-Ditch 100x100", b:1.0, h:1.0, s:'sync'},
+                {k:"U-Ditch 120x120", b:1.2, h:1.2, s:'sync'}
+            ]},
+            "box_culvert": { n: "Box Culvert", type: "PABRIKASI", data: [
+                {k:"BC 60x60", b:0.6, h:0.6, s:'sync'}, {k:"BC 80x80", b:0.8, h:0.8, s:'sync'},
+                {k:"BC 100x100", b:1.0, h:1.0, s:'sync'}, {k:"BC 120x120", b:1.2, h:1.2, s:'sync'},
+                {k:"BC 150x150", b:1.5, h:1.5, s:'sync'}, {k:"BC 250x250", b:2.5, h:2.5, s:'sync'}
+            ]}
         };
 
         const DEFAULT_COEF = {
-            "c_val": { n: "Koefisien Aliran", type: "SNI 2415:2016", data: [{ k: "Daerah Perdagangan", v: 0.90, s: 'sync' }, { k: "Pemukiman Padat", v: 0.70, s: 'sync' }] },
-            "n_manning": { n: "Koefisien Manning", type: "HARGA n", data: [{ k: "Beton Gorong-gorong", v: 0.013, s: 'sync' }, { k: "Tanah Bersih", v: 0.022, s: 'sync' }] }
+            "c_val": { n: "Koefisien Aliran (C)", type: "SNI 2415:2016", data: [
+                {k:"Perdagangan Kota", v:0.90, s:'sync'}, {k:"Pemukiman Rapat", v:0.70, s:'sync'},
+                {k:"Pemukiman Tidak Rapat", v:0.50, s:'sync'}, {k:"Taman/Kuburan", v:0.20, s:'sync'},
+                {k:"Perkerasan Aspal", v:0.85, s:'sync'}
+            ]},
+            "n_manning": { n: "Koefisien Manning (n)", type: "TABEL CHOW", data: [
+                {k:"Beton Halus", v:0.011, s:'sync'}, {k:"Beton Pasangan Batu", v:0.015, s:'sync'},
+                {k:"Tanah Bersih Baru", v:0.018, s:'sync'}, {k:"Saluran Alam Berumput", v:0.030, s:'sync'}
+            ]}
         };
 
         let rainDB = JSON.parse(localStorage.getItem('sda_rainDB')) || DEFAULT_RAIN;
@@ -214,7 +245,6 @@
             } else {
                 subContainer.innerHTML = `<p style="color: #64748b; font-size: 14px; font-weight: 600; text-transform:uppercase;">${item.type}</p>`;
             }
-            
             renderTable();
             renderSidebar();
         }
@@ -260,11 +290,7 @@
                     </tr>`;
                 });
             }
-            
-            // Disable Export if unsynced
             document.getElementById('btnExport').disabled = hasUnsync;
-            document.getElementById('btnExport').title = hasUnsync ? "Sinkronkan data sebelum export" : "Cetak PDF";
-            
             lucide.createIcons();
         }
 
@@ -281,12 +307,55 @@
             renderTable();
         }
 
+        // PERBAIKAN: Input cerdas sesuai tab aktif
+        function addItem() {
+            let promptText, placeholder, typeDefault;
+            
+            if (currentMode === 'hujan') {
+                promptText = "Masukkan Nama Stasiun Hujan:";
+                placeholder = "CONTOH: STASIUN PONDOK INDAH";
+                typeDefault = "DATABASE BMKG";
+            } else if (currentMode === 'katalog') {
+                promptText = "Masukkan Nama Material Precast:";
+                placeholder = "CONTOH: U-DITCH HEAVY DUTY";
+                typeDefault = "PABRIKASI";
+            } else {
+                promptText = "Masukkan Nama Kelompok Koefisien:";
+                placeholder = "CONTOH: KOEFISIEN PENGALIRAN (C)";
+                typeDefault = "SNI 2415:2016";
+            }
+
+            let n = prompt(promptText, placeholder);
+            if (!n || n === placeholder) return;
+
+            let typeDesc = prompt("Keterangan Sumber/Standar:", typeDefault);
+            let id = "item_" + Date.now();
+
+            if (currentMode === 'hujan') {
+                rainDB[id] = { n: n.toUpperCase(), lat: 0, lng: 0, type: typeDesc.toUpperCase(), d: [] };
+            } else if (currentMode === 'katalog') {
+                catalogDB[id] = { n: n, type: typeDesc.toUpperCase(), data: [] };
+            } else {
+                coefDB[id] = { n: n, type: typeDesc.toUpperCase(), data: [] };
+            }
+
+            saveToLocal();
+            renderSidebar();
+            selectItem(id);
+        }
+
+        // PERBAIKAN: Tambah baris otomatis terisi data awal
         function addNewRow() {
-            if(!currentId) return;
+            if (!currentId) return;
             let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-            if(currentMode === 'hujan') dataArr.push({y: new Date().getFullYear(), v: 0, s: 'unsync'});
-            else if(currentMode === 'katalog') dataArr.push({k: "Baru", b: 0, h: 0, s: 'unsync'});
-            else dataArr.push({k: "Baru", v: 0, s: 'unsync'});
+            
+            if (currentMode === 'hujan') {
+                dataArr.push({ y: new Date().getFullYear(), v: 0, s: 'unsync' });
+            } else if (currentMode === 'katalog') {
+                dataArr.push({ k: "Tipe Baru", b: 0, h: 0, s: 'unsync' });
+            } else {
+                dataArr.push({ k: "Parameter Baru", v: 0, s: 'unsync' });
+            }
             renderTable();
         }
 
@@ -300,28 +369,15 @@
             let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
             dataArr.forEach(i => i.s = 'sync');
             saveToLocal();
-            alert("Berhasil! Data telah disimpan ke database lokal.");
+            alert("Data Berhasil Disimpan!");
             renderTable();
         }
 
-        function addItem() {
-            let n = prompt("Masukkan Nama (Contoh: STASIUN BARU / MANNING BARU):");
-            if(!n) return;
-            let typeDesc = prompt("Masukkan Keterangan (Contoh: DATABASE BMKG / SNI 2016):", "DATABASE");
-            
-            let id = "item_" + Date.now();
-            if(currentMode === 'hujan') rainDB[id] = {n: n.toUpperCase(), lat: 0, lng: 0, type: typeDesc.toUpperCase(), d: []};
-            else if(currentMode === 'katalog') catalogDB[id] = {n: n, type: typeDesc.toUpperCase(), data: []};
-            else coefDB[id] = {n: n, type: typeDesc.toUpperCase(), data: []};
-            
-            saveToLocal();
-            selectItem(id);
-        }
-
         function deleteItem(id) {
-            if(!confirm("Hapus item database ini?")) return;
-            let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
-            delete db[id];
+            if(!confirm("Hapus data ini?")) return;
+            if(currentMode === 'hujan') delete rainDB[id];
+            else if(currentMode === 'katalog') delete catalogDB[id];
+            else delete coefDB[id];
             saveToLocal();
             if(currentId === id) { currentId = null; document.getElementById('mainEditor').classList.remove('active'); document.getElementById('placeholder').style.display = 'flex'; }
             renderSidebar();
@@ -331,52 +387,28 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const title = document.getElementById('activeTitle').innerText;
-            
-            doc.setFontSize(18);
-            doc.setTextColor(30, 43, 74);
+            doc.setFontSize(18); doc.setTextColor(30, 43, 74);
             doc.text("DATA REPOSITORY - SUDIN SDA JAKSEL", 14, 20);
-            
-            doc.setFontSize(11);
-            doc.setTextColor(100, 116, 139);
+            doc.setFontSize(11); doc.setTextColor(100, 116, 139);
             doc.text(`Kategori: ${title}`, 14, 30);
-            doc.text(`Tanggal Cetak: ${new Date().toLocaleString('id-ID')}`, 14, 37);
-
+            doc.text(`Tanggal: ${new Date().toLocaleString('id-ID')}`, 14, 37);
             const table = document.getElementById('dataTable');
-            const rows = [];
-            const headers = [];
-            
+            const rows = []; const headers = [];
             const headerCells = table.querySelectorAll('thead th');
-            for (let i = 0; i < headerCells.length - 1; i++) {
-                headers.push(headerCells[i].innerText);
-            }
-
+            for (let i = 0; i < headerCells.length - 1; i++) headers.push(headerCells[i].innerText);
             const bodyRows = table.querySelectorAll('tbody tr');
             bodyRows.forEach(row => {
-                const rowData = [];
-                const cells = row.querySelectorAll('td');
+                const rowData = []; const cells = row.querySelectorAll('td');
                 for (let i = 0; i < cells.length - 1; i++) {
                     const input = cells[i].querySelector('input');
-                    const badge = cells[i].querySelector('.badge');
-                    if (input) rowData.push(input.value);
-                    else if (badge) rowData.push(badge.innerText);
-                    else rowData.push(cells[i].innerText);
+                    rowData.push(input ? input.value : cells[i].innerText);
                 }
                 rows.push(rowData);
             });
-
-            doc.autoTable({
-                head: [headers],
-                body: rows,
-                startY: 45,
-                theme: 'grid',
-                headStyles: { fillColor: [30, 43, 74], fontSize: 10, halign: 'center' },
-                styles: { fontSize: 9, cellPadding: 3 }
-            });
-
+            doc.autoTable({ head: [headers], body: rows, startY: 45, theme: 'grid', headStyles: { fillColor: [30, 43, 74] } });
             doc.save(`SDA_Data_${title.replace(/\s+/g, '_')}.pdf`);
         }
 
-        // Initialize view
         switchTab('hujan');
     </script>
 </body>
