@@ -91,7 +91,7 @@
 </head>
 <body>
 
-    <a href="index.html" class="back-link"><i data-lucide="arrow-left" size="18"></i> Kembali ke Menu Utama</a>
+    <a href="index.html" class="back-link"><i data-lucide="arrow-left"></i> Kembali ke Menu Utama</a>
     <h1 class="header-title">DATA REPOSITORY</h1>
     <p class="header-desc">Manajemen Database & Parameter Teknis Hidrologi Jakarta Selatan.</p>
 
@@ -141,8 +141,7 @@
     <footer><p class="footer-text">© 2026 Seksi Perencanaan - Sudin SDA Jakarta Selatan</p></footer>
 
     <script>
-        // --- DATA MASTER ---
-        const CURRENT_VERSION = "1.1"; // <--- VERSI DATA HUJAN SAAT INI
+        const CURRENT_VERSION = "1.1";
 
         const STATIONS_LIST = [
             {n:"KEMAYORAN", lat:-6.1556, lng:106.8400}, {n:"HALIM", lat:-6.2704, lng:106.8893},
@@ -190,16 +189,15 @@
             ]}
         };
 
-        // --- LOGIKA LOAD DATA AWAL ---
         function initData() {
             let storedRain = localStorage.getItem('sda_db_final_clean');
             if (storedRain) {
-                let parsed = JSON.parse(storedRain);
-                // Jika versi di browser lebih lama, pakai default
-                if (parseFloat(parsed.version || 0) < parseFloat(CURRENT_VERSION)) {
-                    return DEFAULT_RAIN;
-                }
-                return parsed.stations;
+                try {
+                    let parsed = JSON.parse(storedRain);
+                    if (parseFloat(parsed.version || 0) >= parseFloat(CURRENT_VERSION)) {
+                        return parsed.stations;
+                    }
+                } catch(e) { console.error(e); }
             }
             return DEFAULT_RAIN;
         }
@@ -207,19 +205,12 @@
         let rainDB = initData();
         let catalogDB = JSON.parse(localStorage.getItem('sda_catalogDB')) || DEFAULT_CATALOG;
         let coefDB = JSON.parse(localStorage.getItem('sda_coefDB')) || DEFAULT_COEF;
-
         let currentMode = 'hujan';
         let currentId = null;
 
         function saveToLocal() {
-            // Khusus Hujan, simpan dengan format versi agar sinkron dengan Analisa2.html
-            const rainToSave = {
-                version: CURRENT_VERSION,
-                stations: rainDB
-            };
+            const rainToSave = { version: CURRENT_VERSION, stations: rainDB };
             localStorage.setItem('sda_db_final_clean', JSON.stringify(rainToSave));
-            
-            // Database lainnya tetap
             localStorage.setItem('sda_catalogDB', JSON.stringify(catalogDB));
             localStorage.setItem('sda_coefDB', JSON.stringify(coefDB));
         }
@@ -243,7 +234,7 @@
                 item.className = 'st-item' + (currentId === id ? ' active' : '');
                 item.onclick = (e) => { if(!e.target.closest('.btn-del-st')) selectItem(id); };
                 item.innerHTML = `<div><h4>${db[id].n}</h4><span>${db[id].type || 'DATABASE'}</span></div>
-                                  <div class="btn-del-st" onclick="deleteItem('${id}')"><i data-lucide="trash-2" size="14"></i></div>`;
+                                  <div class="btn-del-st" onclick="deleteItem('${id}')"><i data-lucide="trash-2"></i></div>`;
                 list.appendChild(item);
             });
             lucide.createIcons();
@@ -253,18 +244,15 @@
             currentId = id;
             document.getElementById('placeholder').style.display = 'none';
             document.getElementById('mainEditor').classList.add('active');
-            
             let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
             const item = db[id];
             document.getElementById('activeTitle').innerText = item.n;
-            
             const subContainer = document.getElementById('subtitleContainer');
             if(currentMode === 'hujan') {
-                subContainer.innerHTML = `
-                    <div class="coord-input-group">
-                        <label>LAT <input type="number" step="0.0001" class="small-input" value="${item.lat}" oninput="updateCoord('lat', this.value)"></label>
-                        <label>LNG <input type="number" step="0.0001" class="small-input" value="${item.lng}" oninput="updateCoord('lng', this.value)"></label>
-                    </div>`;
+                subContainer.innerHTML = `<div class="coord-input-group">
+                    <label>LAT <input type="number" step="0.0001" class="small-input" value="${item.lat}" oninput="updateCoord('lat', this.value)"></label>
+                    <label>LNG <input type="number" step="0.0001" class="small-input" value="${item.lng}" oninput="updateCoord('lng', this.value)"></label>
+                </div>`;
             } else {
                 subContainer.innerHTML = `<p style="color: #64748b; font-size: 14px; font-weight: 600; text-transform:uppercase;">${item.type}</p>`;
             }
@@ -277,39 +265,41 @@
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = "";
             let hasUnsync = false;
+            let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
+            const dataArr = currentMode === 'hujan' ? db[currentId].d : db[currentId].data;
 
             if (currentMode === 'hujan') {
                 thead.innerHTML = `<tr><th>Tahun</th><th>Hujan Maks (mm)</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
-                rainDB[currentId].d.forEach((item, idx) => {
+                dataArr.forEach((item, idx) => {
                     if(item.s === 'unsync') hasUnsync = true;
                     tbody.innerHTML += `<tr>
                         <td><input type="number" class="input-val" value="${item.y}" onchange="updateVal(${idx}, 'y', this.value)"></td>
                         <td><input type="number" step="0.1" class="input-val ${item.s==='unsync'?'unsync':''}" value="${item.v}" oninput="updateVal(${idx}, 'v', this.value)"></td>
                         <td><span class="badge badge-${item.s}">${item.s.toUpperCase()}ED</span></td>
-                        <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+                        <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2"></i></div></td>
                     </tr>`;
                 });
             } else if (currentMode === 'katalog') {
                 thead.innerHTML = `<tr><th>Tipe Ukuran</th><th>B (m)</th><th>H (m)</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
-                catalogDB[currentId].data.forEach((item, idx) => {
+                dataArr.forEach((item, idx) => {
                     if(item.s === 'unsync') hasUnsync = true;
                     tbody.innerHTML += `<tr>
                         <td><input type="text" class="input-val" value="${item.k}" onchange="updateVal(${idx}, 'k', this.value)"></td>
-                        <td><input type="number" step="0.01" min="0" class="input-val ${item.s==='unsync'?'unsync':''}" value="${item.b}" oninput="updateVal(${idx}, 'b', this.value)"></td>
-                        <td><input type="number" step="0.01" min="0" class="input-val ${item.s==='unsync'?'unsync':''}" value="${item.h}" oninput="updateVal(${idx}, 'h', this.value)"></td>
+                        <td><input type="number" step="0.01" class="input-val ${item.s==='unsync'?'unsync':''}" value="${item.b}" oninput="updateVal(${idx}, 'b', this.value)"></td>
+                        <td><input type="number" step="0.01" class="input-val ${item.s==='unsync'?'unsync':''}" value="${item.h}" oninput="updateVal(${idx}, 'h', this.value)"></td>
                         <td><span class="badge badge-${item.s}">${item.s.toUpperCase()}ED</span></td>
-                        <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+                        <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2"></i></div></td>
                     </tr>`;
                 });
             } else {
                 thead.innerHTML = `<tr><th>Deskripsi</th><th>Nilai</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
-                coefDB[currentId].data.forEach((item, idx) => {
+                dataArr.forEach((item, idx) => {
                     if(item.s === 'unsync') hasUnsync = true;
                     tbody.innerHTML += `<tr>
                         <td><input type="text" class="input-val" value="${item.k}" onchange="updateVal(${idx}, 'k', this.value)"></td>
-                        <td><input type="number" step="0.001" min="0" class="input-val ${item.s==='unsync'?'unsync':''}" value="${item.v}" oninput="updateVal(${idx}, 'v', this.value)"></td>
+                        <td><input type="number" step="0.001" class="input-val ${item.s==='unsync'?'unsync':''}" value="${item.v}" oninput="updateVal(${idx}, 'v', this.value)"></td>
                         <td><span class="badge badge-${item.s}">${item.s.toUpperCase()}ED</span></td>
-                        <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+                        <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2"></i></div></td>
                     </tr>`;
                 });
             }
@@ -318,8 +308,9 @@
         }
 
         function updateVal(idx, key, val) {
-            let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-            dataArr[idx][key] = (key === 'k') ? val : parseFloat(val || 0);
+            let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
+            let dataArr = currentMode === 'hujan' ? db[currentId].d : db[currentId].data;
+            dataArr[idx][key] = (key === 'k') ? val : (val === "" ? 0 : parseFloat(val));
             dataArr[idx].s = 'unsync';
             renderTable();
         }
@@ -331,67 +322,47 @@
         }
 
         function addItem() {
-            let promptText, placeholder, typeDefault;
-            
-            if (currentMode === 'hujan') {
-                promptText = "Masukkan Nama Stasiun Hujan:";
-                placeholder = "CONTOH: STASIUN PONDOK INDAH";
-                typeDefault = "DATABASE BMKG";
-            } else if (currentMode === 'katalog') {
-                promptText = "Masukkan Nama Material Precast:";
-                placeholder = "CONTOH: U-DITCH HEAVY DUTY";
-                typeDefault = "PABRIKASI";
-            } else {
-                promptText = "Masukkan Nama Kelompok Koefisien:";
-                placeholder = "CONTOH: KOEFISIEN PENGALIRAN (C)";
-                typeDefault = "SNI 2415:2016";
-            }
-
-            let n = prompt(promptText, placeholder);
-            if (!n || n === placeholder) return;
-
-            let typeDesc = prompt("Keterangan Sumber/Standar:", typeDefault);
+            let promptText = currentMode === 'hujan' ? "Nama Stasiun:" : (currentMode === 'katalog' ? "Nama Material:" : "Nama Kelompok:");
+            let n = prompt(promptText);
+            if (!n) return;
             let id = "item_" + Date.now();
-
-            if (currentMode === 'hujan') {
-                rainDB[id] = { n: n.toUpperCase(), lat: 0, lng: 0, type: typeDesc.toUpperCase(), d: [] };
-            } else if (currentMode === 'katalog') {
-                catalogDB[id] = { n: n, type: typeDesc.toUpperCase(), data: [] };
-            } else {
-                coefDB[id] = { n: n, type: typeDesc.toUpperCase(), data: [] };
-            }
-
-            saveToLocal();
-            renderSidebar();
-            selectItem(id);
+            if (currentMode === 'hujan') rainDB[id] = { n: n.toUpperCase(), lat: 0, lng: 0, type: "MANUAL", d: [] };
+            else if (currentMode === 'katalog') catalogDB[id] = { n: n, type: "PABRIKASI", data: [] };
+            else coefDB[id] = { n: n, type: "STANDAR", data: [] };
+            saveToLocal(); renderSidebar(); selectItem(id);
         }
 
         function addNewRow() {
             if (!currentId) return;
-            let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-            
-            if (currentMode === 'hujan') {
-                dataArr.push({ y: new Date().getFullYear(), v: 0, s: 'unsync' });
-            } else if (currentMode === 'katalog') {
-                dataArr.push({ k: "Tipe Baru", b: 0, h: 0, s: 'unsync' });
-            } else {
-                dataArr.push({ k: "Parameter Baru", v: 0, s: 'unsync' });
-            }
+            let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
+            let dataArr = currentMode === 'hujan' ? db[currentId].d : db[currentId].data;
+            if (currentMode === 'hujan') dataArr.push({ y: new Date().getFullYear(), v: 0, s: 'unsync' });
+            else if (currentMode === 'katalog') dataArr.push({ k: "Baru", b: 0, h: 0, s: 'unsync' });
+            else dataArr.push({ k: "Baru", v: 0, s: 'unsync' });
             renderTable();
         }
 
         function deleteRow(idx) {
-            let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-            dataArr.splice(idx, 1);
-            renderTable();
+            let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
+            let dataArr = currentMode === 'hujan' ? db[currentId].d : db[currentId].data;
+            dataArr.splice(idx, 1); renderTable();
         }
 
         function syncAll() {
-            let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
+            if(!currentId) return;
+            let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
+            let dataArr = currentMode === 'hujan' ? db[currentId].d : db[currentId].data;
             dataArr.forEach(i => i.s = 'sync');
             saveToLocal();
-            alert("Data Berhasil Disimpan ke Sistem!");
-            renderTable();
+            const btn = document.getElementById('btnSync');
+            btn.innerHTML = "DATA TERSIMPAN! <i data-lucide='check-circle'></i>";
+            btn.style.background = "var(--success)";
+            setTimeout(() => {
+                btn.innerHTML = `SINKRONKAN DATA KE SISTEM <i data-lucide="save"></i>`;
+                btn.style.background = "var(--primary)";
+                lucide.createIcons();
+                renderTable();
+            }, 2000);
         }
 
         function deleteItem(id) {
@@ -408,11 +379,7 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const title = document.getElementById('activeTitle').innerText;
-            doc.setFontSize(18); doc.setTextColor(30, 43, 74);
-            doc.text("DATA REPOSITORY - SUDIN SDA JAKSEL", 14, 20);
-            doc.setFontSize(11); doc.setTextColor(100, 116, 139);
-            doc.text(`Kategori: ${title}`, 14, 30);
-            doc.text(`Tanggal: ${new Date().toLocaleString('id-ID')}`, 14, 37);
+            doc.setFontSize(18); doc.text("DATA REPOSITORY - SUDIN SDA JAKSEL", 14, 20);
             const table = document.getElementById('dataTable');
             const rows = []; const headers = [];
             const headerCells = table.querySelectorAll('thead th');
@@ -426,8 +393,8 @@
                 }
                 rows.push(rowData);
             });
-            doc.autoTable({ head: [headers], body: rows, startY: 45, theme: 'grid', headStyles: { fillColor: [30, 43, 74] } });
-            doc.save(`SDA_Data_${title.replace(/\s+/g, '_')}.pdf`);
+            doc.autoTable({ head: [headers], body: rows, startY: 40 });
+            doc.save(`SDA_Data_${title}.pdf`);
         }
 
         switchTab('hujan');
