@@ -80,11 +80,11 @@
 
     // --- RENDER SALURAN ---
     function initGeoJSON() {
-        if (typeof data_mikro !== 'undefined') {
-            L.geoJSON(data_mikro, { style: { color: '#06b6d4', weight: 2.5, opacity: 0.8 } }).addTo(layerMikro);
+        if (typeof dataMikro !== 'undefined') {
+            L.geoJSON(dataMikro, { style: { color: '#06b6d4', weight: 2.5, opacity: 0.8 } }).addTo(layerMikro);
         }
-        if (typeof data_phb !== 'undefined') {
-            L.geoJSON(data_phb, { style: { color: '#1d4ed8', weight: 4.5, opacity: 1 } }).addTo(layerPHB);
+        if (typeof dataPHB !== 'undefined') {
+            L.geoJSON(dataPHB, { style: { color: '#1d4ed8', weight: 4.5, opacity: 1 } }).addTo(layerPHB);
         }
     }
 
