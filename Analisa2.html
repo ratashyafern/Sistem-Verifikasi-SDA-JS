@@ -14,7 +14,7 @@
     <script src="data_saluranphb.js"></script>
 
     <style>
-        :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --text-muted: #64748b; }
+        :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --text-muted: #64748b; --danger: #ef4444; }
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
         body { display: flex; height: 100vh; background: var(--bg); overflow: hidden; color: var(--primary); }
         
@@ -27,23 +27,22 @@
         #map-container { flex-grow: 1; position: relative; }
         #map { height: 100%; width: 100%; }
 
-        /* Floating Luas */
         .area-info-box { 
             position: absolute; bottom: 30px; left: 30px; 
             background: white; padding: 15px 25px; border-radius: 12px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000;
-            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #e2e8f0;
         }
-        .area-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; }
+        .area-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; }
         .area-value { font-size: 24px; font-weight: 800; color: var(--accent); }
 
         .stasiun-label { 
             background: white; border: 1.5px solid var(--primary); font-weight: 800; 
-            padding: 2px 8px; border-radius: 4px; font-size: 10px;
-            box-shadow: 3px 3px 0px rgba(0,0,0,0.05); color: var(--primary);
+            padding: 2px 8px; border-radius: 4px; font-size: 10px; color: var(--primary);
         }
         
-        .empty-state { text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px; }
+        .status-card { padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .status-ok { background: #dcfce7; color: #166534; }
+        .status-warn { background: #fee2e2; color: #991b1b; }
     </style>
 </head>
 <body>
@@ -57,25 +56,22 @@
 
     <div class="sidebar-header">
         <h1 style="font-size: 22px; font-weight: 800;">VERIFICATION SYSTEM</h1>
-        <p style="font-size: 12px; opacity: 0.6;">Suku Dinas SDA Jakarta Selatan</p>
+        <p style="font-size: 12px; opacity: 0.6;">Sudin SDA Jakarta Selatan</p>
     </div>
 
     <div class="sidebar-content">
-        <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
-            <div style="width:30px; height:30px; background:var(--accent); color:white; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800;">1</div>
-            <b style="font-size:16px;">Metode Catchment</b>
-        </div>
-        
-        <div style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #edf2f7; margin-bottom: 25px;">
-             <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 5px;">Gunakan alat polygon di peta untuk menggambar area tangkapan air (catchment area).</p>
-        </div>
-
         <div style="display:flex; align-items:center; gap:12px; margin-bottom:15px;">
-            <div style="width:30px; height:30px; background:var(--primary); color:white; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800;">2</div>
-            <b style="font-size:16px;">Data Hujan Terpilih</b>
+            <div style="width:30px; height:30px; background:var(--accent); color:white; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800;">1</div>
+            <b style="font-size:16px;">Catchment Area</b>
         </div>
-        <div id="selected-station-info" class="empty-state">
-            Belum ada stasiun yang terdeteksi di dalam area.
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px;">Gambar poligon pada peta untuk menghitung luas tangkapan air.</p>
+
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:15px; border-top: 1px solid #eee; pt: 20px;">
+            <div style="width:30px; height:30px; background:var(--primary); color:white; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800;">2</div>
+            <b style="font-size:16px;">Analisa Hidrologi</b>
+        </div>
+        <div id="station-info-display">
+            <p style="color: #94a3b8; font-size: 13px;">Silakan gambar area di peta.</p>
         </div>
     </div>
 </div>
@@ -93,123 +89,102 @@
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
 <script>
-    // --- KONFIGURASI PETA ---
+    // --- DATA DEFAULT (Jika Repository Belum Disinkronkan) ---
+    const STATIONS_LIST = [
+        {n:"KEMAYORAN", lat:-6.1556, lng:106.8400}, {n:"HALIM", lat:-6.2704, lng:106.8893},
+        {n:"KLIMAT JATENG", lat:-6.5000, lng:106.7500}, {n:"KLIMAT BANTEN", lat:-6.2615, lng:106.7508},
+        {n:"KATULAMPA", lat:-6.6332, lng:106.8371}, {n:"DEPOK", lat:-6.4006, lng:106.8319},
+        {n:"MANGGARAI", lat:-6.2074, lng:106.8486}, {n:"KARET", lat:-6.1981, lng:106.8101},
+        {n:"SETIABUDI TIMUR", lat:-6.2046, lng:106.8294}, {n:"MELATI", lat:-6.2008, lng:106.8180},
+        {n:"ISTANA", lat:-6.1716, lng:106.8270}, {n:"KRUKUT HULU", lat:-6.3443, lng:106.7991},
+        {n:"SUNTER HULU", lat:-6.3178, lng:106.9211}, {n:"PESANGGRAHAN", lat:-6.3971, lng:106.7718},
+        {n:"ANGKE HULU", lat:-6.2183, lng:106.6945}, {n:"TANJUNGAN", lat:-6.1067, lng:106.7259},
+        {n:"TOMANG BARAT", lat:-6.1671, lng:106.7800}, {n:"TELUK GONG", lat:-6.1335, lng:106.7776},
+        {n:"PULO GADUNG", lat:-6.1910, lng:106.9042}, {n:"SUNTER KODAMAR", lat:-6.1551, lng:106.8869},
+        {n:"RAWA BADAK", lat:-6.1211, lng:106.8967}, {n:"POMPA CIDENG", lat:-6.1736, lng:106.8063}
+    ];
+
+    // --- INISIALISASI PETA ---
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
 
-    var map = L.map('map', { 
-        zoomControl: false, 
-        layers: [osm] 
-    }).setView([-6.2845, 106.8124], 13);
-
+    var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // --- LAYER GROUPS ---
     var drawnItems = new L.FeatureGroup().addTo(map);
     var stationLayer = L.layerGroup().addTo(map);
-    var layerMikro = L.layerGroup().addTo(map);
-    var layerPHB = L.layerGroup().addTo(map);
 
-    // --- RENDER DATA SALURAN ---
-    if (typeof data_mikro !== 'undefined') {
-        L.geoJSON(data_mikro, { style: { color: '#06b6d4', weight: 2, opacity: 0.8 } }).addTo(layerMikro);
-    }
-    if (typeof data_phb !== 'undefined') {
-        L.geoJSON(data_phb, { style: { color: '#2563eb', weight: 4, opacity: 0.9 } }).addTo(layerPHB);
-    }
+    // --- KONEKSI DATA ---
+    function loadStations() {
+        let stored = localStorage.getItem('sda_rainDB');
+        let rainDB = {};
 
-    // --- KONEKSI KE REPOSITORY (SINKRONISASI DATA) ---
-    function loadDataFromRepository() {
-        // Mengambil data dari kunci yang sama dengan repository.html
-        let storedRain = localStorage.getItem('sda_rainDB');
-        
-        if (storedRain) {
-            let rainDB = JSON.parse(storedRain);
-            renderStationMarkers(rainDB);
+        if (stored) {
+            rainDB = JSON.parse(stored);
+            console.log("Menggunakan data dari Repository.");
         } else {
-            console.warn("Database Repository tidak ditemukan. Sila isi data di menu Repository dulu.");
+            STATIONS_LIST.forEach((st, i) => {
+                rainDB[`st_${i}`] = { n: st.n, lat: st.lat, lng: st.lng, d: [] };
+            });
+            console.log("Menggunakan data Default.");
         }
-    }
-
-    function renderStationMarkers(db) {
+        
         stationLayer.clearLayers();
-        Object.keys(db).forEach(id => {
-            let st = db[id];
-            // Hanya gambar marker jika koordinat valid (bukan 0)
-            if(st.lat !== 0 && st.lng !== 0) {
-                let marker = L.circleMarker([st.lat, st.lng], { 
-                    radius: 7, fillColor: "#f59e0b", color: "#ffffff", weight: 2, fillOpacity: 1 
+        Object.keys(rainDB).forEach(id => {
+            let s = rainDB[id];
+            if (s.lat && s.lng) {
+                let m = L.circleMarker([s.lat, s.lng], {
+                    radius: 7, fillColor: "#f59e0b", color: "#fff", weight: 2, fillOpacity: 1
                 }).addTo(stationLayer);
-                
-                marker.bindTooltip(st.n, { 
-                    permanent: true, direction: 'top', className: 'stasiun-label', offset: [0, -10] 
-                });
-                
-                // Simpan ID stasiun ke dalam marker untuk referensi nanti
-                marker.options.stationId = id;
+                m.bindTooltip(s.n, { permanent: true, direction: 'top', className: 'stasiun-label', offset: [0,-10] });
+                m.options.stationName = s.n;
             }
         });
     }
 
-    // --- LAYER CONTROL ---
-    var baseMaps = { "Peta Jalan": osm, "Satelit": satellite };
-    var overlayMaps = {
-        "Saluran Mikro": layerMikro,
-        "Saluran PHB": layerPHB,
-        "Stasiun Hujan": stationLayer,
-        "Area Catchment": drawnItems
-    };
-    L.control.layers(baseMaps, overlayMaps, { collapsed: false, position: 'topright' }).addTo(map);
-
-    // --- LOGIKA DRAWING & TURF ---
+    // --- LOGIKA HITUNG (TURF) ---
     function updateAnalysis() {
         if (drawnItems.getLayers().length === 0) {
             document.getElementById('area-val').innerText = "0.00";
-            document.getElementById('selected-station-info').innerHTML = "Belum ada stasiun yang terdeteksi.";
+            document.getElementById('station-info-display').innerHTML = "Silakan gambar area.";
             return;
         }
 
         let layer = drawnItems.getLayers()[0];
         let geojson = layer.toGeoJSON();
         
-        // 1. Hitung Luas
-        let area = turf.area(geojson) / 10000; 
+        // Luas Ha
+        let area = turf.area(geojson) / 10000;
         document.getElementById('area-val').innerText = area.toFixed(2);
 
-        // 2. Cek Stasiun Terdekat (Point in Polygon)
-        findStationInArea(geojson);
-    }
-
-    function findStationInArea(polygonGeoJSON) {
+        // Cari Stasiun
         let found = [];
-        let rainDB = JSON.parse(localStorage.getItem('sda_rainDB')) || {};
-
-        stationLayer.eachLayer(marker => {
-            let point = turf.point([marker.getLatLng().lng, marker.getLatLng().lat]);
-            if (turf.booleanPointInPolygon(point, polygonGeoJSON)) {
-                let id = marker.options.stationId;
-                found.push(rainDB[id].n);
-            }
+        stationLayer.eachLayer(m => {
+            let pt = turf.point([m.getLatLng().lng, m.getLatLng().lat]);
+            if (turf.booleanPointInPolygon(pt, geojson)) found.push(m.options.stationName);
         });
 
-        const infoBox = document.getElementById('selected-station-info');
+        let display = document.getElementById('station-info-display');
         if (found.length > 0) {
-            infoBox.innerHTML = `
-                <div style="background:#dcfce7; color:#166534; padding:12px; border-radius:8px; font-size:13px; font-weight:700;">
-                    <i data-lucide="check-circle" size="14"></i> Terdeteksi: ${found.join(", ")}
+            display.innerHTML = `
+                <div class="status-card status-ok">
+                    <i data-lucide="check-circle"></i> Terdeteksi: ${found.join(", ")}
                 </div>
+                <p style="font-size: 11px; margin-top: 10px; color: #64748b;">Data hujan siap diolah untuk Luas ${area.toFixed(2)} Ha.</p>
             `;
         } else {
-            infoBox.innerHTML = `<p style="color:var(--danger); font-size:12px;">Peringatan: Tidak ada stasiun hujan di dalam area catchment ini.</p>`;
+            display.innerHTML = `
+                <div class="status-card status-warn">
+                    <i data-lucide="alert-triangle"></i> Tidak ada stasiun dalam area.
+                </div>
+            `;
         }
         lucide.createIcons();
     }
 
+    // --- DRAW CONTROL ---
     var drawControl = new L.Control.Draw({
-        draw: { 
-            polygon: { shapeOptions: { color: '#2f80ed', fillOpacity: 0.3 } }, 
-            polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false 
-        },
+        draw: { polygon: { shapeOptions: { color: '#2f80ed' } }, polyline: false, circle: false, marker: false, rectangle: false, circlemarker: false },
         edit: { featureGroup: drawnItems }
     });
     map.addControl(drawControl);
@@ -222,11 +197,7 @@
     map.on(L.Draw.Event.EDITED, updateAnalysis);
     map.on(L.Draw.Event.DELETED, updateAnalysis);
 
-    // --- INISIALISASI ---
-    window.onload = () => { 
-        loadDataFromRepository(); 
-        lucide.createIcons(); 
-    };
+    window.onload = () => { loadStations(); lucide.createIcons(); };
 </script>
 </body>
 </html>
