@@ -1,4 +1,4 @@
-var dataTersier = { 
+var dataPHB = { 
   "type": "FeatureCollection",
 "features": [
 { "type": "Feature", "properties": { "OBJECTID_1": 1, "OBJECTID": 851, "toponimi": "Sal. Phb Jacking RA. Kartini", "kewenangan": "Pemprov DKI", "panjang": "878", "lebar": "1.2 - 2", "kedalaman": "2.5", "kota": "Jakarta Selatan", "kecamatan": "Cilandak", "lebar_min": "1.20000e+00", "lebar_max": "2.00000e+00", "kedalaman_": "2.50000e+00", "kedalaman1": "2.50000e+00", "Shape_Leng": "8.79876e-01", "Shape_Le_1": "7.90334849734e-03" }, "geometry": { "type": "LineString", "coordinates": [ [ 106.79242285183318, -6.291907359636866, 0.0 ], [ 106.79118831109173, -6.291931948900299, 0.0 ], [ 106.78958885694027, -6.291951785246624, 0.0 ], [ 106.787992791434249, -6.291914189088516, 0.0 ], [ 106.78649688522313, -6.291800887101203, 0.0 ], [ 106.784802884445639, -6.291401793158172, 0.0 ], [ 106.784623802446561, -6.291353950124631, 0.0 ], [ 106.784578877713102, -6.291341771505529, 0.0 ] ] } },
