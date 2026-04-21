@@ -18,29 +18,23 @@
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
         body { display: flex; height: 100vh; background: var(--bg); overflow: hidden; color: var(--primary); }
         
-        /* SIDEBAR NAVIGATION */
         #sidebar { width: 380px; background: var(--white); border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; }
-        
-        /* Navigasi Link Kembali (Style Repository) */
         .nav-back { padding: 25px 25px 5px 25px; }
-        .link-back { color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
-        .link-back:hover { opacity: 0.7; }
-        
+        .link-back { color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
         .sidebar-header { padding: 5px 25px 30px 25px; }
         .sidebar-content { padding: 25px; flex-grow: 1; border-top: 1px solid #f1f5f9; }
 
-        /* MAP UI */
         #map-container { flex-grow: 1; position: relative; }
         #map { height: 100%; width: 100%; }
 
-        /* FLOATING BOX LUASAN */
+        /* Floating Luas */
         .area-info-box { 
             position: absolute; bottom: 30px; left: 30px; 
             background: white; padding: 15px 25px; border-radius: 12px; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000;
             border: 1px solid #e2e8f0;
         }
-        .area-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .area-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; }
         .area-value { font-size: 24px; font-weight: 800; color: var(--accent); }
 
         .stasiun-label { 
@@ -54,7 +48,7 @@
 
 <div id="sidebar">
     <div class="nav-back">
-        <a href="index.html" class="link-back">
+        <a href="index.html#menu-page" class="link-back">
             <i data-lucide="arrow-left" size="16"></i> Kembali ke Menu Utama
         </a>
     </div>
@@ -69,7 +63,7 @@
             <div style="width:30px; height:30px; background:var(--accent); color:white; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800;">1</div>
             <b style="font-size:16px;">Metode Catchment</b>
         </div>
-        </div>
+    </div>
 </div>
 
 <div id="map-container">
@@ -86,30 +80,23 @@
 
 <script>
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-    var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
-
     var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     var drawnItems = new L.FeatureGroup().addTo(map);
     var stationLayer = L.layerGroup().addTo(map);
-    var layerMikro = L.layerGroup().addTo(map); // Langsung muncul di awal
+    var layerMikro = L.layerGroup().addTo(map);
     var layerPHB = L.layerGroup().addTo(map);
 
-    // Integrasi Data Saluran (Memastikan variabel dari file .js terbaca)
-    if (typeof dataMikro !== 'undefined') {
-        L.geoJSON(dataMikro, {
-            style: { color: '#00ffff', weight: 2, opacity: 0.8 }
-        }).addTo(layerMikro);
+    // 2. Logika Panggil Data Saluran (Variabel harus sesuai isi file .js kamu)
+    if (typeof data_mikro !== 'undefined') {
+        L.geoJSON(data_mikro, { style: { color: 'cyan', weight: 2 } }).addTo(layerMikro);
     }
-    
-    if (typeof dataPHB !== 'undefined') {
-        L.geoJSON(dataPHB, {
-            style: { color: '#0066ff', weight: 3, opacity: 0.9 }
-        }).addTo(layerPHB);
+    if (typeof data_phb !== 'undefined') {
+        L.geoJSON(data_phb, { style: { color: 'blue', weight: 3 } }).addTo(layerPHB);
     }
 
-    var baseMaps = { "Peta Jalan": osm, "Satelit": satellite };
+    var baseMaps = { "Peta": osm };
     var overlayMaps = {
         "Saluran Mikro": layerMikro,
         "Saluran PHB": layerPHB,
@@ -117,15 +104,14 @@
     };
     L.control.layers(baseMaps, overlayMaps, { collapsed: false, position: 'topright' }).addTo(map);
 
-    // Update Luas (Fix Reset saat hapus)
-    function updateAreaDisplay() {
+    function updateArea() {
         if (drawnItems.getLayers().length === 0) {
             document.getElementById('area-val').innerText = "0.00";
-        } else {
-            let layer = drawnItems.getLayers()[0];
-            let area = turf.area(layer.toGeoJSON()) / 10000;
-            document.getElementById('area-val').innerText = area.toFixed(2);
+            return;
         }
+        let layer = drawnItems.getLayers()[0];
+        let area = turf.area(layer.toGeoJSON()) / 10000;
+        document.getElementById('area-val').innerText = area.toFixed(2);
     }
 
     var drawControl = new L.Control.Draw({
@@ -137,11 +123,12 @@
     map.on(L.Draw.Event.CREATED, function (e) {
         drawnItems.clearLayers();
         drawnItems.addLayer(e.layer);
-        updateAreaDisplay();
+        updateArea();
     });
-    map.on(L.Draw.Event.EDITED, updateAreaDisplay);
-    map.on(L.Draw.Event.DELETED, updateAreaDisplay);
+    map.on(L.Draw.Event.EDITED, updateArea);
+    map.on(L.Draw.Event.DELETED, updateArea);
 
+    // 3. Load Stasiun Hujan (Pastikan Key-nya 'sda_rainDB')
     function loadStations() {
         const data = JSON.parse(localStorage.getItem('sda_rainDB')) || {};
         stationLayer.clearLayers();
@@ -153,7 +140,10 @@
         });
     }
 
-    window.onload = () => { loadStations(); lucide.createIcons(); };
+    window.onload = () => { 
+        loadStations(); 
+        lucide.createIcons(); 
+    };
 </script>
 </body>
 </html>
