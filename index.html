@@ -126,8 +126,9 @@ body{
 .menu-hero{
     background:linear-gradient(180deg,#1B3F6B,#4578b7);
     text-align:center;
-    padding:120px 20px 160px;
+    padding:120px 20px 180px; /* Ditambah padding bawah sedikit */
     position: relative;
+    z-index: 1;
 }
 
 .back-btn{
@@ -137,9 +138,7 @@ body{
     font-size:14px;
     color:#dbe8ff;
     cursor:pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    z-index: 100;
 }
 
 .back-btn:hover{
@@ -163,21 +162,23 @@ body{
 
 .content{
     max-width:1200px;
-    margin:-120px auto 100px;
+    margin:-100px auto 100px; /* Margin top disesuaikan agar tidak 'balapan' dengan teks hero */
     padding:0 20px;
+    position: relative;
+    z-index: 10; /* INI KUNCINYA: Memaksa konten naik ke depan background biru */
 }
 
 .cards{
     display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns:repeat(3,1fr);
     gap:40px;
 }
 
 .card{
-    background:#f4f4f4;
+    background:#ffffff; /* Pakai putih solid agar kontras */
     border-radius:28px;
     padding:40px;
-    box-shadow:0 15px 40px rgba(0,0,0,0.06);
+    box-shadow:0 15px 40px rgba(0,0,0,0.1);
     display:flex;
     flex-direction:column;
     justify-content:space-between;
@@ -225,11 +226,6 @@ body{
     font-weight:600;
     background:#3E7BC4;
     color:white;
-    transition: 0.2s;
-}
-
-.btn:hover {
-    background: #2C5F9E;
 }
 
 .coming{
@@ -285,7 +281,7 @@ footer{
 <div id="menu-page" class="page">
 
     <div class="menu-hero">
-        <div class="back-btn" onclick="goToWelcome()"><i data-lucide="arrow-left" size="16"></i> Back</div>
+        <div class="back-btn" onclick="goToWelcome()">← Back</div>
 
         <h1>DIGITAL HYDRO ENGINEERING SYSTEM</h1>
         <p>
@@ -323,7 +319,7 @@ footer{
                 <div>
                     <i data-lucide="layers" class="icon"></i>
                     <h3>PENGEMBANGAN MODUL LANJUTAN</h3>
-                    <p>Fitur ini dapat dikembangkan untuk mendukung berbagai perhitungan teknis lainnya di masa depan.</p>
+                    <p>Fitur ini dapat dikembangkan untuk mendukung berbagai perhitungan teknis lainnya.</p>
                 </div>
                 <div class="card-bottom">
                     <span class="badge">COMING SOON</span>
@@ -332,22 +328,22 @@ footer{
 
         </div>
     </div>
-
-    <footer>
-        © 2026 Seksi Perencanaan – Suku Dinas Sumber Daya Air Jakarta Selatan
-    </footer>
 </div>
+
+<footer>
+    © 2026 Seksi Perencanaan – Suku Dinas Sumber Daya Air Jakarta Selatan
+</footer>
 
 <script>
 function goToMenu(){
-    document.getElementById("welcome-page").classList.remove("active");
-    document.getElementById("menu-page").classList.add("active");
+    document.getElementById("welcome-page").style.display = "none";
+    document.getElementById("menu-page").style.display = "block";
     window.scrollTo(0,0);
 }
 
 function goToWelcome(){
-    document.getElementById("menu-page").classList.remove("active");
-    document.getElementById("welcome-page").classList.add("active");
+    document.getElementById("menu-page").style.display = "none";
+    document.getElementById("welcome-page").style.display = "block";
     window.scrollTo(0,0);
 }
 
