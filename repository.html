@@ -142,6 +142,8 @@
 
     <script>
         // --- DATA MASTER ---
+        const CURRENT_VERSION = "1.1"; // <--- VERSI DATA HUJAN SAAT INI
+
         const STATIONS_LIST = [
             {n:"KEMAYORAN", lat:-6.1556, lng:106.8400}, {n:"HALIM", lat:-6.2704, lng:106.8893},
             {n:"KLIMAT JATENG", lat:-6.5000, lng:106.7500}, {n:"KLIMAT BANTEN", lat:-6.2615, lng:106.7508},
@@ -188,7 +190,21 @@
             ]}
         };
 
-        let rainDB = JSON.parse(localStorage.getItem('sda_rainDB')) || DEFAULT_RAIN;
+        // --- LOGIKA LOAD DATA AWAL ---
+        function initData() {
+            let storedRain = localStorage.getItem('sda_db_final_clean');
+            if (storedRain) {
+                let parsed = JSON.parse(storedRain);
+                // Jika versi di browser lebih lama, pakai default
+                if (parseFloat(parsed.version || 0) < parseFloat(CURRENT_VERSION)) {
+                    return DEFAULT_RAIN;
+                }
+                return parsed.stations;
+            }
+            return DEFAULT_RAIN;
+        }
+
+        let rainDB = initData();
         let catalogDB = JSON.parse(localStorage.getItem('sda_catalogDB')) || DEFAULT_CATALOG;
         let coefDB = JSON.parse(localStorage.getItem('sda_coefDB')) || DEFAULT_COEF;
 
@@ -196,7 +212,14 @@
         let currentId = null;
 
         function saveToLocal() {
-            localStorage.setItem('sda_rainDB', JSON.stringify(rainDB));
+            // Khusus Hujan, simpan dengan format versi agar sinkron dengan Analisa2.html
+            const rainToSave = {
+                version: CURRENT_VERSION,
+                stations: rainDB
+            };
+            localStorage.setItem('sda_db_final_clean', JSON.stringify(rainToSave));
+            
+            // Database lainnya tetap
             localStorage.setItem('sda_catalogDB', JSON.stringify(catalogDB));
             localStorage.setItem('sda_coefDB', JSON.stringify(coefDB));
         }
@@ -307,7 +330,6 @@
             renderTable();
         }
 
-        // PERBAIKAN: Input cerdas sesuai tab aktif
         function addItem() {
             let promptText, placeholder, typeDefault;
             
@@ -344,7 +366,6 @@
             selectItem(id);
         }
 
-        // PERBAIKAN: Tambah baris otomatis terisi data awal
         function addNewRow() {
             if (!currentId) return;
             let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
@@ -369,7 +390,7 @@
             let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
             dataArr.forEach(i => i.s = 'sync');
             saveToLocal();
-            alert("Data Berhasil Disimpan!");
+            alert("Data Berhasil Disimpan ke Sistem!");
             renderTable();
         }
 
