@@ -1,172 +1,187 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SDA JS Digital Hydro Engineering System</title>
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <title>SDA JS | Digital Hydro Engineering</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-
     <style>
-        /* CSS tetap sama seperti kodinganmu sebelumnya */
-        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
-        body { background:#f4f7fb; color:#1c2b4a; overflow-x:hidden; }
-        .page { display:none; }
-        .page.active { display:block; }
-
-        /* Welcome Page Styles */
-        #welcome-page { position:relative; min-height:100vh; }
-        #welcome-page::after {
-            content:""; position:absolute; top:15%; right:-250px; width:700px; height:700px;
-            background:radial-gradient(circle, rgba(47,128,237,0.25) 0%, rgba(47,128,237,0.08) 40%, rgba(47,128,237,0) 70%); z-index:-1;
+        :root {
+            --primary: #1e2b4a;
+            --accent: #2f80ed;
+            --bg-light: #f8fafc;
+            --white: #ffffff;
         }
-        #welcome-page::before {
-            content:""; position:absolute; top:0; right:0; width:50%; height:100%;
-            background-image: linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
-            background-size:40px 40px; z-index:-2;
-        }
-        .hero-welcome { min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding-left:10%; max-width:900px; }
-        .sdaj { letter-spacing:8px; font-weight:300; font-size:14px; margin-bottom:20px; color:#5b6b8c; }
-        .hero-welcome h1 { font-size:64px; line-height:1.1; font-weight:800; }
-        .hero-welcome h1 span:nth-child(1){color:#2f80ed;}
-        .hero-welcome h1 span:nth-child(2){color:#1c2b4a;}
-        .hero-welcome h1 span:nth-child(3){color:#4aa3ff;}
-        .subtitle { margin-top:20px; font-size:18px; color:#5b6b8c; }
-        .value { margin-top:30px; font-size:16px; line-height:1.8; }
-        .launch { margin-top:40px; padding:14px 32px; border:none; border-radius:12px; background:#1c2b4a; color:white; font-weight:600; cursor:pointer; transition:0.3s; width: fit-content; }
-        .launch:hover { background:#0f1b33; transform:translateY(-2px); }
 
-        /* Menu Page Styles */
-        .menu-hero { background:linear-gradient(180deg,#1B3F6B,#4578b7); text-align:center; padding:120px 20px 160px; position: relative; }
-        .back-btn { position:absolute; left:40px; top:40px; font-size:14px; color:#dbe8ff; cursor:pointer; display: flex; align-items: center; gap: 8px; }
-        .back-btn:hover { color:white; }
-        .menu-hero h1 { font-size:44px; font-weight:800; letter-spacing:2px; color:#f4f4f4; }
-        .menu-hero p { margin-top:20px; max-width:720px; margin-left:auto; margin-right:auto; color:#dbe8ff; }
-        .content { max-width:1200px; margin:-120px auto 100px; padding:0 20px; }
-        .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:40px; }
-        .card { background:#ffffff; border-radius:28px; padding:40px; box-shadow:0 15px 40px rgba(0,0,0,0.06); display:flex; flex-direction:column; justify-content:space-between; min-height:320px; border:1.5px solid transparent; transition:all 0.25s ease; }
-        .card:hover { transform:translateY(-8px); border:1.5px solid #2C5F9E; box-shadow:0 30px 70px rgba(44,95,158,0.18); }
-        .icon { width:40px; height:40px; color:#2C5F9E; margin-bottom:20px; }
-        .card h3 { margin:0 0 15px; font-size:18px; font-weight:700; color:#1f3555; }
-        .card p { font-size:15px; color:#555; line-height:1.7; }
-        .card-bottom { margin-top:30px; }
-        .btn { display:inline-block; padding:12px 28px; border-radius:30px; text-decoration:none; font-size:14px; font-weight:600; background:#3E7BC4; color:white; transition: 0.2s; }
-        .btn:hover { background: #2C5F9E; }
-        .coming { background:#f0f3f8; border:2px dashed #c8d4e6; }
-        .badge { font-size:12px; font-weight:600; padding:6px 14px; border-radius:20px; background:#dfe8f7; color:#2C5F9E; }
-        footer { padding:20px 0; background:#1c2b4a; color:#cfd8e3; font-size:13px; text-align:center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--primary);
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Hero Section - Background Biru */
+        .hero {
+            background: var(--primary);
+            color: white;
+            padding: 80px 20px 160px; /* Padding bawah lebih besar untuk ruang kartu */
+            text-align: center;
+            position: relative;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .hero p {
+            font-size: 18px;
+            opacity: 0.8;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Container Kartu */
+        .main-container {
+            max-width: 1200px;
+            margin: -80px auto 60px; /* Margin top negatif untuk menaikkan kartu ke area biru */
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Style Kartu Modul */
+        .card {
+            background: var(--white);
+            padding: 45px 35px;
+            border-radius: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 30px 60px rgba(47, 128, 237, 0.15);
+        }
+
+        .card-icon {
+            width: 64px;
+            height: 64px;
+            background: #f0f7ff;
+            color: var(--accent);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        .card h2 {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 15px;
+            line-height: 1.3;
+        }
+
+        .card p {
+            font-size: 15px;
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            flex: 1;
+        }
+
+        /* Button Style */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 16px 24px;
+            border-radius: 14px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: 0.2s;
+            font-size: 14px;
+        }
+
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: #1a66d1; }
+
+        .btn-outline { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
+
+        .badge-soon {
+            font-size: 10px;
+            background: #fee2e2;
+            color: #ef4444;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 40px;
+            text-align: center;
+            font-size: 13px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
 
-<div id="welcome-page" class="page active">
-    <section class="hero-welcome">
-        <div class="sdaj">S D A   J S</div>
-        <h1>
-            <span>DIGITAL</span><br>
-            <span>HYDRO ENGINEERING</span><br>
-            <span>SYSTEM</span>
-        </h1>
-        <div class="subtitle">Integrated System for Hydrology & Infrastructure Planning</div>
-        <div class="value">
-            Built for planners.<br>
-            Designed for precision.<br>
-            Powered by data.
-        </div>
-        <button class="launch" onclick="goToMenu()">LAUNCH PLATFORM →</button>
-    </section>
-</div>
-
-<div id="menu-page" class="page">
-    <div class="menu-hero">
-        <div class="back-btn" onclick="goToWelcome()">
-            <i data-lucide="arrow-left" size="18"></i> Back
-        </div>
+    <section class="hero">
         <h1>DIGITAL HYDRO ENGINEERING SYSTEM</h1>
         <p>Sistem digital untuk mendukung proses verifikasi perhitungan hidrologi dan perencanaan teknis secara terintegrasi.</p>
-    </div>
+    </section>
 
-    <div class="content">
-        <div class="cards">
-            <div class="card">
-                <div>
-                    <i data-lucide="database" class="icon"></i>
-                    <h3>DATA REPOSITORY</h3>
-                    <p>Pusat pengelolaan dan integrasi data teknis sebagai dasar proses analisis dan perencanaan.</p>
-                </div>
-                <div class="card-bottom">
-                    <a href="repository.html" class="btn">Buka Repository →</a>
-                </div>
-            </div>
-
-            <div class="card">
-                <div>
-                    <i data-lucide="activity" class="icon"></i>
-                    <h3>MODUL ANALISIS & DESAIN HIDROLOGI</h3>
-                    <p>Proses analisis debit rencana dan penentuan dimensi saluran berbasis parameter teknis.</p>
-                </div>
-                <div class="card-bottom">
-                    <a href="Analisa2.html" class="btn">Mulai Perhitungan →</a>
-                </div>
-            </div>
-
-            <div class="card coming">
-                <div>
-                    <i data-lucide="layers" class="icon"></i>
-                    <h3>PENGEMBANGAN MODUL LANJUTAN</h3>
-                    <p>Fitur ini dapat dikembangkan untuk mendukung berbagai perhitungan teknis lainnya.</p>
-                </div>
-                <div class="card-bottom">
-                    <span class="badge">COMING SOON</span>
-                </div>
-            </div>
+    <main class="main-container">
+        <div class="card">
+            <div class="card-icon"><i data-lucide="database" size="32"></i></div>
+            <h2>DATA REPOSITORY</h2>
+            <p>Pusat pengelolaan dan integrasi data teknis (Hujan, Katalog, Koefisien) sebagai dasar proses analisis.</p>
+            <a href="Repository.html" class="btn btn-primary">Buka Repository <i data-lucide="arrow-right" size="18"></i></a>
         </div>
-    </div>
-</div>
 
-<footer>
-    © 2026 Seksi Perencanaan – Suku Dinas Sumber Daya Air Jakarta Selatan
-</footer>
+        <div class="card">
+            <div class="card-icon"><i data-lucide="activity" size="32"></i></div>
+            <h2>MODUL ANALISIS & DESAIN HIDROLOGI</h2>
+            <p>Proses analisis debit rencana dan penentuan dimensi saluran berbasis parameter teknis yang presisi.</p>
+            <a href="Analisa2.html" class="btn btn-primary">Mulai Perhitungan <i data-lucide="arrow-right" size="18"></i></a>
+        </div>
 
-<script>
-    // Fungsi pindah ke Menu
-    function goToMenu(){
-        document.getElementById("welcome-page").classList.remove("active");
-        document.getElementById("menu-page").classList.add("active");
-        window.scrollTo(0,0);
-        // Menambahkan hash #menu-page ke URL tanpa reload
-        history.pushState(null, null, "#menu-page");
-    }
+        <div class="card">
+            <div class="card-icon"><i data-lucide="layers" size="32"></i></div>
+            <h2>PENGEMBANGAN MODUL LANJUTAN <span class="badge-soon">COMING SOON</span></h2>
+            <p>Fitur tambahan untuk mendukung analisis hidraulika kompleks dan pemodelan sistem drainase perkotaan.</p>
+            <a href="#" class="btn btn-outline">Under Development</a>
+        </div>
+    </main>
 
-    // Fungsi balik ke Welcome
-    function goToWelcome(){
-        document.getElementById("menu-page").classList.remove("active");
-        document.getElementById("welcome-page").classList.add("active");
-        // Menghapus hash dari URL
-        history.pushState(null, null, window.location.pathname);
-        window.scrollTo(0,0);
-    }
+    <footer>
+        &copy; 2026 Seksi Perencanaan - Suku Dinas Sumber Daya Air Jakarta Selatan
+    </footer>
 
-    // Cek saat halaman di-load atau tombol 'Back' browser ditekan
-    function checkHash() {
-        if(window.location.hash === "#menu-page") {
-            document.getElementById("welcome-page").classList.remove("active");
-            document.getElementById("menu-page").classList.add("active");
-        } else {
-            document.getElementById("menu-page").classList.remove("active");
-            document.getElementById("welcome-page").classList.add("active");
-        }
-    }
-
-    window.onload = function() {
-        checkHash();
+    <script>
         lucide.createIcons();
-    };
-
-    // Deteksi jika user klik 'Back' di browser
-    window.onhashchange = checkHash;
-</script>
-
+    </script>
 </body>
 </html>
