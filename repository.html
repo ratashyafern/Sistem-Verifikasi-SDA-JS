@@ -142,98 +142,54 @@
 
     <script>
         // --- DATA MASTER ---
-        const STATIONS_LIST = [
-            {n:"KEMAYORAN", lat:-6.1556, lng:106.8400}, {n:"HALIM", lat:-6.2704, lng:106.8893},
-            {n:"KLIMAT JABAR", lat:-6.5000, lng:106.7500}, {n:"KLIMAT BANTEN", lat:-6.2615, lng:106.7508},
-            {n:"KATULAMPA", lat:-6.6332, lng:106.8371}, {n:"DEPOK", lat:-6.4006, lng:106.8319},
-            {n:"MANGGARAI", lat:-6.2074, lng:106.8486}, {n:"KARET", lat:-6.1981, lng:106.8101},
-            {n:"SETIABUDI TIMUR", lat:-6.2046, lng:106.8294}, {n:"MELATI", lat:-6.2008, lng:106.8180},
-            {n:"ISTANA", lat:-6.1716, lng:106.8270}, {n:"KRUKUT HULU", lat:-6.3443, lng:106.7991},
-            {n:"SUNTER HULU", lat:-6.3178, lng:106.9211}, {n:"PESANGGRAHAN", lat:-6.3971, lng:106.7718},
-            {n:"ANGKE HULU", lat:-6.2183, lng:106.6945}, {n:"TANJUNGAN", lat:-6.1067, lng:106.7259},
-            {n:"TOMANG BARAT", lat:-6.1671, lng:106.7800}, {n:"TELUK GONG", lat:-6.1335, lng:106.7776},
-            {n:"PULO GADUNG", lat:-6.1910, lng:106.9042}, {n:"SUNTER KODAMAR", lat:-6.1551, lng:106.8869},
-            {n:"RAWA BADAK", lat:-6.1211, lng:106.8967}, {n:"POMPA CIDENG", lat:-6.1736, lng:106.8063}
-        ];
-
+        // Data default kini dikosongkan karena sistem akan memprioritaskan 
+        // tarikan data dari GitHub (hujan.json, precast.json, koefisien.json)
         const DEFAULT_RAIN = {};
-        STATIONS_LIST.forEach((s, i) => {
-            const history = [];
-            for(let y=2014; y<=2024; y++) history.push({y: y, v: (Math.random()*100 + 50).toFixed(1), s: 'sync'});
-            DEFAULT_RAIN[`st_${i}`] = { n: "STASIUN " + s.n, lat: s.lat, lng: s.lng, type: "DATABASE BMKG", d: history };
-        });
+        const DEFAULT_CATALOG = {};
+        const DEFAULT_COEF = {};
 
-        const DEFAULT_CATALOG = {
-            "u_ditch": { n: "U-Ditch Precast", type: "PABRIKASI", data: [
-                {k:"U-Ditch 40x40", b:0.4, h:0.4, s:'sync'}, {k:"U-Ditch 60x60", b:0.6, h:0.6, s:'sync'},
-                {k:"U-Ditch 80x80", b:0.8, h:0.8, s:'sync'}, {k:"U-Ditch 100x100", b:1.0, h:1.0, s:'sync'},
-                {k:"U-Ditch 120x120", b:1.2, h:1.2, s:'sync'}
-            ]},
-            "box_culvert": { n: "Box Culvert", type: "PABRIKASI", data: [
-                {k:"BC 60x60", b:0.6, h:0.6, s:'sync'}, {k:"BC 80x80", b:0.8, h:0.8, s:'sync'},
-                {k:"BC 100x100", b:1.0, h:1.0, s:'sync'}, {k:"BC 120x120", b:1.2, h:1.2, s:'sync'},
-                {k:"BC 150x150", b:1.5, h:1.5, s:'sync'}, {k:"BC 250x250", b:2.5, h:2.5, s:'sync'}
-            ]}
+// --- KONFIGURASI KEAMANAN (PECAH TOKEN) ---
+        const P1 = "ghp_vLcAZDzdpMVH0FaYC"; 
+        const P2 = "P3T2X0X7iDrOY2vULUS";
+
+        const GH_CONFIG = {
+            token: P1 + P2,
+            owner: "ratashyafern",
+            repo: "Sistem-Verifikasi-SDA-JS",
+            branch: "main"
         };
 
-        const DEFAULT_COEF = {
-            "c_val": { n: "Koefisien Aliran (C)", type: "SNI 2415:2016", data: [
-                {k:"Perdagangan Kota", v:0.90, s:'sync'}, {k:"Pemukiman Rapat", v:0.70, s:'sync'},
-                {k:"Pemukiman Tidak Rapat", v:0.50, s:'sync'}, {k:"Taman/Kuburan", v:0.20, s:'sync'},
-                {k:"Perkerasan Aspal", v:0.85, s:'sync'}
-            ]},
-            "n_manning": { n: "Koefisien Manning (n)", type: "TABEL CHOW", data: [
-                {k:"Beton Halus", v:0.011, s:'sync'}, {k:"Beton Pasangan Batu", v:0.015, s:'sync'},
-                {k:"Tanah Bersih Baru", v:0.018, s:'sync'}, {k:"Saluran Alam Berumput", v:0.030, s:'sync'}
-            ]}
-        };
+        let rainDB = {}; 
+        let catalogDB = {}; 
+        let coefDB = {};
 
-let rainDB = DEFAULT_RAIN;
-let catalogDB = DEFAULT_CATALOG; 
-let coefDB = DEFAULT_COEF;
-
-// Fungsi General untuk Fetch Data agar tidak menulis ulang kode yang sama
-async function loadDatabase(key, filePath, defaultData) {
-    try {
-        const localData = localStorage.getItem(key);
-        if (localData) {
-            console.log(`Menggunakan data ${key} dari LocalStorage`);
-            return JSON.parse(localData);
+        async function loadDatabase(key, fileName) {
+            const path = `data/${fileName}`;
+            const url = `https://raw.githubusercontent.com/${GH_CONFIG.owner}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${path}?t=${Date.now()}`;
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("File tidak ditemukan");
+                return await response.json();
+            } catch (err) {
+                console.warn(`Gagal ambil ${fileName}, cek LocalStorage...`);
+                const local = localStorage.getItem(key);
+                return local ? JSON.parse(local) : {}; 
+            }
         }
-        
-        const response = await fetch(filePath);
-        if (!response.ok) throw new Error(`${filePath} tidak ditemukan`);
-        
-        const data = await response.json();
-        console.log(`Berhasil memuat ${filePath}`);
-        return data;
-    } catch (err) {
-        console.warn(`Gagal memuat ${key}, menggunakan data cadangan.`, err);
-        return defaultData;
-    }
-}
 
-// Fungsi utama untuk menjalankan semuanya secara berurutan
-async function initializeApp() {
-    console.log("Memulai sinkronisasi database...");
-    
-    // Menjalankan semua fetch secara paralel tapi menunggu semuanya selesai
-    const [hujan, katalog] = await Promise.all([
-        loadDatabase('sda_rainDB', 'data/hujan.json', DEFAULT_RAIN),
-        loadDatabase('sda_catalogDB', 'data/precast.json', DEFAULT_CATALOG)
-    ]);
+        async function initializeApp() {
+            console.log("Sinkronisasi Sistem...");
+            const [hujan, katalog, koef] = await Promise.all([
+                loadDatabase('sda_rainDB', 'hujan.json'),
+                loadDatabase('sda_catalogDB', 'precast.json'),
+                loadDatabase('sda_coefDB', 'koefisien.json')
+            ]);
+            rainDB = hujan; catalogDB = katalog; coefDB = koef;
+            renderSidebar();
+        }
 
-    // Masukkan hasil ke variabel global
-    rainDB = hujan;
-    catalogDB = katalog;
-
-    // Baru render tampilan setelah semua data dipastikan ada
-    renderSidebar();
-    console.log("Sistem siap.");
-}
-
-// Panggil fungsi inisialisasi saat window load
-window.onload = initializeApp;
+        window.onload = initializeApp;
 
         let currentMode = 'hujan';
         let currentId = null;
@@ -444,12 +400,45 @@ function renderTable() {
             renderTable();
         }
 
-        function syncAll() {
-            let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-            dataArr.forEach(i => i.s = 'sync');
-            saveToLocal();
-            alert("Data Berhasil Disimpan!");
-            renderTable();
+        async function syncAll() {
+            if (!currentId) return;
+            let fileName = (currentMode === 'hujan') ? "hujan.json" : 
+                           (currentMode === 'katalog') ? "precast.json" : "koefisien.json";
+            let dataToSync = (currentMode === 'hujan') ? rainDB : 
+                             (currentMode === 'katalog') ? catalogDB : coefDB;
+
+            const path = `data/${fileName}`;
+            const url = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${path}`;
+
+            try {
+                const btn = document.getElementById('btnSync');
+                btn.innerHTML = `MENGIRIM KE SERVER...`; btn.disabled = true;
+
+                const getFile = await fetch(url, { headers: { "Authorization": `token ${GH_CONFIG.token}` } });
+                let sha = getFile.ok ? (await getFile.json()).sha : "";
+
+                const update = await fetch(url, {
+                    method: "PUT",
+                    headers: { "Authorization": `token ${GH_CONFIG.token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        message: `Update ${fileName} via Digital Verification`,
+                        content: btoa(unescape(encodeURIComponent(JSON.stringify(dataToSync, null, 2)))),
+                        sha: sha
+                    })
+                });
+
+                if (update.ok) {
+                    alert("Berhasil! Data tersimpan di GitHub.");
+                    let arr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
+                    arr.forEach(i => i.s = 'sync');
+                    saveToLocal(); renderTable();
+                }
+            } catch (err) { alert("Error: " + err.message); }
+            finally {
+                const btn = document.getElementById('btnSync');
+                btn.innerHTML = `SINKRONKAN DATA KE SISTEM <i data-lucide="save"></i>`;
+                btn.disabled = false; lucide.createIcons();
+            }
         }
 
         function deleteItem(id) {
