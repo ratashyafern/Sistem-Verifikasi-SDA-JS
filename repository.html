@@ -237,68 +237,104 @@
         }
 
         function renderTable() {
-            const thead = document.getElementById('tableHead');
-            const tbody = document.getElementById('tableBody');
-            const container = document.querySelector('.table-container');
-            const scrollPos = container ? container.scrollTop : 0;
+    const thead = document.getElementById('tableHead');
+    const tbody = document.getElementById('tableBody');
+    const container = document.querySelector('.table-container');
+    const scrollPos = container ? container.scrollTop : 0;
 
-            tbody.innerHTML = "";
-            let hasUnsync = false;
+    tbody.innerHTML = "";
+    let hasUnsync = false;
 
-            if (currentMode === 'hujan') {
-                thead.innerHTML = `<tr><th>Tahun</th><th>Hujan Maks (mm)</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
-                rainDB[currentId].d.forEach((item, idx) => {
-                    const status = item.s || 'sync'; if(status === 'unsync') hasUnsync = true;
-                    tbody.innerHTML += `<tr>
-                        <td><input type="text" class="input-val" value="${item.y}" oninput="updateVal(${idx}, 'y', this.value)"></td>
-                        <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${item.v}" oninput="updateVal(${idx}, 'v', this.value)"></td>
-                        <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
-                        <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
-                    </tr>`;
-                });
-            } else if (currentMode === 'katalog') {
-                thead.innerHTML = `<tr><th>Tipe</th><th>Lebar B (m)</th><th>Tinggi H (m)</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
-                catalogDB[currentId].data.forEach((item, idx) => {
-                    const status = item.s || 'sync'; if(status === 'unsync') hasUnsync = true;
-                    tbody.innerHTML += `<tr>
-                        <td><input type="text" class="input-val" value="${item.k}" oninput="updateVal(${idx}, 'k', this.value)"></td>
-                        <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${item.b}" oninput="updateVal(${idx}, 'b', this.value)"></td>
-                        <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${item.h}" oninput="updateVal(${idx}, 'h', this.value)"></td>
-                        <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
-                        <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
-                    </tr>`;
-                });
-            } else if (currentMode === 'koefisien') {
-                thead.innerHTML = `<tr><th>Parameter</th><th>Nilai</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
-                coefDB[currentId].data.forEach((item, idx) => {
-                    const status = item.s || 'sync'; if(status === 'unsync') hasUnsync = true;
-                    tbody.innerHTML += `<tr>
-                        <td><input type="text" class="input-val" value="${item.k}" oninput="updateVal(${idx}, 'k', this.value)"></td>
-                        <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${item.v}" oninput="updateVal(${idx}, 'v', this.value)"></td>
-                        <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
-                        <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
-                    </tr>`;
-                });
+    if (currentMode === 'hujan') {
+        thead.innerHTML = `<tr><th>Tahun</th><th>Hujan Maks (mm)</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
+        
+        // Mengambil array "d" dari stasiun yang terpilih
+        rainDB[currentId].d.forEach((item, idx) => {
+            let displayYear, displayVal, status;
+
+            // Cek apakah item itu objek (hasil edit baru) atau angka (data asli json)
+            if (typeof item === 'object' && item !== null) {
+                displayYear = item.y;
+                displayVal = item.v;
+                status = item.s || 'sync';
+            } else {
+                displayYear = 2014 + idx; // Asumsi tahun mulai dari 2014
+                displayVal = item;
+                status = 'sync';
             }
-            document.getElementById('btnExport').disabled = hasUnsync;
-            lucide.createIcons();
-            if(container) container.scrollTop = scrollPos;
-        }
+
+            if(status === 'unsync') hasUnsync = true;
+            
+            tbody.innerHTML += `<tr>
+                <td><input type="text" class="input-val" value="${displayYear}" oninput="updateVal(${idx}, 'y', this.value)"></td>
+                <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${displayVal}" oninput="updateVal(${idx}, 'v', this.value)"></td>
+                <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
+                <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+            </tr>`;
+        });
+    } else if (currentMode === 'katalog') {
+        thead.innerHTML = `<tr><th>Tipe</th><th>Lebar B (m)</th><th>Tinggi H (m)</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
+        catalogDB[currentId].data.forEach((item, idx) => {
+            const status = item.s || 'sync'; if(status === 'unsync') hasUnsync = true;
+            tbody.innerHTML += `<tr>
+                <td><input type="text" class="input-val" value="${item.k}" oninput="updateVal(${idx}, 'k', this.value)"></td>
+                <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${item.b}" oninput="updateVal(${idx}, 'b', this.value)"></td>
+                <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${item.h}" oninput="updateVal(${idx}, 'h', this.value)"></td>
+                <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
+                <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+            </tr>`;
+        });
+    } else if (currentMode === 'koefisien') {
+        thead.innerHTML = `<tr><th>Parameter</th><th>Nilai</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
+        coefDB[currentId].data.forEach((item, idx) => {
+            const status = item.s || 'sync'; if(status === 'unsync') hasUnsync = true;
+            tbody.innerHTML += `<tr>
+                <td><input type="text" class="input-val" value="${item.k}" oninput="updateVal(${idx}, 'k', this.value)"></td>
+                <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${item.v}" oninput="updateVal(${idx}, 'v', this.value)"></td>
+                <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
+                <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+            </tr>`;
+        });
+    }
+    
+    document.getElementById('btnExport').disabled = hasUnsync;
+    lucide.createIcons();
+    if(container) container.scrollTop = scrollPos;
+}
 
         function updateVal(idx, key, val) {
-            let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-            dataArr[idx][key] = val; // Simpan sebagai string agar titik desimal tidak hilang
-            dataArr[idx].s = 'unsync';
-            saveToLocal();
-            
-            // Update visual tanpa render ulang total agar cursor tidak lompat
-            const inputEl = event.target;
-            inputEl.classList.add('unsync');
-            const row = inputEl.closest('tr');
+    let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
+
+    // FIX: Jika mode hujan dan data masih berupa angka (format lama), ubah dulu jadi objek
+    if (currentMode === 'hujan' && typeof dataArr[idx] !== 'object') {
+        dataArr[idx] = {
+            y: 2014 + idx,      // Default tahun
+            v: dataArr[idx],    // Nilai hujan asli
+            s: 'unsync'         // Status baru
+        };
+    }
+
+    // Sekarang aman untuk melakukan assignment karena dataArr[idx] pasti sudah jadi objek
+    dataArr[idx][key] = val; 
+    dataArr[idx].s = 'unsync';
+    
+    saveToLocal();
+    
+    // Update visual tanpa render ulang total agar cursor tidak lompat
+    const inputEl = event.target;
+    if (inputEl) {
+        inputEl.classList.add('unsync');
+        const row = inputEl.closest('tr');
+        if (row) {
             const badge = row.querySelector('.badge');
-            if(badge) { badge.className = 'badge badge-unsync'; badge.innerText = 'UNSYNCED'; }
-            document.getElementById('btnExport').disabled = true;
+            if(badge) { 
+                badge.className = 'badge badge-unsync'; 
+                badge.innerText = 'UNSYNCED'; 
+            }
         }
+    }
+    document.getElementById('btnExport').disabled = true;
+}
 
         function updateCoord(key, val) {
             rainDB[currentId][key] = val;
@@ -334,44 +370,73 @@
         }
 
         async function syncAll() {
-            if (!currentId) return;
-            let fileName = (currentMode === 'hujan') ? "hujan.json" : (currentMode === 'katalog') ? "precast.json" : "koefisien.json";
-            let dataToSync = (currentMode === 'hujan') ? rainDB : (currentMode === 'katalog') ? catalogDB : coefDB;
-            const url = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/data/${fileName}`;
+    if (!currentId) return;
+    let fileName = (currentMode === 'hujan') ? "hujan.json" : (currentMode === 'katalog') ? "precast.json" : "koefisien.json";
+    let dataOriginal = (currentMode === 'hujan') ? rainDB : (currentMode === 'katalog') ? catalogDB : coefDB;
+    
+    // Kita buat salinan (clone) agar data di browser tidak rusak saat kita "bersihkan"
+    let dataToSync = JSON.parse(JSON.stringify(dataOriginal));
 
-            try {
-                const btn = document.getElementById('btnSync');
-                btn.innerHTML = `<i data-lucide="loader-2" class="animate-spin"></i> MENGIRIM KE SERVER...`; btn.disabled = true;
-                lucide.createIcons();
+    const url = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/data/${fileName}`;
 
-                const getFile = await fetch(url, { headers: { "Authorization": `token ${GH_CONFIG.token}` } });
-                let sha = getFile.ok ? (await getFile.json()).sha : "";
+    try {
+        const btn = document.getElementById('btnSync');
+        btn.innerHTML = `<i data-lucide="loader-2" class="animate-spin"></i> MENGIRIM KE SERVER...`; 
+        btn.disabled = true;
+        lucide.createIcons();
 
-                Object.keys(dataToSync).forEach(id => {
-                    let arr = currentMode === 'hujan' ? dataToSync[id].d : dataToSync[id].data;
-                    if(arr) arr.forEach(row => row.s = 'sync');
+        const getFile = await fetch(url, { headers: { "Authorization": `token ${GH_CONFIG.token}` } });
+        let sha = getFile.ok ? (await getFile.json()).sha : "";
+
+        // --- PROSES PEMBERSIHAN DATA SEBELUM SYNC ---
+        Object.keys(dataToSync).forEach(id => {
+            if (currentMode === 'hujan') {
+                // Kembalikan ke array angka murni [147.9, 277.5, ...]
+                dataToSync[id].d = dataToSync[id].d.map(item => {
+                    if (typeof item === 'object' && item !== null) {
+                        return parseFloat(item.v); // Ambil nilainya saja
+                    }
+                    return parseFloat(item);
                 });
-
-                const update = await fetch(url, {
-                    method: "PUT",
-                    headers: { "Authorization": `token ${GH_CONFIG.token}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        message: `Update ${fileName}`,
-                        content: btoa(unescape(encodeURIComponent(JSON.stringify(dataToSync, null, 2)))),
-                        sha: sha
-                    })
-                });
-
-                if (update.ok) { alert("BERHASIL!"); saveToLocal(); renderTable(); }
-                else throw new Error("Gagal Update");
-            } catch (err) { alert(err.message); }
-            finally {
-                const btn = document.getElementById('btnSync');
-                btn.innerHTML = `SINKRONKAN DATA KE SISTEM <i data-lucide="save"></i>`;
-                btn.disabled = false; lucide.createIcons();
+            } else {
+                // Untuk katalog & koefisien, cukup hapus properti status "s"
+                let arr = dataToSync[id].data;
+                if(arr) arr.forEach(row => delete row.s);
             }
-        }
+        });
 
+        const update = await fetch(url, {
+            method: "PUT",
+            headers: { "Authorization": `token ${GH_CONFIG.token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+                message: `Update ${fileName} via Admin Panel`,
+                content: btoa(unescape(encodeURIComponent(JSON.stringify(dataToSync, null, 2)))),
+                sha: sha
+            })
+        });
+
+        if (update.ok) { 
+            // Jika berhasil di server, tandai data lokal kita sebagai 'sync'
+            Object.keys(dataOriginal).forEach(id => {
+                let arr = currentMode === 'hujan' ? dataOriginal[id].d : dataOriginal[id].data;
+                if(arr) arr.forEach(row => { if(typeof row === 'object') row.s = 'sync'; });
+            });
+            
+            alert("SINKRONISASI BERHASIL!"); 
+            saveToLocal(); 
+            renderTable(); 
+        } else {
+            throw new Error("Gagal Update ke GitHub");
+        }
+    } catch (err) { 
+        alert("Error: " + err.message); 
+    } finally {
+        const btn = document.getElementById('btnSync');
+        btn.innerHTML = `SINKRONKAN DATA KE SISTEM <i data-lucide="save"></i>`;
+        btn.disabled = false; 
+        lucide.createIcons();
+    }
+}
         function deleteItem(id) {
             if(!confirm("Hapus permanen?")) return;
             if(currentMode === 'hujan') delete rainDB[id];
