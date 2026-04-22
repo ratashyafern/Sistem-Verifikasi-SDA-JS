@@ -290,7 +290,16 @@ function renderTable() {
             if(status === 'unsync') hasUnsync = true;
             
             tbody.innerHTML += `<tr>
-                <td><input type="number" class="input-val" value="${year}" onchange="updateVal(${idx}, 'y', this.value)"></td>
+                <td>
+    <input 
+        type="number" 
+        step="any" 
+        inputmode="decimal" 
+        class="input-val" 
+        value="${value}" 
+        oninput="updateVal(${idx}, 'v', this.value)"
+    >
+</td>
                 <td><input type="number" step="0.1" class="input-val ${status==='unsync'?'unsync':''}" value="${value}" oninput="updateVal(${idx}, 'v', this.value)"></td>
                 <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
                 <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
