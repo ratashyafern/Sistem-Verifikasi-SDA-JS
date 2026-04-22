@@ -193,30 +193,33 @@ let catalogDB = JSON.parse(localStorage.getItem('sda_catalogDB')) || DEFAULT_CAT
 let coefDB = JSON.parse(localStorage.getItem('sda_coefDB')) || DEFAULT_COEF;
 
 // FUNGSI BARU: Mengambil data dari repository
+// FUNGSI PERBAIKAN: Sesuaikan path dengan struktur folder GitHub
 async function fetchRainData() {
     try {
-        // Cek dulu apakah ada di localStorage (data yang baru kamu edit/simpan)
         const localData = localStorage.getItem('sda_rainDB');
         
         if (localData) {
             rainDB = JSON.parse(localData);
             console.log("Menggunakan data dari LocalStorage");
+            renderSidebar(); // Render dari local
         } else {
-            // Jika tidak ada di local, ambil dari file json di repository
-            const response = await fetch('data/hujan.json');
+            // PERHATIKAN: Path disesuaikan menjadi data/hujan/all-data.json
+            const response = await fetch('data/hujan/all-data.json');
+            
+            if (!response.ok) throw new Error("File tidak ditemukan di server");
+            
             rainDB = await response.json();
-            console.log("Menggunakan data dari data/hujan.json");
+            console.log("Menggunakan data dari data/hujan/all-data.json");
+            renderSidebar();
         }
-        
-        // Setelah data dapat, render tampilan
-        renderSidebar();
     } catch (err) {
         console.error("Gagal mengambil data hujan:", err);
-        // Fallback jika file tidak ditemukan
-        rainDB = {}; 
+        // Fallback: Gunakan DEFAULT_RAIN jika server/file tidak bisa diakses
+        rainDB = DEFAULT_RAIN; 
+        console.log("Menggunakan data default (fallback)");
+        renderSidebar();
     }
 }
-
 // Jalankan fungsi fetch saat halaman dimuat
 window.onload = () => {
     fetchRainData();
