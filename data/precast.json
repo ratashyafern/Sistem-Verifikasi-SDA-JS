@@ -9,6 +9,6 @@
     { "tipe": "2000 x 2000", "lebar": 2000, "tinggi": 2000, }  
   ],
   "box_culvert": [
-    { "tipe": "1000 x 1000", "lebar": 1000, "tinggi": 1000, "kapasitas": "Tipe Heavy Duty" }
+    { "tipe": "1000 x 1000", "lebar": 1000, "tinggi": 1000, }
   ]
 }
