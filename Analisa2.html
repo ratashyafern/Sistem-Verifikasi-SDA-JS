@@ -214,86 +214,52 @@
 
     // --- 4. ANALISIS HIDROLOGI ---
     let rainChart = null;
-    // --- Ganti fungsi processHydrology lama dengan yang ini ---
-function processHydrology(geojson) {
-    // 1. Bersihkan poligon Thiessen lama
-    thiessenLayer.clearLayers();
-    
-    // 2. Hitung total luas DAS (menggunakan Turf)
+    function processHydrology(geojson) {
     const areaHa = turf.area(geojson) / 10000;
     document.getElementById('area-val').innerText = areaHa.toFixed(2);
+    
+    // 1. Ambil SEMUA titik stasiun, bukan cuma yang di dalam
+    const points = turf.featureCollection(STATIONS_LIST.map(st => 
+        turf.point([st.lng, st.lat], { name: st.n })
+    ));
 
-    // 3. Siapkan titik stasiun untuk analisis Voronoi/Thiessen
-    const pts = turf.featureCollection(STATIONS_LIST.map(s => turf.point([s.lng, s.lat], { n: s.n })));
-    
-    // 4. Buat Bounding Box dari DAS (ditambah buffer agar meng-cover seluruh DAS)
+    // 2. Buat Poligon Thiessen (Voronoi) berdasarkan bbox area yang digambar
     const bbox = turf.bbox(geojson);
-    const options = { bbox: [bbox[0]-0.1, bbox[1]-0.1, bbox[2]+0.1, bbox[3]+0.1] };
-    
-    // 5. Generate Poligon Thiessen (Voronoi)
-    const voronoiPolygons = turf.voronoi(pts, options);
+    const options = { bbox: [bbox[0]-0.5, bbox[1]-0.5, bbox[2]+0.5, bbox[3]+0.5] };
+    const voronoiPolygons = turf.voronoi(points, options);
 
     let found = [];
     const tBody = document.getElementById('tBody');
     tBody.innerHTML = "";
 
-    // --- Definisi Palet Warna Kontras untuk Poligon (Persis Referensi) ---
-    const palette = [
-        "#f2994a", // Orange
-        "#27ae60", // Hijau
-        "#2f80ed", // Biru
-        "#eb5757", // Merah
-        "#9b51e0", // Ungu
-        "#f2c94c"  // Kuning
-    ];
-
-    // 6. Iris (Intersect) setiap sel Voronoi stasiun dengan area DAS yang digambar
-    voronoiPolygons.features.forEach((cell, i) => {
-        const intersect = turf.intersect(cell, geojson);
+    // 3. Iris (Intersect) setiap poligon Thiessen dengan area yang digambar
+    voronoiPolygons.features.forEach((voronoi, index) => {
+        const intersection = turf.intersect(voronoi, geojson);
         
-        if (intersect) {
-            const subAreaHa = turf.area(intersect) / 10000;
-            const weight = subAreaHa / areaHa;
+        if (intersection) {
+            const subAreaHa = turf.area(intersection) / 10000;
+            const weight = subAreaHa / areaHa; // Bobot berdasarkan luas irisan
             
-            // Ambil nama stasiun dari titik asli Voronoi
-            const stName = cell.properties.site.n; 
-
-            if (subAreaHa > 0.001) {
-                found.push({ name: stName, data: [120, 145, 110, 160, 130] }); // Data hujan simulasi
-
-                // --- TAMPILKAN DI PETA DENGAN WARNA BERBEDA ---
-                L.geoJSON(intersect, {
-                    style: {
-                        fillColor: palette[i % palette.length], // Ambil warna dari palet secara berurutan
-                        fillOpacity: 0.5, // Transparansi poligon
-                        color: "white",   // Warna garis batas putih agar kontras
-                        weight: 1.5       // Ketebalan garis batas
-                    }
-                }).addTo(thiessenLayer);
-
-                // Update Tabel Hasil Analisa
-                tBody.innerHTML += `<tr><td>${stName}</td><td>${(areaHa * weight).toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+            if (subAreaHa > 0.001) { // Hanya ambil yang irisannya signifikan
+                const stName = points.features[index].properties.name;
+                found.push({ name: stName, weight: weight });
+                
+                tBody.innerHTML += `
+                    <tr>
+                        <td>${stName}</td>
+                        <td>${subAreaHa.toFixed(2)}</td>
+                        <td>${weight.toFixed(4)}</td>
+                    </tr>`;
             }
         }
     });
 
-    // 7. Update UI (Status, Tabel, dan Grafik)
-    const statusBox = document.getElementById('status-display');
+    // Update Chart dan Status
     if (found.length > 0) {
-        statusBox.innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${found.length} Wilayah Stasiun Berpengaruh</div>`;
-        
-        const weight = 1 / found.length;
-        let combined = [0,0,0,0,0];
-        found.forEach(st => st.data.forEach((v, i) => combined[i] += v * weight));
-
-        renderChart([2020, 2021, 2022, 2023, 2024], combined);
+        document.getElementById('status-display').innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${found.length} Wilayah Pengaruh</div>`;
         document.getElementById('resThiessen').style.display = 'block';
-        document.getElementById('resYearly').style.display = 'block';
-    } else {
-        // Area digambar di tempat yang tidak ada stasiunnya
-        statusBox.innerHTML = `<div class="status-msg status-error"><i data-lucide="alert-triangle"></i> Stasiun tidak ditemukan dalam wilayah pengaruh DAS!</div>`;
-        document.getElementById('resThiessen').style.display = 'block';
-        document.getElementById('resYearly').style.display = 'none';
+        // Hitung data hujan rerata wilayah (Rainfall Area Average)
+        // ... (lanjutkan ke renderChart)
     }
     lucide.createIcons();
 }
