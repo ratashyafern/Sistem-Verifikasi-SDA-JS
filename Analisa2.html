@@ -250,7 +250,9 @@
                 const subAreaHa = turf.area(intersect) / 10000;
                 if (subAreaHa > 0.001) {
                     const weight = subAreaHa / areaHa;
-                    const props = cell.properties.site;
+                    // Pastikan cell punya koordinat yang bisa dicocokkan kembali ke stasiun
+const stId = points.features[i].properties.id;
+const props = RAIN_DATABASE[stId];
 
                     foundStations.push({ id: props.id, weight: weight });
 
