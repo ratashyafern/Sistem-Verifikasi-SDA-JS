@@ -120,7 +120,7 @@
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
 <script>
-   // --- 1. INISIALISASI PETA ---
+   // --- 1. SETUP MAP & LAYERS ---
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
 
@@ -129,29 +129,28 @@
 
     var drawnItems = new L.FeatureGroup().addTo(map);
     var stationLayer = L.layerGroup().addTo(map);
+    var layerMikro = L.layerGroup().addTo(map); // Layer Saluran Mikro
+    var layerPHB = L.layerGroup().addTo(map);   // Layer Saluran PHB
     var thiessenLayer = L.layerGroup().addTo(map);
 
     L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, { 
+        "Saluran Mikro": layerMikro, 
+        "Saluran PHB": layerPHB,
         "Stasiun Hujan": stationLayer, 
         "Wilayah Pengaruh": thiessenLayer, 
         "Area DAS": drawnItems 
     }, { collapsed: false, position: 'topright' }).addTo(map);
 
-    // --- 2. CONFIG DIGITASI (VERSI SIGAP) ---
+    // Toolbar Digitasi
     var drawControl = new L.Control.Draw({
         draw: {
-            polygon: {
-                allowIntersection: false,
-                shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 },
-                guidelineDistance: 10,
-                repeatMode: false
-            },
+            polygon: { allowIntersection: false, shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } },
             polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
         },
         edit: { featureGroup: drawnItems, remove: true }
     });
 
-    // --- 3. DATA & RESET LOGIC ---
+    // --- 2. DATA LOADING & NAVIGASI ---
     let RAIN_DATABASE = {}; 
     let rainChart = null;
 
@@ -160,83 +159,104 @@
         try {
             const response = await fetch(url);
             RAIN_DATABASE = await response.json();
-            
-            stationLayer.clearLayers();
-            Object.keys(RAIN_DATABASE).forEach(id => {
-                const st = RAIN_DATABASE[id];
-                L.circleMarker([st.lat, st.lng], {
-                    radius: 7, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
-                }).addTo(stationLayer).bindTooltip(st.n, { permanent: true, direction: 'top', className: 'stasiun-label', offset: [0,-10] });
-            });
-            console.log("✅ Data Stasiun Berhasil Terkoneksi!");
-        } catch (err) { 
-            console.error("❌ Gagal load data:", err); 
-            alert("Koneksi data stasiun terputus!");
+            updateStationMarkers();
+            console.log("✅ Data Stasiun Load!");
+        } catch (err) { console.error("Gagal load data hujan:", err); }
+    }
+
+    function updateStationMarkers() {
+        stationLayer.clearLayers();
+        Object.keys(RAIN_DATABASE).forEach(id => {
+            const st = RAIN_DATABASE[id];
+            L.circleMarker([st.lat, st.lng], {
+                radius: 7, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
+            }).addTo(stationLayer).bindTooltip(st.n, { permanent: true, direction: 'top', offset: [0,-10] });
+        });
+    }
+
+    // Fungsi Munculkan Saluran (Mikro & PHB)
+    function initSystem() {
+        layerMikro.clearLayers();
+        layerPHB.clearLayers();
+        // Pastikan variabel dataMikro dan dataPHB sudah ada di file data/saluran.js
+        if (typeof dataMikro !== 'undefined') {
+            L.geoJSON(dataMikro, { style: { color: '#06b6d4', weight: 2 } }).addTo(layerMikro);
         }
+        if (typeof dataPHB !== 'undefined') {
+            L.geoJSON(dataPHB, { style: { color: '#1d4ed8', weight: 4 } }).addTo(layerPHB);
+        }
+        lucide.createIcons(); // Re-render icon button
     }
 
-    function resetOutput() {
-        drawnItems.clearLayers();
-        thiessenLayer.clearLayers();
-        document.getElementById('area-val').innerText = "0.00";
-        document.getElementById('resThiessen').style.display = 'none';
-        document.getElementById('resYearly').style.display = 'none';
-        if (rainChart) rainChart.destroy();
+    // --- 3. EVENT HANDLERS ---
+    function setMode(mode) {
+        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
+        if(mode === 'draw') {
+            document.getElementById('btn-draw').classList.add('active');
+            map.addControl(drawControl);
+            document.getElementById('upload-section').style.display = 'none';
+        } else {
+            document.getElementById('btn-upload').classList.add('active');
+            document.getElementById('upload-section').style.display = 'block';
+            map.removeControl(drawControl);
+        }
+        lucide.createIcons(); 
     }
 
-    // --- 4. EVENT SAAT POLIGON SELESAI (CLICK FIRST POINT) ---
+    // Handler Upload KML
+    document.getElementById('fKML').onchange = function(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            const parser = new DOMParser();
+            const kml = parser.parseFromString(ev.target.result, 'text/xml');
+            const converted = toGeoJSON.kml(kml);
+            
+            drawnItems.clearLayers();
+            const gLayer = L.geoJSON(converted, { style: { color: '#2f80ed' } }).addTo(drawnItems);
+            map.fitBounds(gLayer.getBounds());
+            
+            // Jalankan analisis
+            processHydrology(converted.features[0]);
+        };
+        reader.readAsText(file);
+    };
+
     map.on(L.Draw.Event.CREATED, function (e) {
-        resetOutput();
+        drawnItems.clearLayers();
         var layer = e.layer;
         drawnItems.addLayer(layer);
-        
-        // Jeda 100ms agar poligon benar-benar terkunci sempurna sebelum dihitung
-        setTimeout(() => {
-            processHydrology(layer.toGeoJSON());
-        }, 100);
+        processHydrology(layer.toGeoJSON());
     });
 
-    // --- 5. PERHITUNGAN HIDROLOGI & THIESSEN ---
+    // --- 4. ANALISIS HIDROLOGI ---
     function processHydrology(geojson) {
         const areaHa = turf.area(geojson) / 10000;
         document.getElementById('area-val').innerText = areaHa.toFixed(2);
 
-        // Kumpulkan titik stasiun
         const points = turf.featureCollection(
-            Object.keys(RAIN_DATABASE).map(id => {
-                return turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { 
-                    name: RAIN_DATABASE[id].n, 
-                    id: id 
-                });
-            })
+            Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { name: RAIN_DATABASE[id].n, id: id }))
         );
 
-        // BBox diperluas (Mencakup Jabodetabek agar tidak terpotong)
         const bbox = [106.5, -6.5, 107.1, -5.9]; 
         const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
 
         let foundStations = [];
         const tBody = document.getElementById('tBody');
         tBody.innerHTML = "";
-        const palette = ["#2ecc71", "#3498db", "#e74c3c", "#f1c40f", "#9b59b6", "#1abc9c", "#e67e22"];
+        thiessenLayer.clearLayers();
 
         voronoiPolygons.features.forEach((cell, i) => {
-            // Logika pemotongan area (Intersection)
             const intersect = turf.intersect(cell, geojson);
             if (intersect) {
                 const subAreaHa = turf.area(intersect) / 10000;
                 if (subAreaHa > 0.01) {
                     const weight = subAreaHa / areaHa;
-                    const properties = cell.properties.site; // Ambil data stasiun dari properti voronoi
+                    const stId = cell.properties.site.id;
+                    foundStations.push({ id: stId, weight: weight });
 
-                    foundStations.push({ id: properties.id, weight: weight });
-
-                    // Gambar poligon Thiessen di dalam DAS
-                    L.geoJSON(intersect, {
-                        style: { fillColor: palette[i % palette.length], fillOpacity: 0.5, color: "white", weight: 2 }
-                    }).addTo(thiessenLayer);
-
-                    tBody.innerHTML += `<tr><td>${properties.name}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+                    L.geoJSON(intersect, { style: { fillColor: '#3498db', fillOpacity: 0.3, color: 'white' } }).addTo(thiessenLayer);
+                    tBody.innerHTML += `<tr><td>${cell.properties.site.name}</td><td>${subAreaHa.toFixed(2)} Ha</td><td>${weight.toFixed(4)}</td></tr>`;
                 }
             }
         });
@@ -244,29 +264,24 @@
         if (foundStations.length > 0) {
             calculateRegionalRain(foundStations);
             document.getElementById('resThiessen').style.display = 'block';
-            document.getElementById('status-display').innerHTML = `<div class="status-msg status-ok">Terdeteksi ${foundStations.length} Wilayah Stasiun</div>`;
+            document.getElementById('resYearly').style.display = 'block';
         }
-        lucide.createIcons();
     }
 
-    // --- 6. HITUNG HUJAN RERATA ---
     function calculateRegionalRain(foundStations) {
         const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
         let regionalResults = [];
 
         years.forEach(year => {
-            let totalRainYear = 0;
+            let total = 0;
             foundStations.forEach(st => {
-                const stData = RAIN_DATABASE[st.id].d;
-                const dataPoint = stData.find(d => (typeof d === 'object' ? d.y == year : false));
-                const rainVal = dataPoint ? parseFloat(dataPoint.v) : 0;
-                totalRainYear += rainVal * st.weight;
+                const dataPoint = RAIN_DATABASE[st.id].d.find(d => d.y == year);
+                total += (dataPoint ? parseFloat(dataPoint.v) : 0) * st.weight;
             });
-            regionalResults.push(totalRainYear.toFixed(2));
+            regionalResults.push(total.toFixed(2));
         });
 
         renderChart(years, regionalResults);
-        document.getElementById('resYearly').style.display = 'block';
     }
 
     function renderChart(labels, data) {
@@ -276,29 +291,14 @@
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{ label: 'Hujan Wilayah (mm)', data: data, borderColor: '#2f80ed', backgroundColor: 'rgba(47,128,237,0.1)', fill: true, tension: 0.4 }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                datasets: [{ label: 'Hujan (mm)', data: data, borderColor: '#2f80ed', tension: 0.4 }]
+            }
         });
-    }
-
-    // --- 7. UI MODE ---
-    function setMode(mode) {
-        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
-        if(mode === 'draw') {
-            document.getElementById('btn-draw').classList.add('active');
-            document.getElementById('draw-section').style.display = 'block';
-            map.addControl(drawControl);
-        } else {
-            map.removeControl(drawControl);
-            document.getElementById('draw-section').style.display = 'none';
-        }
     }
 
     window.onload = async () => { 
         await loadStationData(); 
-        initSystem(); // Memanggil fungsi init dari kode HTML utama
-        lucide.createIcons(); 
+        initSystem(); 
     };
 </script>
 </body>
