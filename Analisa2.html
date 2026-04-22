@@ -211,17 +211,17 @@
         var layer = e.layer;
         drawnItems.addLayer(layer);
         
-        // Matikan tool agar garis tidak mengikuti kursor
-        drawControl._toolbars.draw._modes.polygon.handler.disable();
+        // Mematikan tool agar kursor kembali normal
+        if (drawControl._toolbars && drawControl._toolbars.draw) {
+            drawControl._toolbars.draw._modes.polygon.handler.disable();
+        }
 
+        // Simpan ke variabel global dan jalankan analisis
         processHydrology(layer.toGeoJSON());
-        
-        // Tetap jaga stasiun di paling depan
-        stationLayer.getLayers().forEach(l => { if(l.bringToFront) l.bringToFront(); });
     });
 
     // --- 4. ANALISIS HIDROLOGI ---
-    function processHydrology(geojson) {
+   function processHydrology(geojson) {
         const areaHa = turf.area(geojson) / 10000;
         document.getElementById('area-val').innerText = areaHa.toFixed(2);
 
@@ -229,7 +229,8 @@
             Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { name: RAIN_DATABASE[id].n, id: id }))
         );
 
-        const bbox = [106.0, -7.0, 108.0, -5.0]; 
+        // BBox diperlebar agar area Jakarta Selatan tercover penuh
+        const bbox = [106.5, -6.5, 107.0, -6.0]; 
         const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
 
         let foundStations = [];
@@ -237,23 +238,45 @@
         tBody.innerHTML = "";
         thiessenLayer.clearLayers();
 
+        // Daftar warna agar Thiessen terlihat beda tiap stasiun
+        const colors = ['#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22'];
+
         voronoiPolygons.features.forEach((cell, i) => {
             const intersect = turf.intersect(cell, geojson);
             if (intersect) {
                 const subAreaHa = turf.area(intersect) / 10000;
                 if (subAreaHa > 0.001) {
                     const weight = subAreaHa / areaHa;
-                    const properties = cell.properties.site;
+                    const props = cell.properties.site;
 
-                    foundStations.push({ id: properties.id, weight: weight });
+                    foundStations.push({ id: props.id, weight: weight });
 
+                    // Menampilkan irisan poligon dengan warna berbeda
                     L.geoJSON(intersect, {
-                        style: { fillColor: '#3498db', fillOpacity: 0.4, color: 'white', weight: 1 }
+                        style: { 
+                            fillColor: colors[i % colors.length], 
+                            fillOpacity: 0.4, 
+                            color: 'white', 
+                            weight: 2 
+                        }
                     }).addTo(thiessenLayer);
 
-                    tBody.innerHTML += `<tr><td>${properties.name}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+                    tBody.innerHTML += `<tr><td>${props.name}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
                 }
             }
+        });
+
+        if (foundStations.length > 0) {
+            calculateRegionalRain(foundStations);
+            document.getElementById('resThiessen').style.display = 'block';
+            document.getElementById('resYearly').style.display = 'block';
+            
+            // Panggil fungsi pembuat tombol lanjut
+            showNextStepButton();
+        } else {
+            alert("Area tidak mencakup stasiun hujan manapun!");
+        }
+    }
         });
 
         if (foundStations.length > 0) {
