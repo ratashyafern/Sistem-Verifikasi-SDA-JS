@@ -1,1 +1,23 @@
-
+{
+  "c_val": {
+    "n": "Koefisien Aliran (C)",
+    "type": "SNI 2415:2016",
+    "data": [
+      { "k": "Perdagangan Kota", "v": 0.90, "s": "sync" },
+      { "k": "Pemukiman Rapat", "v": 0.70, "s": "sync" },
+      { "k": "Pemukiman Tidak Rapat", "v": 0.50, "s": "sync" },
+      { "k": "Taman/Kuburan", "v": 0.20, "s": "sync" },
+      { "k": "Perkerasan Aspal", "v": 0.85, "s": "sync" }
+    ]
+  },
+  "n_manning": {
+    "n": "Koefisien Manning (n)",
+    "type": "TABEL CHOW",
+    "data": [
+      { "k": "Beton Halus", "v": 0.011, "s": "sync" },
+      { "k": "Beton Pasangan Batu", "v": 0.015, "s": "sync" },
+      { "k": "Tanah Bersih Baru", "v": 0.018, "s": "sync" },
+      { "k": "Saluran Alam Berumput", "v": 0.030, "s": "sync" }
+    ]
+  }
+}
