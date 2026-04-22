@@ -136,12 +136,16 @@
     var stationLayer = L.layerGroup().addTo(map);
     var layerMikro = L.layerGroup().addTo(map);
     var layerPHB = L.layerGroup().addTo(map);
+    var thiessenLayer = L.layerGroup().addTo(map);
 
     // Kontrol Layer (Kanan Atas)
-    L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, { 
-        "Saluran Mikro": layerMikro, "Saluran PHB": layerPHB, 
-        "Stasiun Hujan": stationLayer, "Area": drawnItems 
-    }, { collapsed: false, position: 'topright' }).addTo(map);
+L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, { 
+    "Saluran Mikro": layerMikro, 
+    "Saluran PHB": layerPHB, 
+    "Stasiun Hujan": stationLayer, 
+    "Wilayah Pengaruh": thiessenLayer, // Tambahkan ke kontrol
+    "Area DAS": drawnItems 
+}, { collapsed: false, position: 'topright' }).addTo(map);
 
     var drawControl = new L.Control.Draw({
         draw: { polygon: { shapeOptions: { color: '#2f80ed' } }, polyline:false, circle:false, rectangle:false, marker:false, circlemarker:false }
@@ -215,88 +219,79 @@
     // --- 4. ANALISIS HIDROLOGI ---
     let rainChart = null;
     // --- Ganti fungsi processHydrology lama dengan yang ini ---
+
 function processHydrology(geojson) {
-    // 1. Bersihkan poligon Thiessen lama
+    // 1. Bersihkan layer lama tiap kali analisa baru
     thiessenLayer.clearLayers();
     
-    // 2. Hitung total luas DAS (menggunakan Turf)
+    // 2. Hitung total luas DAS
     const areaHa = turf.area(geojson) / 10000;
     document.getElementById('area-val').innerText = areaHa.toFixed(2);
 
-    // 3. Siapkan titik stasiun untuk analisis Voronoi/Thiessen
+    // 3. Siapkan titik stasiun
     const pts = turf.featureCollection(STATIONS_LIST.map(s => turf.point([s.lng, s.lat], { n: s.n })));
     
-    // 4. Buat Bounding Box dari DAS (ditambah buffer agar meng-cover seluruh DAS)
+    // 4. Buat Bounding Box
     const bbox = turf.bbox(geojson);
-    const options = { bbox: [bbox[0]-0.1, bbox[1]-0.1, bbox[2]+0.1, bbox[3]+0.1] };
+    const options = { bbox: [bbox[0]-0.2, bbox[1]-0.2, bbox[2]+0.2, bbox[3]+0.2] };
     
-    // 5. Generate Poligon Thiessen (Voronoi)
+    // 5. Generate Poligon Thiessen
     const voronoiPolygons = turf.voronoi(pts, options);
 
     let found = [];
     const tBody = document.getElementById('tBody');
     tBody.innerHTML = "";
 
-    // --- Definisi Palet Warna Kontras untuk Poligon (Persis Referensi) ---
-    const palette = [
-        "#f2994a", // Orange
-        "#27ae60", // Hijau
-        "#2f80ed", // Biru
-        "#eb5757", // Merah
-        "#9b51e0", // Ungu
-        "#f2c94c"  // Kuning
-    ];
+    const palette = ["#f2994a", "#27ae60", "#2f80ed", "#eb5757", "#9b51e0", "#f2c94c"];
 
-    // 6. Iris (Intersect) setiap sel Voronoi stasiun dengan area DAS yang digambar
+    // 6. Iris (Intersect) dan Warnai
     voronoiPolygons.features.forEach((cell, i) => {
         const intersect = turf.intersect(cell, geojson);
         
         if (intersect) {
             const subAreaHa = turf.area(intersect) / 10000;
-            const weight = subAreaHa / areaHa;
-            
-            // Ambil nama stasiun dari titik asli Voronoi
             const stName = cell.properties.site.n; 
 
             if (subAreaHa > 0.001) {
-                found.push({ name: stName, data: [120, 145, 110, 160, 130] }); // Data hujan simulasi
+                const weight = subAreaHa / areaHa;
+                found.push({ name: stName, data: [120, 145, 110, 160, 130] });
 
-                // --- TAMPILKAN DI PETA DENGAN WARNA BERBEDA ---
+                // TAMPILKAN DI PETA DENGAN WARNA BERBEDA
                 L.geoJSON(intersect, {
                     style: {
-                        fillColor: palette[i % palette.length], // Ambil warna dari palet secara berurutan
-                        fillOpacity: 0.5, // Transparansi poligon
-                        color: "white",   // Warna garis batas putih agar kontras
-                        weight: 1.5       // Ketebalan garis batas
+                        fillColor: palette[i % palette.length],
+                        fillOpacity: 0.5,
+                        color: "white",
+                        weight: 1.5
                     }
                 }).addTo(thiessenLayer);
 
-                // Update Tabel Hasil Analisa
-                tBody.innerHTML += `<tr><td>${stName}</td><td>${(areaHa * weight).toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+                // Update Tabel
+                tBody.innerHTML += `<tr><td>${stName}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
             }
         }
     });
 
-    // 7. Update UI (Status, Tabel, dan Grafik)
+    // 7. Update UI
     const statusBox = document.getElementById('status-display');
     if (found.length > 0) {
-        statusBox.innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${found.length} Wilayah Stasiun Berpengaruh</div>`;
+        statusBox.innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${found.length} Stasiun Berpengaruh</div>`;
         
-        const weight = 1 / found.length;
+        // Logika grafik (Rerata hujan)
+        const avgWeight = 1 / found.length;
         let combined = [0,0,0,0,0];
-        found.forEach(st => st.data.forEach((v, i) => combined[i] += v * weight));
+        found.forEach(st => st.data.forEach((v, i) => combined[i] += v * avgWeight));
 
         renderChart([2020, 2021, 2022, 2023, 2024], combined);
         document.getElementById('resThiessen').style.display = 'block';
         document.getElementById('resYearly').style.display = 'block';
     } else {
-        // Area digambar di tempat yang tidak ada stasiunnya
-        statusBox.innerHTML = `<div class="status-msg status-error"><i data-lucide="alert-triangle"></i> Stasiun tidak ditemukan dalam wilayah pengaruh DAS!</div>`;
-        document.getElementById('resThiessen').style.display = 'block';
+        statusBox.innerHTML = `<div class="status-msg status-error"><i data-lucide="alert-triangle"></i> Stasiun tidak ditemukan!</div>`;
         document.getElementById('resYearly').style.display = 'none';
     }
     lucide.createIcons();
 }
+    
     function renderChart(labels, data) {
         const ctx = document.getElementById('rainChart').getContext('2d');
         if (rainChart) rainChart.destroy();
