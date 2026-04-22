@@ -369,22 +369,26 @@ function renderTable() {
     else if (currentMode === 'katalog') dataArr = catalogDB[currentId].data;
     else dataArr = coefDB[currentId].data;
 
-    // Simpan nilai asli sebagai string dulu agar bisa ngetik titik/desimal
-    dataArr[idx][key] = (key === 'k') ? val : val;
+    // Simpan nilai apa adanya (sebagai string) supaya titik desimal tidak hilang saat diketik
+    dataArr[idx][key] = val;
+    dataArr[idx].s = 'unsync'; 
     
-    // Beri tanda unsync (kuning) secara manual ke elemen inputnya saja
-    // supaya tidak perlu render ulang seluruh tabel
+    // Simpan ke local tapi JANGAN panggil renderTable() di sini 
+    // agar cursor keyboard tidak hilang/pindah
+    saveToLocal(); 
+    
+    // Update warna kuning secara manual tanpa gambar ulang tabel
     const inputEl = event.target;
     inputEl.classList.add('unsync');
-    dataArr[idx].s = 'unsync';
     
-    // Aktifkan tanda kuning di badge status kolom sebelah (opsional visual)
     const row = inputEl.closest('tr');
     const badge = row.querySelector('.badge');
     if(badge) {
         badge.className = 'badge badge-unsync';
         badge.innerText = 'UNSYNCED';
     }
+    document.getElementById('btnExport').disabled = true;
+}
     
     // Nonaktifkan tombol export karena ada data belum sinkron
     document.getElementById('btnExport').disabled = true;
