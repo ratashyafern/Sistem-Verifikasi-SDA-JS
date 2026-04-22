@@ -61,83 +61,56 @@
         .status-msg { padding: 10px; border-radius: 6px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-top: 10px; }
         .status-ok { background: #dcfce7; color: #166534; }
         .status-error { background: #fee2e2; color: #991b1b; }
-
-        /* Update Master Style */
-.scroll-container { max-height: 200px; overflow-y: auto; margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 6px; }
-.tfoot-bold { background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; }
-.color-box { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; }
-.best-badge { background: #dcfce7; color: #166534; padding: 10px; border-radius: 6px; font-size: 11px; font-weight: 800; text-align: center; margin-top: 10px; border: 1px solid #bbf7d0; }
-.data-table th, .data-table td { text-align: center; } /* Default center untuk angka statistik */
-
-    
     </style>
 </head>
 <body>
 
-<div class="sidebar-content">
-    <div class="card">
-        <h3>1. Input Area DAS (KML/GeoJSON)</h3>
-        <div class="method-stack">
-            <div class="btn-choice" id="btn-upload" onclick="setMode('upload')">
-                <i data-lucide="file-up"></i>
-                <span>UPLOAD FILE DAS</span>
+<div id="sidebar">
+    <div class="sidebar-header">
+        <a href="index.html" class="back-link"><i data-lucide="arrow-left" style="width:18px"></i> Kembali ke Menu Utama</a>
+        <h1 style="font-size: 24px; font-weight: 800; color: var(--primary); line-height: 1.1;">VERIFICATION SYSTEM</h1>
+        <p style="font-size: 12px; color: var(--slate); margin-top: 4px;">Suku Dinas SDA Jakarta Selatan</p>
+    </div>
+    
+    <div class="sidebar-content">
+        <div class="card">
+            <h3>1. Input Area DAS (KML/Peta)</h3>
+            <div class="method-stack">
+                <div class="btn-choice" id="btn-upload" onclick="setMode('upload')">
+                    <i data-lucide="file-up"></i>
+                    <span>UPLOAD FILE KML</span>
+                </div>
+                <div class="btn-choice" id="btn-draw" onclick="setMode('draw')">
+                    <i data-lucide="pencil-line"></i>
+                    <span>DIGITASI PETA LANGSUNG</span>
+                </div>
             </div>
-            <div class="btn-choice" id="btn-draw" onclick="setMode('draw')">
-                <i data-lucide="pencil-line"></i>
-                <span>DIGITASI PETA LANGSUNG</span>
+
+            <div id="upload-section" style="display:none">
+                <div class="upload-area" onclick="document.getElementById('fKML').click()">
+                    <i data-lucide="folder-open"></i> PILIH FILE KML
+                </div>
+                <input type="file" id="fKML" style="display:none" accept=".kml">
+            </div>
+            
+            <div id="draw-section" style="display:none; margin-top:15px; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
+                <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
             </div>
         </div>
-        <div id="upload-section" style="display:none">
-            <div class="upload-area" onclick="document.getElementById('fKML').click()">
-                <i data-lucide="folder-open"></i> PILIH FILE KML/GEOJSON
-            </div>
-            <input type="file" id="fKML" style="display:none" accept=".kml,.json,.geojson">
-        </div>
-    </div>
 
-    <div id="resThiessen" class="card" style="display:none">
-        <h3>2. Poligon Thiessen & Bobot</h3>
-        <table class="data-table">
-            <thead><tr><th style="text-align:left">Stasiun</th><th>Luas (km²)</th><th>Bobot (W)</th></tr></thead>
-            <tbody id="tBody"></tbody>
-            <tfoot id="tFoot"></tfoot>
-        </table>
-    </div>
-
-    <div id="resYearly" class="card" style="display:none">
-        <h3>3. Tren Hujan Rerata Wilayah</h3>
-        <div class="scroll-container">
+        <div id="resThiessen" class="card" style="display:none">
+            <h3>2. Analisa Stasiun Terdeteksi</h3>
+            <div id="status-display"></div>
             <table class="data-table">
-                <thead><tr><th>Tahun</th><th>Hujan (mm)</th></tr></thead>
-                <tbody id="yBody"></tbody>
+                <thead><tr><th>Stasiun</th><th>Luas (Ha)</th><th>W</th></tr></thead>
+                <tbody id="tBody"></tbody>
             </table>
         </div>
-        <canvas id="rainChart" height="240" style="margin-top:15px;"></canvas>
-    </div>
 
-    <div id="resParams" class="card" style="display:none">
-        <h3>4. Parameter Statistik Wilayah</h3>
-        <table class="data-table">
-            <thead><tr><th>Mean</th><th>Sd</th><th>Cv</th><th>Cs</th><th>Ck</th></tr></thead>
-            <tbody id="pBody"></tbody>
-        </table>
-    </div>
-
-    <div id="resFreq" class="card" style="display:none">
-        <h3>5. Analisis Frekuensi (Hujan Rencana)</h3>
-        <table class="data-table">
-            <thead><tr><th>T (Th)</th><th>Gumbel</th><th>Log-P III</th></tr></thead>
-            <tbody id="fBody"></tbody>
-        </table>
-    </div>
-
-    <div id="resTest" class="card" style="display:none">
-        <h3>6. Uji Kesesuaian Distribusi</h3>
-        <table class="data-table">
-            <thead><tr><th style="text-align:left">Metode</th><th>S-K</th><th>Status</th></tr></thead>
-            <tbody id="testBody"></tbody>
-        </table>
-        <div id="bestMethod"></div>
+        <div id="resYearly" class="card" style="display:none">
+            <h3>3. Tren Hujan Rerata</h3>
+            <canvas id="rainChart" height="240"></canvas>
+        </div>
     </div>
 </div>
 
@@ -241,112 +214,89 @@
 
     // --- 4. ANALISIS HIDROLOGI ---
     let rainChart = null;
-   
+    // --- Ganti fungsi processHydrology lama dengan yang ini ---
 function processHydrology(geojson) {
-    analysisLayer.clearLayers();
-    ['tBody', 'tFoot', 'yBody', 'pBody', 'fBody', 'testBody'].forEach(id => document.getElementById(id).innerHTML = "");
-
-    // 1. Validasi & Gabung DAS
-    let mergedDAS = geojson.type === "FeatureCollection" ? turf.union(...geojson.features) : geojson;
+    // 1. Bersihkan poligon Thiessen lama
+    thiessenLayer.clearLayers();
     
-    L.geoJSON(mergedDAS, { style: { color: '#1c2b4a', weight: 3, fillOpacity: 0.1 } }).addTo(analysisLayer);
-    map.fitBounds(L.geoJSON(mergedDAS).getBounds());
+    // 2. Hitung total luas DAS (menggunakan Turf)
+    const areaHa = turf.area(geojson) / 10000;
+    document.getElementById('area-val').innerText = areaHa.toFixed(2);
 
-    // 2. Analisis Thiessen
-    const pts = turf.featureCollection(Object.keys(currentDB).map(id => 
-        turf.point([currentDB[id].lng, currentDB[id].lat], { name: currentDB[id].n, id: id })
-    ));
+    // 3. Siapkan titik stasiun untuk analisis Voronoi/Thiessen
+    const pts = turf.featureCollection(STATIONS_LIST.map(s => turf.point([s.lng, s.lat], { n: s.n })));
     
-    const voronoi = turf.voronoi(pts, { bbox: turf.bbox(mergedDAS) });
-    let thiessenResults = [], totalArea = 0;
+    // 4. Buat Bounding Box dari DAS (ditambah buffer agar meng-cover seluruh DAS)
+    const bbox = turf.bbox(geojson);
+    const options = { bbox: [bbox[0]-0.1, bbox[1]-0.1, bbox[2]+0.1, bbox[3]+0.1] };
+    
+    // 5. Generate Poligon Thiessen (Voronoi)
+    const voronoiPolygons = turf.voronoi(pts, options);
 
-    voronoi.features.forEach((v, i) => {
-        const clip = turf.intersect(v, mergedDAS);
-        if (clip) {
-            const areaKm2 = turf.area(clip) / 1000000;
-            totalArea += areaKm2;
-            const color = `hsl(${(i * 137.5) % 360}, 70%, 60%)`;
-            const stId = pts.features[i].properties.id;
+    let found = [];
+    const tBody = document.getElementById('tBody');
+    tBody.innerHTML = "";
+
+    // --- Definisi Palet Warna Kontras untuk Poligon (Persis Referensi) ---
+    const palette = [
+        "#f2994a", // Orange
+        "#27ae60", // Hijau
+        "#2f80ed", // Biru
+        "#eb5757", // Merah
+        "#9b51e0", // Ungu
+        "#f2c94c"  // Kuning
+    ];
+
+    // 6. Iris (Intersect) setiap sel Voronoi stasiun dengan area DAS yang digambar
+    voronoiPolygons.features.forEach((cell, i) => {
+        const intersect = turf.intersect(cell, geojson);
+        
+        if (intersect) {
+            const subAreaHa = turf.area(intersect) / 10000;
+            const weight = subAreaHa / areaHa;
             
-            thiessenResults.push({ id: stId, name: pts.features[i].properties.name, area: areaKm2, color: color });
-            L.geoJSON(clip, { style: { color: 'white', weight: 1, fillColor: color, fillOpacity: 0.4 } }).addTo(analysisLayer);
+            // Ambil nama stasiun dari titik asli Voronoi
+            const stName = cell.properties.site.n; 
+
+            if (subAreaHa > 0.001) {
+                found.push({ name: stName, data: [120, 145, 110, 160, 130] }); // Data hujan simulasi
+
+                // --- TAMPILKAN DI PETA DENGAN WARNA BERBEDA ---
+                L.geoJSON(intersect, {
+                    style: {
+                        fillColor: palette[i % palette.length], // Ambil warna dari palet secara berurutan
+                        fillOpacity: 0.5, // Transparansi poligon
+                        color: "white",   // Warna garis batas putih agar kontras
+                        weight: 1.5       // Ketebalan garis batas
+                    }
+                }).addTo(thiessenLayer);
+
+                // Update Tabel Hasil Analisa
+                tBody.innerHTML += `<tr><td>${stName}</td><td>${(areaHa * weight).toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+            }
         }
     });
 
-    // 3. Hitung Hujan Rerata Wilayah per Tahun
-    let rainSeries = [];
-    let labelsYear = [];
-    const startYear = 2015;
-    const dataLength = currentDB[Object.keys(currentDB)[0]].d.length;
+    // 7. Update UI (Status, Tabel, dan Grafik)
+    const statusBox = document.getElementById('status-display');
+    if (found.length > 0) {
+        statusBox.innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${found.length} Wilayah Stasiun Berpengaruh</div>`;
+        
+        const weight = 1 / found.length;
+        let combined = [0,0,0,0,0];
+        found.forEach(st => st.data.forEach((v, i) => combined[i] += v * weight));
 
-    for (let t = 0; t < dataLength; t++) {
-        let pAvg = 0;
-        thiessenResults.forEach(res => {
-            res.w = res.area / totalArea; // Hitung bobot
-            pAvg += (currentDB[res.id].d[t] * res.w);
-        });
-        rainSeries.push(Number(pAvg.toFixed(2)));
-        labelsYear.push(startYear + t);
-        document.getElementById('yBody').innerHTML += `<tr><td>${startYear + t}</td><td style="font-weight:bold">${pAvg.toFixed(2)}</td></tr>`;
+        renderChart([2020, 2021, 2022, 2023, 2024], combined);
+        document.getElementById('resThiessen').style.display = 'block';
+        document.getElementById('resYearly').style.display = 'block';
+    } else {
+        // Area digambar di tempat yang tidak ada stasiunnya
+        statusBox.innerHTML = `<div class="status-msg status-error"><i data-lucide="alert-triangle"></i> Stasiun tidak ditemukan dalam wilayah pengaruh DAS!</div>`;
+        document.getElementById('resThiessen').style.display = 'block';
+        document.getElementById('resYearly').style.display = 'none';
     }
-
-    // Tampilkan Tabel Thiessen
-    thiessenResults.forEach(res => {
-        document.getElementById('tBody').innerHTML += `
-            <tr>
-                <td style="text-align:left"><span class="color-box" style="background:${res.color}"></span>${res.name}</td>
-                <td>${res.area.toFixed(2)}</td>
-                <td>${res.w.toFixed(4)}</td>
-            </tr>`;
-    });
-    document.getElementById('tFoot').innerHTML = `<tr class="tfoot-bold"><td style="text-align:left">TOTAL</td><td>${totalArea.toFixed(2)}</td><td>1.0000</td></tr>`;
-
-    // 4. Jalankan Statistik & Frekuensi
-    updateChart(labelsYear, rainSeries);
-    runFullAnalysis(rainSeries, totalArea);
-    
-    // Show all cards
-    ['resThiessen', 'resYearly', 'resParams', 'resFreq', 'resTest'].forEach(id => document.getElementById(id).style.display = 'block');
     lucide.createIcons();
 }
-
-function runFullAnalysis(data, totalArea) {
-    const n = data.length;
-    const mean = data.reduce((a, b) => a + b) / n;
-    const sd = Math.sqrt(data.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / (n - 1));
-    const cv = sd / mean;
-    const cs = (n * data.map(x => Math.pow(x - mean, 3)).reduce((a, b) => a + b)) / ((n - 1) * (n - 2) * Math.pow(sd, 3));
-    const ck = (n * n * data.map(x => Math.pow(x - mean, 4)).reduce((a, b) => a + b)) / ((n - 1) * (n - 2) * (n - 3) * Math.pow(sd, 4));
-
-    document.getElementById('pBody').innerHTML = `<tr><td>${mean.toFixed(2)}</td><td>${sd.toFixed(2)}</td><td>${cv.toFixed(3)}</td><td>${cs.toFixed(3)}</td><td>${ck.toFixed(3)}</td></tr>`;
-
-    // Hujan Rencana (Log Pearson III)
-    const logD = data.map(x => Math.log10(x));
-    const lMean = logD.reduce((a,b)=>a+b)/n;
-    const lSd = Math.sqrt(logD.map(x=>Math.pow(x-lMean,2)).reduce((a,b)=>a+b)/(n-1));
-    const lCs = (n * logD.map(x => Math.pow(x - lMean, 3)).reduce((a, b) => a + b)) / ((n - 1) * (n - 2) * Math.pow(lSd, 3));
-
-    const T = [2, 5, 10, 25, 50];
-    dataHujanRencana = {};
-    
-    T.forEach(t => {
-        const kt = { 2:0, 5:0.842, 10:1.282, 25:1.751, 50:2.054 }[t];
-        const rG = mean + (((-(Math.log(Math.log(t/(t-1)))) - 0.5128)/1.1004) * sd); // Gumbel
-        const kLP = (2/lCs) * (Math.pow(((kt - lCs/6) * lCs/6 + 1), 3) - 1); // Log P III
-        const rLP = Math.pow(10, lMean + (kLP * lSd));
-
-        dataHujanRencana[t] = rLP;
-        document.getElementById('fBody').innerHTML += `<tr><td><b>${t} Th</b></td><td>${rG.toFixed(1)}</td><td style="color:var(--accent);font-weight:bold">${rLP.toFixed(1)}</td></tr>`;
-    });
-
-    // Uji Sederhana (Contoh visual)
-    document.getElementById('testBody').innerHTML = `
-        <tr><td style="text-align:left">Gumbel</td><td>0.12</td><td><b style="color:green">DITERIMA</b></td></tr>
-        <tr><td style="text-align:left">Log-Pearson III</td><td>0.08</td><td><b style="color:green">DITERIMA</b></td></tr>
-    `;
-    document.getElementById('bestMethod').innerHTML = `<div class="best-badge">METODE TERPILIH: LOG-PEARSON III</div>`;
-}
-    
     function renderChart(labels, data) {
         const ctx = document.getElementById('rainChart').getContext('2d');
         if (rainChart) rainChart.destroy();
