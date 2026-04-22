@@ -1,14 +1,14 @@
 {
   "u_ditch": [
-    { "tipe": "400 x 400", "lebar": 400, "tinggi": 400, },
-    { "tipe": "600 x 600", "lebar": 600, "tinggi": 600, }
-    { "tipe": "800 x 800", "lebar": 800, "tinggi": 800, },
-    { "tipe": "1000 x 1000", "lebar": 1000, "tinggi": 1000, }  
-    { "tipe": "1200 x 1200", "lebar": 1200, "tinggi": 1200, }  
-    { "tipe": "1500 x 1500", "lebar": 1500, "tinggi": 1500, }  
-    { "tipe": "2000 x 2000", "lebar": 2000, "tinggi": 2000, }  
+    { "tipe": "400 x 400", "lebar": 400, "tinggi": 400 },
+    { "tipe": "600 x 600", "lebar": 600, "tinggi": 600 }
+    { "tipe": "800 x 800", "lebar": 800, "tinggi": 800 },
+    { "tipe": "1000 x 1000", "lebar": 1000, "tinggi": 1000 }  
+    { "tipe": "1200 x 1200", "lebar": 1200, "tinggi": 1200 }  
+    { "tipe": "1500 x 1500", "lebar": 1500, "tinggi": 1500 }  
+    { "tipe": "2000 x 2000", "lebar": 2000, "tinggi": 2000}  
   ],
   "box_culvert": [
-    { "tipe": "1000 x 1000", "lebar": 1000, "tinggi": 1000, }
+    { "tipe": "1000 x 1000", "lebar": 1000, "tinggi": 1000}
   ]
 }
