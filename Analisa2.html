@@ -226,10 +226,12 @@
         document.getElementById('area-val').innerText = areaHa.toFixed(2);
 
         const points = turf.featureCollection(
-            Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { name: RAIN_DATABASE[id].n, id: id }))
+            Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { 
+                name: RAIN_DATABASE[id].n, 
+                id: id 
+            }))
         );
 
-        // BBox diperlebar agar area Jakarta Selatan tercover penuh
         const bbox = [106.5, -6.5, 107.0, -6.0]; 
         const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
 
@@ -238,7 +240,6 @@
         tBody.innerHTML = "";
         thiessenLayer.clearLayers();
 
-        // Daftar warna agar Thiessen terlihat beda tiap stasiun
         const colors = ['#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22'];
 
         voronoiPolygons.features.forEach((cell, i) => {
@@ -251,7 +252,6 @@
 
                     foundStations.push({ id: props.id, weight: weight });
 
-                    // Menampilkan irisan poligon dengan warna berbeda
                     L.geoJSON(intersect, {
                         style: { 
                             fillColor: colors[i % colors.length], 
@@ -270,21 +270,9 @@
             calculateRegionalRain(foundStations);
             document.getElementById('resThiessen').style.display = 'block';
             document.getElementById('resYearly').style.display = 'block';
-            
-            // Panggil fungsi pembuat tombol lanjut
-            showNextStepButton();
+            showNextStepButton(); // Panggil tombol lanjut
         } else {
             alert("Area tidak mencakup stasiun hujan manapun!");
-        }
-    }
-        });
-
-        if (foundStations.length > 0) {
-            calculateRegionalRain(foundStations);
-            document.getElementById('resThiessen').style.display = 'block';
-            document.getElementById('resYearly').style.display = 'block';
-            // Scroll otomatis ke hasil
-            document.getElementById('resThiessen').scrollIntoView({ behavior: 'smooth' });
         }
     }
 
@@ -301,6 +289,20 @@
             regionalResults.push(total.toFixed(2));
         });
         renderChart(years, regionalResults);
+    }
+
+    function showNextStepButton() {
+        if (!document.getElementById('btn-next-calc')) {
+            const btn = document.createElement('div');
+            btn.id = 'btn-next-calc';
+            btn.className = 'upload-area'; 
+            btn.style.background = '#16a34a'; 
+            btn.style.marginTop = '20px';
+            btn.innerHTML = '<i data-lucide="calculator"></i> LANJUT HITUNG SALURAN';
+            btn.onclick = () => alert("Sistem siap lanjut ke perhitungan Hidrolika!");
+            document.querySelector('.sidebar-content').appendChild(btn);
+            lucide.createIcons();
+        }
     }
 
     function renderChart(labels, data) {
