@@ -128,17 +128,17 @@
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     var drawnItems = new L.FeatureGroup().addTo(map);
-    var stationLayer = L.layerGroup().addTo(map);
     var layerMikro = L.layerGroup().addTo(map);
     var layerPHB = L.layerGroup().addTo(map);
     var thiessenLayer = L.layerGroup().addTo(map);
+    // Stasiun ditaruh terakhir agar secara default di atas, tapi kita akan paksa lagi nanti
+    var stationLayer = L.layerGroup().addTo(map);
 
     L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, { 
         "Saluran Mikro": layerMikro, "Saluran PHB": layerPHB,
         "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems 
     }, { collapsed: false, position: 'topright' }).addTo(map);
 
-    // --- 2. CONFIG DIGITASI (VERSI STABIL) ---
     var drawControl = new L.Control.Draw({
         draw: {
             polygon: {
@@ -152,7 +152,7 @@
         edit: { featureGroup: drawnItems, remove: true }
     });
 
-    // --- 3. DATA & UI LOGIC ---
+    // --- 2. DATA & UI LOGIC ---
     let RAIN_DATABASE = {}; 
     let rainChart = null;
 
@@ -161,23 +161,31 @@
         try {
             const response = await fetch(url);
             RAIN_DATABASE = await response.json();
-            
-            stationLayer.clearLayers();
-            Object.keys(RAIN_DATABASE).forEach(id => {
-                const st = RAIN_DATABASE[id];
-                L.circleMarker([st.lat, st.lng], {
-                    radius: 7, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
-                }).addTo(stationLayer)
-                // Poin 2: Font Nama Stasiun Bold
-                .bindTooltip(`<b>${st.n}</b>`, { permanent: true, direction: 'top', offset: [0,-10], className: 'stasiun-label' });
-            });
-            console.log("Database Hujan Aktif");
+            updateStationMarkers();
         } catch (err) { console.error("Gagal sinkron data:", err); }
     }
 
+    function updateStationMarkers() {
+        stationLayer.clearLayers();
+        Object.keys(RAIN_DATABASE).forEach(id => {
+            const st = RAIN_DATABASE[id];
+            const marker = L.circleMarker([st.lat, st.lng], {
+                radius: 7, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1,
+                pane: 'markerPane' // Memastikan marker di pane atas
+            }).addTo(stationLayer)
+            .bindTooltip(`<b>${st.n}</b>`, { 
+                permanent: true, direction: 'top', offset: [0,-10], className: 'stasiun-label' 
+            });
+        });
+    }
+
     function initSystem() {
+        // Render saluran di bawah
         if (typeof dataMikro !== 'undefined') L.geoJSON(dataMikro, { style: { color: '#06b6d4', weight: 1.5 } }).addTo(layerMikro);
         if (typeof dataPHB !== 'undefined') L.geoJSON(dataPHB, { style: { color: '#1d4ed8', weight: 3 } }).addTo(layerPHB);
+        
+        // Paksa stasiun hujan ke depan setelah semua layer load
+        stationLayer.getLayers().forEach(l => { if(l.bringToFront) l.bringToFront(); });
         lucide.createIcons();
     }
 
@@ -187,28 +195,32 @@
             document.getElementById('btn-draw').classList.add('active');
             map.addControl(drawControl);
             document.getElementById('upload-section').style.display = 'none';
+            document.getElementById('draw-section').style.display = 'block';
         } else {
             document.getElementById('btn-upload').classList.add('active');
             document.getElementById('upload-section').style.display = 'block';
+            document.getElementById('draw-section').style.display = 'none';
             map.removeControl(drawControl);
         }
         lucide.createIcons();
     }
 
-    // --- 4. EVENT: POLIGON SELESAI (SOLUSI POIN 1 & 3) ---
+    // --- 3. EVENT: POLIGON SELESAI ---
     map.on(L.Draw.Event.CREATED, function (e) {
         drawnItems.clearLayers();
         var layer = e.layer;
         drawnItems.addLayer(layer);
         
-        // Poin 1: Paksa garis berhenti dengan menonaktifkan tool setelah selesai
+        // Matikan tool agar garis tidak mengikuti kursor
         drawControl._toolbars.draw._modes.polygon.handler.disable();
 
-        // Poin 3: Pastikan fungsi hidrologi dipanggil
         processHydrology(layer.toGeoJSON());
+        
+        // Tetap jaga stasiun di paling depan
+        stationLayer.getLayers().forEach(l => { if(l.bringToFront) l.bringToFront(); });
     });
 
-    // --- 5. ANALISIS HIDROLOGI ---
+    // --- 4. ANALISIS HIDROLOGI ---
     function processHydrology(geojson) {
         const areaHa = turf.area(geojson) / 10000;
         document.getElementById('area-val').innerText = areaHa.toFixed(2);
@@ -217,7 +229,6 @@
             Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { name: RAIN_DATABASE[id].n, id: id }))
         );
 
-        // Perluas BBox agar pemotongan tidak gagal
         const bbox = [106.0, -7.0, 108.0, -5.0]; 
         const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
 
@@ -247,11 +258,10 @@
 
         if (foundStations.length > 0) {
             calculateRegionalRain(foundStations);
-            // Munculkan kembali section hasil yang mungkin tersembunyi
             document.getElementById('resThiessen').style.display = 'block';
             document.getElementById('resYearly').style.display = 'block';
-        } else {
-            alert("Area tidak mencakup stasiun hujan manapun!");
+            // Scroll otomatis ke hasil
+            document.getElementById('resThiessen').scrollIntoView({ behavior: 'smooth' });
         }
     }
 
@@ -267,7 +277,6 @@
             });
             regionalResults.push(total.toFixed(2));
         });
-
         renderChart(years, regionalResults);
     }
 
@@ -278,13 +287,13 @@
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{ label: 'Hujan Wilayah (mm)', data: data, borderColor: '#2f80ed', backgroundColor: 'rgba(47,128,237,0.1)', fill: true, tension: 0.4 }]
+                datasets: [{ label: 'Hujan (mm)', data: data, borderColor: '#2f80ed', backgroundColor: 'rgba(47,128,237,0.1)', fill: true, tension: 0.4 }]
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
     }
 
-    // --- 6. HANDLER KML ---
+    // --- 5. HANDLER KML ---
     document.getElementById('fKML').onchange = (e) => {
         const file = e.target.files[0];
         const reader = new FileReader();
