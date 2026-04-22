@@ -188,47 +188,66 @@
             ]}
         };
 
-let rainDB = {}; // Mulai dengan objek kosong
-let catalogDB = JSON.parse(localStorage.getItem('sda_catalogDB')) || DEFAULT_CATALOG;
-let coefDB = JSON.parse(localStorage.getItem('sda_coefDB')) || DEFAULT_COEF;
+let rainDB = {}; 
+let catalogDB = {}; // Ubah jadi objek kosong
+let coefDB = {};
 
-async function fetchRainData() {
+// Fungsi General untuk Fetch Data agar tidak menulis ulang kode yang sama
+async function loadDatabase(key, filePath, defaultData) {
     try {
-        const localData = localStorage.getItem('sda_rainDB');
-        
+        const localData = localStorage.getItem(key);
         if (localData) {
-            rainDB = JSON.parse(localData);
-            console.log("Menggunakan data dari LocalStorage");
-        } else {
-            // Coba ambil dari file JSON
-            const response = await fetch('data/hujan.json');
-            if (!response.ok) throw new Error("File tidak ditemukan"); // Lempar ke catch jika 404
-            
-            rainDB = await response.json();
-            console.log("Menggunakan data dari data/hujan.json");
+            console.log(`Menggunakan data ${key} dari LocalStorage`);
+            return JSON.parse(localData);
         }
-        renderSidebar();
+        
+        const response = await fetch(filePath);
+        if (!response.ok) throw new Error(`${filePath} tidak ditemukan`);
+        
+        const data = await response.json();
+        console.log(`Berhasil memuat ${filePath}`);
+        return data;
     } catch (err) {
-        console.warn("Gagal fetch JSON, menggunakan DEFAULT_RAIN sebagai cadangan:", err);
-        // CADANGAN: Gunakan data statis yang sudah kamu buat di atas
-        rainDB = DEFAULT_RAIN; 
-        renderSidebar();
+        console.warn(`Gagal memuat ${key}, menggunakan data cadangan.`, err);
+        return defaultData;
     }
 }
-        
-// Jalankan fungsi fetch saat halaman dimuat
-window.onload = () => {
-    fetchRainData();
-};
+
+// Fungsi utama untuk menjalankan semuanya secara berurutan
+async function initializeApp() {
+    console.log("Memulai sinkronisasi database...");
+    
+    // Menjalankan semua fetch secara paralel tapi menunggu semuanya selesai
+    const [hujan, katalog] = await Promise.all([
+        loadDatabase('sda_rainDB', 'data/hujan.json', DEFAULT_RAIN),
+        loadDatabase('sda_catalogDB', 'data/precast.json', DEFAULT_CATALOG)
+    ]);
+
+    // Masukkan hasil ke variabel global
+    rainDB = hujan;
+    catalogDB = katalog;
+
+    // Baru render tampilan setelah semua data dipastikan ada
+    renderSidebar();
+    console.log("Sistem siap.");
+}
+
+// Panggil fungsi inisialisasi saat window load
+window.onload = initializeApp;
 
         let currentMode = 'hujan';
         let currentId = null;
 
-        function saveToLocal() {
-            localStorage.setItem('sda_rainDB', JSON.stringify(rainDB));
-            localStorage.setItem('sda_catalogDB', JSON.stringify(catalogDB));
-            localStorage.setItem('sda_coefDB', JSON.stringify(coefDB));
-        }
+function saveToLocal() {
+    // Simpan secara spesifik agar tidak menimpa data yang tidak sedang diedit
+    if (currentMode === 'hujan') {
+        localStorage.setItem('sda_rainDB', JSON.stringify(rainDB));
+    } else if (currentMode === 'katalog') {
+        localStorage.setItem('sda_catalogDB', JSON.stringify(catalogDB));
+    } else if (currentMode === 'koefisien') {
+        localStorage.setItem('sda_coefDB', JSON.stringify(coefDB));
+    }
+}
 
 function switchTab(mode) {
     currentMode = mode; 
