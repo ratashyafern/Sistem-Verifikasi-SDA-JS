@@ -165,7 +165,8 @@
 
         async function loadDatabase(key, fileName) {
             const path = `data/${fileName}`;
-            const url = `https://raw.githubusercontent.com/${GH_CONFIG.owner}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${path}?t=${Date.now()}`;
+            // Tambahkan parameter ?t= agar browser selalu mengambil data paling baru (Bypass Cache)
+const url = `https://raw.githubusercontent.com/${GH_CONFIG.owner}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${path}?nocache=${new Date().getTime()}`;
             
             try {
                 const response = await fetch(url);
@@ -279,12 +280,14 @@ function renderTable() {
 
             if(status === 'unsync') hasUnsync = true;
             
-            tbody.innerHTML += `<tr>
-                <td><input type="number" class="input-val" value="${year}" onchange="updateVal(${idx}, 'y', this.value)"></td>
-                <td><input type="number" step="0.1" class="input-val ${status==='unsync'?'unsync':''}" value="${value}" oninput="updateVal(${idx}, 'v', this.value)"></td>
-                <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
-                <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
-            </tr>`;
+            // Untuk Katalog/Precast
+tbody.innerHTML += `<tr>
+    <td><input type="text" class="input-val" value="${item.k}" onchange="updateVal(${idx},'k',this.value)"></td>
+    <td><input type="number" step="0.01" class="input-val" value="${item.b}" oninput="updateVal(${idx},'b',this.value)"></td>
+    <td><input type="number" step="0.01" class="input-val" value="${item.h}" oninput="updateVal(${idx},'h',this.value)"></td>
+    <td><span class="badge badge-${s}">${s.toUpperCase()}</span></td>
+    <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+</tr>`;
         });
     } 
     // --- TAMBAHKAN/GANTI BAGIAN INI ---
@@ -322,18 +325,28 @@ function renderTable() {
     document.getElementById('btnExport').disabled = hasUnsync;
     lucide.createIcons();
 }
-        function updateVal(idx, key, val) {
-    let dataArr;
-    if (currentMode === 'hujan') dataArr = rainDB[currentId].d;
-    else if (currentMode === 'katalog') dataArr = catalogDB[currentId].data;
-    else dataArr = coefDB[currentId].data;
-
-    // Simpan nilai baru (konversi ke angka jika bukan kolom teks 'k')
-    dataArr[idx][key] = (key === 'k') ? val : parseFloat(val || 0);
+        function updateVal(idx, k, v) {
+    // 1. Ambil array data yang sedang aktif
+    let arr = currentMode === 'hujan' ? rainDB[currentId].d : 
+              (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
     
-    // Beri tanda data berubah (warna kuning)
-    dataArr[idx].s = 'unsync'; 
-    renderTable(); 
+    if (!arr || !arr[idx]) return;
+
+    // 2. Update nilainya. Jika kolomnya bukan 'k' (keterangan/tipe), ubah ke angka (float)
+    if (k === 'k') {
+        arr[idx][k] = v;
+    } else {
+        arr[idx][k] = parseFloat(v) || 0;
+    }
+
+    // 3. Tandai sebagai belum tersinkron (warna kuning)
+    arr[idx].s = 'unsync'; 
+    
+    // 4. Simpan ke LocalStorage sementara agar jika refresh mendadak tidak hilang total
+    saveToLocal(); 
+    
+    // 5. Render ulang tabel agar perubahan visual (warna) terlihat
+    renderTable();
 }
 
         function updateCoord(key, val) {
