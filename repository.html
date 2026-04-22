@@ -188,9 +188,39 @@
             ]}
         };
 
-        let rainDB = JSON.parse(localStorage.getItem('sda_rainDB')) || DEFAULT_RAIN;
-        let catalogDB = JSON.parse(localStorage.getItem('sda_catalogDB')) || DEFAULT_CATALOG;
-        let coefDB = JSON.parse(localStorage.getItem('sda_coefDB')) || DEFAULT_COEF;
+let rainDB = {}; // Mulai dengan objek kosong
+let catalogDB = JSON.parse(localStorage.getItem('sda_catalogDB')) || DEFAULT_CATALOG;
+let coefDB = JSON.parse(localStorage.getItem('sda_coefDB')) || DEFAULT_COEF;
+
+// FUNGSI BARU: Mengambil data dari repository
+async function fetchRainData() {
+    try {
+        // Cek dulu apakah ada di localStorage (data yang baru kamu edit/simpan)
+        const localData = localStorage.getItem('sda_rainDB');
+        
+        if (localData) {
+            rainDB = JSON.parse(localData);
+            console.log("Menggunakan data dari LocalStorage");
+        } else {
+            // Jika tidak ada di local, ambil dari file json di repository
+            const response = await fetch('data/hujan.json');
+            rainDB = await response.json();
+            console.log("Menggunakan data dari data/hujan.json");
+        }
+        
+        // Setelah data dapat, render tampilan
+        renderSidebar();
+    } catch (err) {
+        console.error("Gagal mengambil data hujan:", err);
+        // Fallback jika file tidak ditemukan
+        rainDB = {}; 
+    }
+}
+
+// Jalankan fungsi fetch saat halaman dimuat
+window.onload = () => {
+    fetchRainData();
+};
 
         let currentMode = 'hujan';
         let currentId = null;
@@ -201,14 +231,21 @@
             localStorage.setItem('sda_coefDB', JSON.stringify(coefDB));
         }
 
-        function switchTab(mode) {
-            currentMode = mode; currentId = null;
-            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
-            document.getElementById('placeholder').style.display = 'flex';
-            document.getElementById('mainEditor').classList.remove('active');
-            renderSidebar();
-        }
+function switchTab(mode) {
+    currentMode = mode; 
+    currentId = null;
+    document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+    document.getElementById('placeholder').style.display = 'flex';
+    document.getElementById('mainEditor').classList.remove('active');
+    
+    // Khusus untuk tab hujan, kita pastikan data sudah ter-fetch
+    if (mode === 'hujan' && Object.keys(rainDB).length === 0) {
+        fetchRainData();
+    } else {
+        renderSidebar();
+    }
+}
 
         function renderSidebar() {
             let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
