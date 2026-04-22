@@ -87,6 +87,16 @@
 
         footer { margin-top: 40px; padding: 20px; text-align: center; border-top: 1px solid rgba(0,0,0,0.05); }
         .footer-text { font-size: 12px; color: #94a3b8; font-weight: 600; }
+
+        /* Tambahkan ini */
+        .animate-spin { 
+            animation: spin 1s linear infinite; 
+            display: inline-block;
+        }
+        @keyframes spin { 
+            from { transform: rotate(0deg); } 
+            to { transform: rotate(360deg); } 
+        }
     </style>
 </head>
 <body>
@@ -412,10 +422,18 @@ function renderTable() {
 
             try {
                 const btn = document.getElementById('btnSync');
-                btn.innerHTML = `MENGIRIM KE SERVER...`; btn.disabled = true;
+                btn.innerHTML = `<i data-lucide="loader-2" class="animate-spin"></i> MENGIRIM KE SERVER...`; btn.disabled = true;
+                lucide.createIcons();
 
                 const getFile = await fetch(url, { headers: { "Authorization": `token ${GH_CONFIG.token}` } });
                 let sha = getFile.ok ? (await getFile.json()).sha : "";
+
+                // --- BAGIAN BARU: BERSIHKAN STATUS 'UNSYNC' SEBELUM KIRIM ---
+                // Agar data yang tersimpan di GitHub bersih (s:'sync')
+                Object.keys(dataToSync).forEach(itemId => {
+                    let arr = (currentMode === 'hujan') ? dataToSync[itemId].d : dataToSync[itemId].data;
+                    if(arr) arr.forEach(row => row.s = 'sync');
+                });
 
                 const update = await fetch(url, {
                     method: "PUT",
@@ -428,13 +446,18 @@ function renderTable() {
                 });
 
                 if (update.ok) {
-                    alert("Berhasil! Data tersimpan di GitHub.");
-                    let arr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-                    arr.forEach(i => i.s = 'sync');
-                    saveToLocal(); renderTable();
+                    alert("BERHASIL! Data tersimpan permanen di GitHub.");
+                    // --- BAGIAN BARU: UPDATE TAMPILAN LOKAL ---
+                    saveToLocal(); // Simpan data bersih ke LocalStorage
+                    renderTable(); // Gambar ulang tabel (jadi hijau semua)
+                } else {
+                    const errorInfo = await update.json();
+                    throw new Error(errorInfo.message);
                 }
-            } catch (err) { alert("Error: " + err.message); }
-            finally {
+            } catch (err) { 
+                alert("GAGAL SINKRONISASI: " + err.message); 
+                console.error(err);
+            } finally {
                 const btn = document.getElementById('btnSync');
                 btn.innerHTML = `SINKRONKAN DATA KE SISTEM <i data-lucide="save"></i>`;
                 btn.disabled = false; lucide.createIcons();
@@ -442,15 +465,23 @@ function renderTable() {
         }
 
         function deleteItem(id) {
-            if(!confirm("Hapus data ini?")) return;
+            if(!confirm("Hapus data ini secara permanen dari daftar lokal?")) return;
+            
             if(currentMode === 'hujan') delete rainDB[id];
             else if(currentMode === 'katalog') delete catalogDB[id];
             else delete coefDB[id];
-            saveToLocal();
-            if(currentId === id) { currentId = null; document.getElementById('mainEditor').classList.remove('active'); document.getElementById('placeholder').style.display = 'flex'; }
+            
+            // --- BAGIAN BARU: PEMBERSIHAN LOKAL LANGSUNG ---
+            saveToLocal(); // Langsung hapus dari LocalStorage browser
+            
+            if(currentId === id) { 
+                currentId = null; 
+                document.getElementById('mainEditor').classList.remove('active'); 
+                document.getElementById('placeholder').style.display = 'flex'; 
+            }
             renderSidebar();
+            alert("Data dihapus dari memori lokal. Klik 'SINKRONKAN' untuk menghapus di server GitHub secara permanen.");
         }
-
         function exportPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
