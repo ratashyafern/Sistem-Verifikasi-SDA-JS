@@ -215,46 +215,54 @@
     // --- 4. ANALISIS HIDROLOGI ---
     let rainChart = null;
     function processHydrology(geojson) {
-        // Luas dalam Hektar (sesuai referensi Ha)
-        const areaHa = turf.area(geojson) / 10000;
-        document.getElementById('area-val').innerText = areaHa.toFixed(2);
+    const areaHa = turf.area(geojson) / 10000;
+    document.getElementById('area-val').innerText = areaHa.toFixed(2);
+    
+    // 1. Ambil SEMUA titik stasiun, bukan cuma yang di dalam
+    const points = turf.featureCollection(STATIONS_LIST.map(st => 
+        turf.point([st.lng, st.lat], { name: st.n })
+    ));
+
+    // 2. Buat Poligon Thiessen (Voronoi) berdasarkan bbox area yang digambar
+    const bbox = turf.bbox(geojson);
+    const options = { bbox: [bbox[0]-0.5, bbox[1]-0.5, bbox[2]+0.5, bbox[3]+0.5] };
+    const voronoiPolygons = turf.voronoi(points, options);
+
+    let found = [];
+    const tBody = document.getElementById('tBody');
+    tBody.innerHTML = "";
+
+    // 3. Iris (Intersect) setiap poligon Thiessen dengan area yang digambar
+    voronoiPolygons.features.forEach((voronoi, index) => {
+        const intersection = turf.intersect(voronoi, geojson);
         
-        let found = [];
-        stationLayer.eachLayer(m => {
-            const pt = turf.point([m.getLatLng().lng, m.getLatLng().lat]);
-            if (turf.booleanPointInPolygon(pt, geojson)) {
-                found.push({
-                    name: m.getTooltip().getContent(),
-                    data: [120, 145, 110, 160, 130] // Simulasi data hujan
-                });
+        if (intersection) {
+            const subAreaHa = turf.area(intersection) / 10000;
+            const weight = subAreaHa / areaHa; // Bobot berdasarkan luas irisan
+            
+            if (subAreaHa > 0.001) { // Hanya ambil yang irisannya signifikan
+                const stName = points.features[index].properties.name;
+                found.push({ name: stName, weight: weight });
+                
+                tBody.innerHTML += `
+                    <tr>
+                        <td>${stName}</td>
+                        <td>${subAreaHa.toFixed(2)}</td>
+                        <td>${weight.toFixed(4)}</td>
+                    </tr>`;
             }
-        });
-
-        const statusBox = document.getElementById('status-display');
-        const tBody = document.getElementById('tBody');
-        tBody.innerHTML = "";
-
-        if (found.length > 0) {
-            statusBox.innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${found.length} Stasiun</div>`;
-            const weight = 1 / found.length;
-            let combined = [0,0,0,0,0];
-
-            found.forEach(st => {
-                tBody.innerHTML += `<tr><td>${st.name}</td><td>${(areaHa * weight).toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
-                st.data.forEach((v, i) => combined[i] += v * weight);
-            });
-
-            renderChart([2020, 2021, 2022, 2023, 2024], combined);
-            document.getElementById('resThiessen').style.display = 'block';
-            document.getElementById('resYearly').style.display = 'block';
-        } else {
-            statusBox.innerHTML = `<div class="status-msg status-error"><i data-lucide="alert-triangle"></i> Stasiun tidak ditemukan dalam area!</div>`;
-            document.getElementById('resThiessen').style.display = 'block';
-            document.getElementById('resYearly').style.display = 'none';
         }
-        lucide.createIcons();
-    }
+    });
 
+    // Update Chart dan Status
+    if (found.length > 0) {
+        document.getElementById('status-display').innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${found.length} Wilayah Pengaruh</div>`;
+        document.getElementById('resThiessen').style.display = 'block';
+        // Hitung data hujan rerata wilayah (Rainfall Area Average)
+        // ... (lanjutkan ke renderChart)
+    }
+    lucide.createIcons();
+}
     function renderChart(labels, data) {
         const ctx = document.getElementById('rainChart').getContext('2d');
         if (rainChart) rainChart.destroy();
