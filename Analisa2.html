@@ -120,7 +120,7 @@
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
 <script>
-    // --- 1. SETUP MAP & LAYERS ---
+   // --- 1. INISIALISASI PETA ---
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
 
@@ -132,23 +132,26 @@
     var thiessenLayer = L.layerGroup().addTo(map);
 
     L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, { 
-        "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area DAS": drawnItems 
+        "Stasiun Hujan": stationLayer, 
+        "Wilayah Pengaruh": thiessenLayer, 
+        "Area DAS": drawnItems 
     }, { collapsed: false, position: 'topright' }).addTo(map);
 
-    // --- 2. CONFIG DIGITASI (BIAR GAK NGINTIL TERUS) ---
+    // --- 2. CONFIG DIGITASI (VERSI SIGAP) ---
     var drawControl = new L.Control.Draw({
         draw: {
             polygon: {
-                allowIntersection: false, // Penting: Menghindari poligon error
+                allowIntersection: false,
                 shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 },
-                showArea: true
+                guidelineDistance: 10,
+                repeatMode: false
             },
             polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
         },
         edit: { featureGroup: drawnItems, remove: true }
     });
 
-    // --- 3. LOGIKA RESET & DATA ---
+    // --- 3. DATA & RESET LOGIC ---
     let RAIN_DATABASE = {}; 
     let rainChart = null;
 
@@ -165,10 +168,14 @@
                     radius: 7, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
                 }).addTo(stationLayer).bindTooltip(st.n, { permanent: true, direction: 'top', className: 'stasiun-label', offset: [0,-10] });
             });
-        } catch (err) { console.error("Database Gagal Dimuat:", err); }
+            console.log("✅ Data Stasiun Berhasil Terkoneksi!");
+        } catch (err) { 
+            console.error("❌ Gagal load data:", err); 
+            alert("Koneksi data stasiun terputus!");
+        }
     }
 
-    function clearAnalysis() {
+    function resetOutput() {
         drawnItems.clearLayers();
         thiessenLayer.clearLayers();
         document.getElementById('area-val').innerText = "0.00";
@@ -177,49 +184,59 @@
         if (rainChart) rainChart.destroy();
     }
 
-    // --- 4. EVENT: KETIKA DIGITASI SELESAI ---
+    // --- 4. EVENT SAAT POLIGON SELESAI (CLICK FIRST POINT) ---
     map.on(L.Draw.Event.CREATED, function (e) {
-        clearAnalysis(); // Bersihkan yang lama
+        resetOutput();
         var layer = e.layer;
         drawnItems.addLayer(layer);
         
-        // Langsung lempar ke fungsi hitung
-        processHydrology(layer.toGeoJSON());
+        // Jeda 100ms agar poligon benar-benar terkunci sempurna sebelum dihitung
+        setTimeout(() => {
+            processHydrology(layer.toGeoJSON());
+        }, 100);
     });
 
-    // --- 5. PERHITUNGAN HIDROLOGI (KONEKSI KE GRAFIK) ---
+    // --- 5. PERHITUNGAN HIDROLOGI & THIESSEN ---
     function processHydrology(geojson) {
         const areaHa = turf.area(geojson) / 10000;
         document.getElementById('area-val').innerText = areaHa.toFixed(2);
 
+        // Kumpulkan titik stasiun
         const points = turf.featureCollection(
             Object.keys(RAIN_DATABASE).map(id => {
-                return turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { name: RAIN_DATABASE[id].n, id: id });
+                return turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { 
+                    name: RAIN_DATABASE[id].n, 
+                    id: id 
+                });
             })
         );
 
-        // Buat Thiessen otomatis dari area yang digambar
-        const bbox = [106.6, -6.45, 107.0, -6.0]; 
+        // BBox diperluas (Mencakup Jabodetabek agar tidak terpotong)
+        const bbox = [106.5, -6.5, 107.1, -5.9]; 
         const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
 
         let foundStations = [];
         const tBody = document.getElementById('tBody');
         tBody.innerHTML = "";
-        const palette = ["#2ecc71", "#3498db", "#e74c3c", "#f1c40f", "#9b59b6"];
+        const palette = ["#2ecc71", "#3498db", "#e74c3c", "#f1c40f", "#9b59b6", "#1abc9c", "#e67e22"];
 
         voronoiPolygons.features.forEach((cell, i) => {
+            // Logika pemotongan area (Intersection)
             const intersect = turf.intersect(cell, geojson);
             if (intersect) {
                 const subAreaHa = turf.area(intersect) / 10000;
-                if (subAreaHa > 0.05) {
+                if (subAreaHa > 0.01) {
                     const weight = subAreaHa / areaHa;
-                    foundStations.push({ id: cell.properties.site.id, weight: weight });
+                    const properties = cell.properties.site; // Ambil data stasiun dari properti voronoi
 
+                    foundStations.push({ id: properties.id, weight: weight });
+
+                    // Gambar poligon Thiessen di dalam DAS
                     L.geoJSON(intersect, {
                         style: { fillColor: palette[i % palette.length], fillOpacity: 0.5, color: "white", weight: 2 }
                     }).addTo(thiessenLayer);
 
-                    tBody.innerHTML += `<tr><td>${cell.properties.site.name}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+                    tBody.innerHTML += `<tr><td>${properties.name}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
                 }
             }
         });
@@ -227,9 +244,12 @@
         if (foundStations.length > 0) {
             calculateRegionalRain(foundStations);
             document.getElementById('resThiessen').style.display = 'block';
+            document.getElementById('status-display').innerHTML = `<div class="status-msg status-ok">Terdeteksi ${foundStations.length} Wilayah Stasiun</div>`;
         }
+        lucide.createIcons();
     }
 
+    // --- 6. HITUNG HUJAN RERATA ---
     function calculateRegionalRain(foundStations) {
         const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
         let regionalResults = [];
@@ -262,7 +282,7 @@
         });
     }
 
-    // --- 6. UI CONTROLS ---
+    // --- 7. UI MODE ---
     function setMode(mode) {
         document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
         if(mode === 'draw') {
@@ -271,10 +291,15 @@
             map.addControl(drawControl);
         } else {
             map.removeControl(drawControl);
+            document.getElementById('draw-section').style.display = 'none';
         }
     }
 
-    window.onload = async () => { await loadStationData(); lucide.createIcons(); };
+    window.onload = async () => { 
+        await loadStationData(); 
+        initSystem(); // Memanggil fungsi init dari kode HTML utama
+        lucide.createIcons(); 
+    };
 </script>
 </body>
 </html>
