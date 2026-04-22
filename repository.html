@@ -448,17 +448,60 @@
         }
 
         function exportPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const title = document.getElementById('activeTitle').innerText;
-            doc.text(`DATA REPOSITORY - ${title}`, 14, 20);
-            const table = document.getElementById('dataTable');
-            doc.autoTable({ html: '#dataTable', startY: 30, didParseCell: (data) => {
-                const input = data.cell.raw.querySelector('input');
-                if (input) data.cell.text = [input.value];
-            }});
-            doc.save(`Data_${title}.pdf`);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const title = document.getElementById('activeTitle').innerText;
+    
+    // Header teks di atas tabel (seperti di gambar)
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text(`DATA REPOSITORY - SUDIN SDA JAKSEL`, 14, 20);
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100);
+    doc.text(`Kategori: ${title.toUpperCase()}`, 14, 30);
+    doc.text(`Tanggal: ${new Date().toLocaleString('id-ID')}`, 14, 38);
+
+    const table = document.getElementById('dataTable');
+    
+    doc.autoTable({
+        html: '#dataTable',
+        startY: 45,
+        theme: 'grid', // Memberikan garis tepi seperti di gambar
+        headStyles: {
+            fillColor: [30, 43, 74], // Warna biru tua (var --primary)
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            halign: 'left'
+        },
+        bodyStyles: {
+            textColor: [50, 50, 50],
+            fontSize: 10
+        },
+        alternateRowStyles: {
+            fillColor: [250, 250, 250] // Warna selang-seling tipis
+        },
+        styles: {
+            lineColor: [200, 200, 200], // Warna garis tabel tipis
+            lineWidth: 0.1,
+        },
+        didParseCell: (data) => {
+            // Mengambil nilai dari input field agar tidak muncul sebagai elemen HTML kosong di PDF
+            const input = data.cell.raw.querySelector('input');
+            if (input) {
+                data.cell.text = [input.value];
+            }
+            
+            // Opsional: Hilangkan kolom aksi di PDF jika tidak diperlukan
+            if (data.column.index === 3 && data.section === 'head') {
+                // Kamu bisa mengosongkan teks kolom "Aksi" jika mau
+            }
         }
+    });
+
+    doc.save(`Data_${title}.pdf`);
+}
         
         switchTab('hujan');
     </script>
