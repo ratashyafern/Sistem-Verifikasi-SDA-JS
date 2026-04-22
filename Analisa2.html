@@ -138,11 +138,16 @@
         "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems 
     }, { collapsed: false, position: 'topright' }).addTo(map);
 
+    // Toolbar gambar (Leaflet Draw)
     var drawControl = new L.Control.Draw({
-        draw: { polygon: { shapeOptions: { color: '#2f80ed' } }, polyline:false, circle:false, rectangle:false, marker:false, circlemarker:false }
+        edit: { featureGroup: drawnItems, remove: true },
+        draw: { 
+            polygon: { shapeOptions: { color: '#2f80ed', fillOpacity: 0.3 }, allowIntersection: false, drawError: { color: '#e1e1e1', message: 'Tidak boleh berpotongan!' } },
+            polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false 
+        }
     });
 
-    // --- 2. DATA & INITIALIZATION ---
+    // --- 2. DATA STASIUN & RESET ---
     let RAIN_DATABASE = {}; 
 
     async function loadStationData() {
@@ -159,22 +164,28 @@
                 }).addTo(stationLayer)
                 .bindTooltip(st.n, { permanent: true, direction: 'top', className: 'stasiun-label', offset: [0,-10] });
             });
-            console.log("Database Stasiun Berhasil Dimuat");
+            console.log("Database Hujan Terkoneksi!");
         } catch (err) {
-            console.error("Gagal mengambil data stasiun:", err);
+            console.error("Gagal sinkronisasi data:", err);
         }
+    }
+
+    function clearAnalysis() {
+        drawnItems.clearLayers();
+        thiessenLayer.clearLayers();
+        document.getElementById('area-val').innerText = "0.00";
+        document.getElementById('resThiessen').style.display = 'none';
+        document.getElementById('resYearly').style.display = 'none';
+        document.getElementById('status-display').innerHTML = "";
+        if (rainChart) rainChart.destroy();
     }
 
     function initSystem() {
-        if (typeof dataMikro !== 'undefined') {
-            L.geoJSON(dataMikro, { style: { color: '#06b6d4', weight: 2.5, opacity: 0.8 } }).addTo(layerMikro);
-        }
-        if (typeof dataPHB !== 'undefined') {
-            L.geoJSON(dataPHB, { style: { color: '#1d4ed8', weight: 4.5, opacity: 1 } }).addTo(layerPHB);
-        }
+        if (typeof dataMikro !== 'undefined') L.geoJSON(dataMikro, { style: { color: '#06b6d4', weight: 2.5, opacity: 0.8 } }).addTo(layerMikro);
+        if (typeof dataPHB !== 'undefined') L.geoJSON(dataPHB, { style: { color: '#1d4ed8', weight: 4.5, opacity: 1 } }).addTo(layerPHB);
     }
 
-    // --- 3. UI CONTROLS ---
+    // --- 3. UI MODE ---
     function setMode(mode) {
         document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
         document.getElementById('upload-section').style.display = 'none';
@@ -191,22 +202,7 @@
         }
     }
 
-    document.getElementById('fKML').onchange = (e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const parser = new DOMParser();
-            const kml = parser.parseFromString(ev.target.result, 'text/xml');
-            const converted = toGeoJSON.kml(kml);
-            drawnItems.clearLayers();
-            const gLayer = L.geoJSON(converted, { style: { color: '#1c2b4a', weight: 2 } }).addTo(drawnItems);
-            map.fitBounds(gLayer.getBounds());
-            processHydrology(converted.features[0]);
-        };
-        reader.readAsText(file);
-    };
-
-    // --- 4. CORE ANALYSIS LOGIC ---
+    // --- 4. ANALISIS HIDROLOGI ---
     let rainChart = null;
 
     function processHydrology(geojson) {
@@ -233,10 +229,10 @@
             if (intersect) {
                 const subAreaHa = turf.area(intersect) / 10000;
                 if (subAreaHa > 0.01) {
+                    const weight = subAreaHa / areaHa;
                     const stName = cell.properties.site.name;
                     const stId = cell.properties.site.id;
-                    const weight = subAreaHa / areaHa;
-                    foundStations.push({ id: stId, name: stName, weight: weight });
+                    foundStations.push({ id: stId, weight: weight });
 
                     L.geoJSON(intersect, {
                         style: { fillColor: palette[i % palette.length], fillOpacity: 0.5, color: "white", weight: 2 }
@@ -247,14 +243,12 @@
             }
         });
 
-        const statusBox = document.getElementById('status-display');
         if (foundStations.length > 0) {
             calculateRegionalRain(foundStations);
             document.getElementById('resThiessen').style.display = 'block';
-            statusBox.innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${foundStations.length} Wilayah Stasiun</div>`;
+            document.getElementById('status-display').innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${foundStations.length} Stasiun</div>`;
         } else {
-            statusBox.innerHTML = `<div class="status-msg status-error"><i data-lucide="alert-triangle"></i> Stasiun tidak ditemukan!</div>`;
-            document.getElementById('resYearly').style.display = 'none';
+            document.getElementById('status-display').innerHTML = `<div class="status-msg status-error"><i data-lucide="alert-triangle"></i> Stasiun tidak ditemukan!</div>`;
         }
         lucide.createIcons();
     }
@@ -271,7 +265,7 @@
                 const rainVal = dataPoint ? parseFloat(dataPoint.v) : 0;
                 totalRainYear += rainVal * st.weight;
             });
-            regionalResults.push(totalRainYear.toFixed(2));
+            regionalResults.push(parseFloat(totalRainYear).toFixed(2));
         });
 
         renderChart(years, regionalResults);
@@ -287,15 +281,36 @@
                 labels: labels,
                 datasets: [{ label: 'Hujan (mm)', data: data, borderColor: '#2f80ed', backgroundColor: 'rgba(47,128,237,0.1)', fill: true, tension: 0.4 }]
             },
-            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            options: { 
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
         });
     }
 
-    map.on(L.Draw.Event.CREATED, (e) => {
-        drawnItems.clearLayers();
+    // --- 5. EVENT HANDLERS ---
+    map.on(L.Draw.Event.CREATED, function (e) {
+        clearAnalysis();
         drawnItems.addLayer(e.layer);
         processHydrology(e.layer.toGeoJSON());
     });
+
+    document.getElementById('fKML').onchange = (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const parser = new DOMParser();
+            const kml = parser.parseFromString(ev.target.result, 'text/xml');
+            const converted = toGeoJSON.kml(kml);
+            clearAnalysis();
+            const gLayer = L.geoJSON(converted, { style: { color: '#1c2b4a', weight: 2 } }).addTo(drawnItems);
+            map.fitBounds(gLayer.getBounds());
+            processHydrology(converted.features[0]);
+        };
+        reader.readAsText(file);
+    };
 
     window.onload = async () => { 
         initSystem(); 
