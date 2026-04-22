@@ -141,289 +141,343 @@
     <footer><p class="footer-text">© 2026 Seksi Perencanaan - Sudin SDA Jakarta Selatan</p></footer>
 
     <script>
-    // --- DATA MASTER ---
-    let rainDB = {}; 
-    let catalogDB = {}; 
-    let coefDB = {};
-    let currentMode = 'hujan';
-    let currentId = null;
+        // --- DATA MASTER ---
+        // Data default kini dikosongkan karena sistem akan memprioritaskan 
+        // tarikan data dari GitHub (hujan.json, precast.json, koefisien.json)
+        const DEFAULT_RAIN = {};
+        const DEFAULT_CATALOG = {};
+        const DEFAULT_COEF = {};
 
-    // --- KONFIGURASI KEAMANAN ---
-    const P1 = "ghp_vLcAZDzdpMVH0FaYC"; 
-    const P2 = "P3T2X0X7iDrOY2vULUS";
+// --- KONFIGURASI KEAMANAN (PECAH TOKEN) ---
+        const P1 = "ghp_vLcAZDzdpMVH0FaYC"; 
+        const P2 = "P3T2X0X7iDrOY2vULUS";
 
-    const GH_CONFIG = {
-        token: P1 + P2,
-        owner: "ratashyafern",
-        repo: "Sistem-Verifikasi-SDA-JS",
-        branch: "main"
-    };
+        const GH_CONFIG = {
+            token: P1 + P2,
+            owner: "ratashyafern",
+            repo: "Sistem-Verifikasi-SDA-JS",
+            branch: "main"
+        };
 
-    // --- 1. FUNGSI LOAD (DIPERBAIKI) ---
-    async function loadDatabase(key, fileName) {
-        const path = `data/${fileName}`;
-        const url = `https://raw.githubusercontent.com/${GH_CONFIG.owner}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${path}?t=${Date.now()}`;
-        
-        try {
-            const response = await fetch(url);
-            if (!response.ok) return {};
-            const data = await response.json();
+        let rainDB = {}; 
+        let catalogDB = {}; 
+        let coefDB = {};
+
+        async function loadDatabase(key, fileName) {
+            const path = `data/${fileName}`;
+            const url = `https://raw.githubusercontent.com/${GH_CONFIG.owner}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${path}?t=${Date.now()}`;
             
-            // CRITICAL: Saat data baru datang dari GitHub, pastikan statusnya 'sync'
-            Object.keys(data).forEach(id => {
-                let items = (fileName === 'hujan.json') ? data[id].d : data[id].data;
-                if(items && Array.isArray(items)) {
-                    items.forEach(item => { if(typeof item === 'object') item.s = 'sync'; });
-                }
-            });
-            return data;
-        } catch (err) {
-            console.warn(`Gagal ambil ${fileName}, ambil dari LocalStorage...`);
-            const local = localStorage.getItem(key);
-            return local ? JSON.parse(local) : {}; 
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("File tidak ditemukan");
+                return await response.json();
+            } catch (err) {
+                console.warn(`Gagal ambil ${fileName}, cek LocalStorage...`);
+                const local = localStorage.getItem(key);
+                return local ? JSON.parse(local) : {}; 
+            }
         }
-    }
 
-    async function initializeApp() {
-        console.log("Sinkronisasi Sistem...");
-        const [hujan, katalog, koef] = await Promise.all([
-            loadDatabase('sda_rainDB', 'hujan.json'),
-            loadDatabase('sda_catalogDB', 'precast.json'),
-            loadDatabase('sda_coefDB', 'koefisien.json')
-        ]);
-        
-        rainDB = hujan; 
-        catalogDB = katalog; 
-        coefDB = koef;
-        
-        saveToLocal(); // Simpan keadaan 'sync' ke local
-        renderSidebar();
-    }
+        async function initializeApp() {
+            console.log("Sinkronisasi Sistem...");
+            const [hujan, katalog, koef] = await Promise.all([
+                loadDatabase('sda_rainDB', 'hujan.json'),
+                loadDatabase('sda_catalogDB', 'precast.json'),
+                loadDatabase('sda_coefDB', 'koefisien.json')
+            ]);
+            rainDB = hujan; catalogDB = katalog; coefDB = koef;
+            renderSidebar();
+        }
 
-    window.onload = initializeApp;
+        window.onload = initializeApp;
 
-    function saveToLocal() {
+        let currentMode = 'hujan';
+        let currentId = null;
+
+function saveToLocal() {
+    // Simpan secara spesifik agar tidak menimpa data yang tidak sedang diedit
+    if (currentMode === 'hujan') {
         localStorage.setItem('sda_rainDB', JSON.stringify(rainDB));
+    } else if (currentMode === 'katalog') {
         localStorage.setItem('sda_catalogDB', JSON.stringify(catalogDB));
+    } else if (currentMode === 'koefisien') {
         localStorage.setItem('sda_coefDB', JSON.stringify(coefDB));
     }
+}
 
-    function switchTab(mode) {
-        currentMode = mode; 
-        currentId = null;
-        document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
-        const tabMap = { 'hujan': 'tabHujan', 'katalog': 'tabKatalog', 'koefisien': 'tabKoefisien' };
-        document.getElementById(tabMap[mode]).classList.add('active');
-        document.getElementById('placeholder').style.display = 'flex';
-        document.getElementById('mainEditor').classList.remove('active');
+function switchTab(mode) {
+    currentMode = mode; 
+    currentId = null;
+    document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+    document.getElementById('placeholder').style.display = 'flex';
+    document.getElementById('mainEditor').classList.remove('active');
+    
+    // Khusus untuk tab hujan, kita pastikan data sudah ter-fetch
+    if (mode === 'hujan' && Object.keys(rainDB).length === 0) {
+        fetchRainData();
+    } else {
         renderSidebar();
     }
+}
 
-    function renderSidebar() {
-        let db = (currentMode === 'hujan') ? rainDB : (currentMode === 'katalog') ? catalogDB : coefDB;
-        document.getElementById('sideLabel').innerText = currentMode === 'hujan' ? "Stasiun Hujan" : (currentMode === 'katalog' ? "Katalog Precast" : "Parameter Teknis");
-        const list = document.getElementById('itemList');
-        list.innerHTML = "";
-        Object.keys(db).forEach(id => {
-            const item = document.createElement('div');
-            item.className = 'st-item' + (currentId === id ? ' active' : '');
-            item.onclick = (e) => { if(!e.target.closest('.btn-del-st')) selectItem(id); };
-            item.innerHTML = `<div><h4>${db[id].n}</h4><span>${db[id].type || 'DATABASE'}</span></div>
-                              <div class="btn-del-st" onclick="deleteItem('${id}')"><i data-lucide="trash-2" size="14"></i></div>`;
-            list.appendChild(item);
-        });
-        lucide.createIcons();
-    }
-
-    function selectItem(id) {
-        currentId = id;
-        document.getElementById('placeholder').style.display = 'none';
-        document.getElementById('mainEditor').classList.add('active');
-        let db = (currentMode === 'hujan') ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
-        document.getElementById('activeTitle').innerText = db[id].n;
-        const sub = document.getElementById('subtitleContainer');
-        if(currentMode === 'hujan') {
-            sub.innerHTML = `<div class="coord-input-group">
-                <label>LAT <input type="number" step="0.0001" class="small-input" value="${db[id].lat}" oninput="updateCoord('lat', this.value)"></label>
-                <label>LNG <input type="number" step="0.0001" class="small-input" value="${db[id].lng}" oninput="updateCoord('lng', this.value)"></label>
-            </div>`;
-        } else {
-            sub.innerHTML = `<p style="color:#64748b; font-size:14px; font-weight:600; text-transform:uppercase;">${db[id].type}</p>`;
-        }
-        renderTable();
-        renderSidebar();
-    }
-
-    function renderTable() {
-        const thead = document.getElementById('tableHead');
-        const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = ""; let hasUnsync = false;
-        let db = (currentMode === 'hujan') ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
-        if(!db[currentId]) return;
-
-        if(currentMode === 'hujan') {
-            thead.innerHTML = `<tr><th>Tahun</th><th>Hujan Maks (mm)</th><th>Status</th><th>Aksi</th></tr>`;
-            db[currentId].d.forEach((item, idx) => {
-                const s = item.s || 'sync'; if(s === 'unsync') hasUnsync = true;
-                tbody.innerHTML += `<tr>
-                    <td><input type="number" class="input-val" value="${item.y}" onchange="updateVal(${idx},'y',this.value)"></td>
-                    <td><input type="number" step="0.1" class="input-val ${s==='unsync'?'unsync':''}" value="${item.v}" oninput="updateVal(${idx},'v',this.value)"></td>
-                    <td><span class="badge badge-${s}">${s.toUpperCase()}</span></td>
-                    <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
-                </tr>`;
+        function renderSidebar() {
+            let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
+            document.getElementById('sideLabel').innerText = currentMode === 'hujan' ? "Stasiun Hujan" : (currentMode === 'katalog' ? "Katalog Precast" : "Parameter Teknis");
+            const list = document.getElementById('itemList');
+            list.innerHTML = "";
+            Object.keys(db).forEach(id => {
+                const item = document.createElement('div');
+                item.className = 'st-item' + (currentId === id ? ' active' : '');
+                item.onclick = (e) => { if(!e.target.closest('.btn-del-st')) selectItem(id); };
+                item.innerHTML = `<div><h4>${db[id].n}</h4><span>${db[id].type || 'DATABASE'}</span></div>
+                                  <div class="btn-del-st" onclick="deleteItem('${id}')"><i data-lucide="trash-2" size="14"></i></div>`;
+                list.appendChild(item);
             });
-        } else if(currentMode === 'katalog') {
-            thead.innerHTML = `<tr><th>Tipe</th><th>Lebar B (m)</th><th>Tinggi H (m)</th><th>Status</th><th>Aksi</th></tr>`;
-            db[currentId].data.forEach((item, idx) => {
-                const s = item.s || 'sync'; if(s === 'unsync') hasUnsync = true;
-                tbody.innerHTML += `<tr>
-                    <td><input type="text" class="input-val" value="${item.k}" onchange="updateVal(${idx},'k',this.value)"></td>
-                    <td><input type="number" step="0.01" class="input-val ${s==='unsync'?'unsync':''}" value="${item.b}" oninput="updateVal(${idx},'b',this.value)"></td>
-                    <td><input type="number" step="0.01" class="input-val ${s==='unsync'?'unsync':''}" value="${item.h}" oninput="updateVal(${idx},'h',this.value)"></td>
-                    <td><span class="badge badge-${s}">${s.toUpperCase()}</span></td>
-                    <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
-                </tr>`;
-            });
-        } else if(currentMode === 'koefisien') {
-            thead.innerHTML = `<tr><th>Parameter</th><th>Nilai</th><th>Status</th><th>Aksi</th></tr>`;
-            db[currentId].data.forEach((item, idx) => {
-                const s = item.s || 'sync'; if(s === 'unsync') hasUnsync = true;
-                tbody.innerHTML += `<tr>
-                    <td><input type="text" class="input-val" value="${item.k}" onchange="updateVal(${idx},'k',this.value)"></td>
-                    <td><input type="number" step="0.001" class="input-val ${s==='unsync'?'unsync':''}" value="${item.v}" oninput="updateVal(${idx},'v',this.value)"></td>
-                    <td><span class="badge badge-${s}">${s.toUpperCase()}</span></td>
-                    <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
-                </tr>`;
-            });
+            lucide.createIcons();
         }
-        document.getElementById('btnExport').disabled = hasUnsync;
-        lucide.createIcons();
-    }
 
-    // --- 2. FUNGSI UPDATE NILAI (FIXED STUCK 0) ---
-    function updateVal(idx, key, val) {
-        let dataArr;
-        if (currentMode === 'hujan') dataArr = rainDB[currentId].d;
-        else if (currentMode === 'katalog') dataArr = catalogDB[currentId].data;
-        else dataArr = coefDB[currentId].data;
-
-        // Izinkan input kosong sementara saat mengetik agar tidak langsung loncat ke 0
-        if (val === "") {
-            dataArr[idx][key] = ""; 
-        } else {
-            dataArr[idx][key] = (key === 'k') ? val : parseFloat(val);
+        function selectItem(id) {
+            currentId = id;
+            document.getElementById('placeholder').style.display = 'none';
+            document.getElementById('mainEditor').classList.add('active');
+            
+            let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
+            const item = db[id];
+            document.getElementById('activeTitle').innerText = item.n;
+            
+            const subContainer = document.getElementById('subtitleContainer');
+            if(currentMode === 'hujan') {
+                subContainer.innerHTML = `
+                    <div class="coord-input-group">
+                        <label>LAT <input type="number" step="0.0001" class="small-input" value="${item.lat}" oninput="updateCoord('lat', this.value)"></label>
+                        <label>LNG <input type="number" step="0.0001" class="small-input" value="${item.lng}" oninput="updateCoord('lng', this.value)"></label>
+                    </div>`;
+            } else {
+                subContainer.innerHTML = `<p style="color: #64748b; font-size: 14px; font-weight: 600; text-transform:uppercase;">${item.type}</p>`;
+            }
+            renderTable();
+            renderSidebar();
         }
+
+function renderTable() {
+    const thead = document.getElementById('tableHead');
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = "";
+    let hasUnsync = false;
+
+    if (currentMode === 'hujan') {
+        thead.innerHTML = `<tr><th>Urutan/Tahun</th><th>Hujan Maks (mm)</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
         
-        dataArr[idx].s = 'unsync'; 
-        saveToLocal();
-        renderTable(); 
-    }
-
-    function updateCoord(key, val) {
-        rainDB[currentId][key] = parseFloat(val || 0);
-        rainDB[currentId].d.forEach(i => i.s = 'unsync');
-        saveToLocal();
-        renderTable();
-    }
-
-    function addItem() {
-        let n = prompt("Nama Item Baru:"); if(!n) return;
-        let t = prompt("Sumber/Standar:", "DATABASE");
-        let id = "item_" + Date.now();
-        if(currentMode === 'hujan') rainDB[id] = {n:n.toUpperCase(), lat:0, lng:0, type:t.toUpperCase(), d:[]};
-        else if(currentMode === 'katalog') catalogDB[id] = {n:n, type:t.toUpperCase(), data:[]};
-        else coefDB[id] = {n:n, type:t.toUpperCase(), data:[]};
-        saveToLocal(); renderSidebar(); selectItem(id);
-    }
-
-    function addNewRow() {
-        if(!currentId) return;
-        let arr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-        if(currentMode === 'hujan') arr.push({y:new Date().getFullYear(), v:0, s:'unsync'});
-        else if(currentMode === 'katalog') arr.push({k:"Tipe Baru", b:0, h:0, s:'unsync'});
-        else arr.push({k:"Parameter Baru", v:0, s:'unsync'});
-        saveToLocal(); renderTable();
-    }
-
-    function deleteRow(idx) {
-        let arr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-        arr.splice(idx, 1); saveToLocal(); renderTable();
-    }
-
-    async function syncAll() {
-        if (!currentId) return;
-        let fileName = (currentMode === 'hujan') ? "hujan.json" : (currentMode === 'katalog') ? "precast.json" : "koefisien.json";
-        let dataToSync = (currentMode === 'hujan') ? rainDB : (currentMode === 'katalog') ? catalogDB : coefDB;
-
-        const path = `data/${fileName}`;
-        const url = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${path}`;
-
-        try {
-            const btn = document.getElementById('btnSync');
-            btn.innerHTML = `MENGIRIM KE SERVER...`; btn.disabled = true;
-
-            const getFile = await fetch(url, { headers: { "Authorization": `token ${GH_CONFIG.token}` } });
-            let sha = getFile.ok ? (await getFile.json()).sha : "";
-
-            const update = await fetch(url, {
-                method: "PUT",
-                headers: { "Authorization": `token ${GH_CONFIG.token}`, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    message: `Update ${fileName} via Digital Verification`,
-                    content: btoa(unescape(encodeURIComponent(JSON.stringify(dataToSync, null, 2)))),
-                    sha: sha
-                })
-            });
-
-            if (update.ok) {
-                alert("Berhasil! Data tersimpan di GitHub.");
-                let arr = (currentMode === 'hujan') ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-                arr.forEach(i => i.s = 'sync');
-                saveToLocal(); renderTable();
+        rainDB[currentId].d.forEach((item, idx) => {
+            let year, value, status;
+            if (typeof item === 'object') {
+                year = item.y; value = item.v; status = item.s;
+            } else {
+                year = 2014 + idx; value = item; status = 'sync';
             }
-        } catch (err) { alert("Error: " + err.message); }
-        finally {
-            const btn = document.getElementById('btnSync');
-            btn.innerHTML = `SINKRONKAN DATA KE SISTEM <i data-lucide="save"></i>`;
-            btn.disabled = false; lucide.createIcons();
-        }
-    }
 
-    function deleteItem(id) {
-        if(!confirm("Hapus data ini?")) return;
-        if(currentMode === 'hujan') delete rainDB[id];
-        else if(currentMode === 'katalog') delete catalogDB[id];
-        else delete coefDB[id];
-        saveToLocal();
-        if(currentId === id) { currentId = null; document.getElementById('mainEditor').classList.remove('active'); document.getElementById('placeholder').style.display = 'flex'; }
-        renderSidebar();
-    }
-
-    function exportPDF() {
-        const { jsPDF } = window.jspdf; const doc = new jsPDF();
-        const title = document.getElementById('activeTitle').innerText;
-        doc.setFontSize(18); doc.setTextColor(30, 43, 74);
-        doc.text("DATA REPOSITORY - SUDIN SDA JAKSEL", 14, 20);
-        doc.setFontSize(11); doc.setTextColor(100, 116, 139);
-        doc.text(`Kategori: ${title}`, 14, 30);
-        const table = document.getElementById('dataTable');
-        const rows = []; const headers = [];
-        const headerCells = table.querySelectorAll('thead th');
-        for (let i = 0; i < headerCells.length - 1; i++) headers.push(headerCells[i].innerText);
-        const bodyRows = table.querySelectorAll('tbody tr');
-        bodyRows.forEach(row => {
-            const rowData = []; const cells = row.querySelectorAll('td');
-            for (let i = 0; i < cells.length - 1; i++) {
-                const input = cells[i].querySelector('input');
-                rowData.push(input ? input.value : cells[i].innerText);
-            }
-            rows.push(rowData);
+            if(status === 'unsync') hasUnsync = true;
+            
+            tbody.innerHTML += `<tr>
+                <td><input type="number" class="input-val" value="${year}" onchange="updateVal(${idx}, 'y', this.value)"></td>
+                <td><input type="number" step="0.1" class="input-val ${status==='unsync'?'unsync':''}" value="${value}" oninput="updateVal(${idx}, 'v', this.value)"></td>
+                <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
+                <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+            </tr>`;
         });
-        doc.autoTable({ head: [headers], body: rows, startY: 45, theme: 'grid', headStyles: { fillColor: [30, 43, 74] } });
-        doc.save(`SDA_Data_${title.replace(/\s+/g, '_')}.pdf`);
+    } 
+    // --- TAMBAHKAN/GANTI BAGIAN INI ---
+    else if (currentMode === 'katalog') {
+        thead.innerHTML = `<tr><th>Tipe Material</th><th>Lebar B (m)</th><th>Tinggi H (m)</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
+        
+        catalogDB[currentId].data.forEach((item, idx) => {
+            const status = item.s || 'sync';
+            if(status === 'unsync') hasUnsync = true;
+
+            tbody.innerHTML += `<tr>
+                <td><input type="text" class="input-val" value="${item.k}" onchange="updateVal(${idx}, 'k', this.value)"></td>
+                <td><input type="number" step="0.01" class="input-val" value="${item.b}" oninput="updateVal(${idx}, 'b', this.value)"></td>
+                <td><input type="number" step="0.01" class="input-val" value="${item.h}" oninput="updateVal(${idx}, 'h', this.value)"></td>
+                <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
+                <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+            </tr>`;
+        });
+    } else if (currentMode === 'koefisien') {
+        thead.innerHTML = `<tr><th>Parameter</th><th>Nilai Koefisien</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
+        
+        coefDB[currentId].data.forEach((item, idx) => {
+            const status = item.s || 'sync';
+            if(status === 'unsync') hasUnsync = true;
+
+            tbody.innerHTML += `<tr>
+                <td><input type="text" class="input-val" value="${item.k}" onchange="updateVal(${idx}, 'k', this.value)"></td>
+                <td><input type="number" step="0.001" class="input-val" value="${item.v}" oninput="updateVal(${idx}, 'v', this.value)"></td>
+                <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
+                <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
+            </tr>`;
+        });
     }
 
-    switchTab('hujan');
-</script>
+    document.getElementById('btnExport').disabled = hasUnsync;
+    lucide.createIcons();
+}
+        function updateVal(idx, key, val) {
+    let dataArr;
+    if (currentMode === 'hujan') dataArr = rainDB[currentId].d;
+    else if (currentMode === 'katalog') dataArr = catalogDB[currentId].data;
+    else dataArr = coefDB[currentId].data;
+
+    // Simpan nilai baru (konversi ke angka jika bukan kolom teks 'k')
+    dataArr[idx][key] = (key === 'k') ? val : parseFloat(val || 0);
+    
+    // Beri tanda data berubah (warna kuning)
+    dataArr[idx].s = 'unsync'; 
+    renderTable(); 
+}
+
+        function updateCoord(key, val) {
+            rainDB[currentId][key] = parseFloat(val || 0);
+            rainDB[currentId].d.forEach(i => i.s = 'unsync');
+            renderTable();
+        }
+
+        // PERBAIKAN: Input cerdas sesuai tab aktif
+        function addItem() {
+            let promptText, placeholder, typeDefault;
+            
+            if (currentMode === 'hujan') {
+                promptText = "Masukkan Nama Stasiun Hujan:";
+                placeholder = "CONTOH: STASIUN PONDOK INDAH";
+                typeDefault = "DATABASE BMKG";
+            } else if (currentMode === 'katalog') {
+                promptText = "Masukkan Nama Material Precast:";
+                placeholder = "CONTOH: U-DITCH HEAVY DUTY";
+                typeDefault = "PABRIKASI";
+            } else {
+                promptText = "Masukkan Nama Kelompok Koefisien:";
+                placeholder = "CONTOH: KOEFISIEN PENGALIRAN (C)";
+                typeDefault = "SNI 2415:2016";
+            }
+
+            let n = prompt(promptText, placeholder);
+            if (!n || n === placeholder) return;
+
+            let typeDesc = prompt("Keterangan Sumber/Standar:", typeDefault);
+            let id = "item_" + Date.now();
+
+            if (currentMode === 'hujan') {
+                rainDB[id] = { n: n.toUpperCase(), lat: 0, lng: 0, type: typeDesc.toUpperCase(), d: [] };
+            } else if (currentMode === 'katalog') {
+                catalogDB[id] = { n: n, type: typeDesc.toUpperCase(), data: [] };
+            } else {
+                coefDB[id] = { n: n, type: typeDesc.toUpperCase(), data: [] };
+            }
+
+            saveToLocal();
+            renderSidebar();
+            selectItem(id);
+        }
+
+        // PERBAIKAN: Tambah baris otomatis terisi data awal
+        function addNewRow() {
+            if (!currentId) return;
+            let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
+            
+            if (currentMode === 'hujan') {
+                dataArr.push({ y: new Date().getFullYear(), v: 0, s: 'unsync' });
+            } else if (currentMode === 'katalog') {
+                dataArr.push({ k: "Tipe Baru", b: 0, h: 0, s: 'unsync' });
+            } else {
+                dataArr.push({ k: "Parameter Baru", v: 0, s: 'unsync' });
+            }
+            renderTable();
+        }
+
+        function deleteRow(idx) {
+            let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
+            dataArr.splice(idx, 1);
+            renderTable();
+        }
+
+        async function syncAll() {
+            if (!currentId) return;
+            let fileName = (currentMode === 'hujan') ? "hujan.json" : 
+                           (currentMode === 'katalog') ? "precast.json" : "koefisien.json";
+            let dataToSync = (currentMode === 'hujan') ? rainDB : 
+                             (currentMode === 'katalog') ? catalogDB : coefDB;
+
+            const path = `data/${fileName}`;
+            const url = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${path}`;
+
+            try {
+                const btn = document.getElementById('btnSync');
+                btn.innerHTML = `MENGIRIM KE SERVER...`; btn.disabled = true;
+
+                const getFile = await fetch(url, { headers: { "Authorization": `token ${GH_CONFIG.token}` } });
+                let sha = getFile.ok ? (await getFile.json()).sha : "";
+
+                const update = await fetch(url, {
+                    method: "PUT",
+                    headers: { "Authorization": `token ${GH_CONFIG.token}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        message: `Update ${fileName} via Digital Verification`,
+                        content: btoa(unescape(encodeURIComponent(JSON.stringify(dataToSync, null, 2)))),
+                        sha: sha
+                    })
+                });
+
+                if (update.ok) {
+                    alert("Berhasil! Data tersimpan di GitHub.");
+                    let arr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
+                    arr.forEach(i => i.s = 'sync');
+                    saveToLocal(); renderTable();
+                }
+            } catch (err) { alert("Error: " + err.message); }
+            finally {
+                const btn = document.getElementById('btnSync');
+                btn.innerHTML = `SINKRONKAN DATA KE SISTEM <i data-lucide="save"></i>`;
+                btn.disabled = false; lucide.createIcons();
+            }
+        }
+
+        function deleteItem(id) {
+            if(!confirm("Hapus data ini?")) return;
+            if(currentMode === 'hujan') delete rainDB[id];
+            else if(currentMode === 'katalog') delete catalogDB[id];
+            else delete coefDB[id];
+            saveToLocal();
+            if(currentId === id) { currentId = null; document.getElementById('mainEditor').classList.remove('active'); document.getElementById('placeholder').style.display = 'flex'; }
+            renderSidebar();
+        }
+
+        function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const title = document.getElementById('activeTitle').innerText;
+            doc.setFontSize(18); doc.setTextColor(30, 43, 74);
+            doc.text("DATA REPOSITORY - SUDIN SDA JAKSEL", 14, 20);
+            doc.setFontSize(11); doc.setTextColor(100, 116, 139);
+            doc.text(`Kategori: ${title}`, 14, 30);
+            doc.text(`Tanggal: ${new Date().toLocaleString('id-ID')}`, 14, 37);
+            const table = document.getElementById('dataTable');
+            const rows = []; const headers = [];
+            const headerCells = table.querySelectorAll('thead th');
+            for (let i = 0; i < headerCells.length - 1; i++) headers.push(headerCells[i].innerText);
+            const bodyRows = table.querySelectorAll('tbody tr');
+            bodyRows.forEach(row => {
+                const rowData = []; const cells = row.querySelectorAll('td');
+                for (let i = 0; i < cells.length - 1; i++) {
+                    const input = cells[i].querySelector('input');
+                    rowData.push(input ? input.value : cells[i].innerText);
+                }
+                rows.push(rowData);
+            });
+            doc.autoTable({ head: [headers], body: rows, startY: 45, theme: 'grid', headStyles: { fillColor: [30, 43, 74] } });
+            doc.save(`SDA_Data_${title.replace(/\s+/g, '_')}.pdf`);
+        }
+
+        switchTab('hujan');
+    </script>
 </body>
 </html>
