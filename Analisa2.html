@@ -18,24 +18,21 @@
     <script src="data_saluranphb.js"></script>
 
     <style>
+        /* MASTER DISPLAY SETTINGS */
         :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
         body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
         
-        /* SIDEBAR */
         #sidebar { width: 400px; background: var(--white); border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; }
         .sidebar-header { padding: 25px; border-bottom: 1px solid #f1f5f9; }
         .sidebar-content { padding: 20px; flex-grow: 1; overflow-y: auto; }
         #map { flex-grow: 1; position: relative; }
 
-        /* BACK LINK */
         .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; }
         
-        /* CARDS */
         .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
         .card h3 { font-size: 11px; text-transform: uppercase; color: var(--slate); margin-bottom: 12px; font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
         
-        /* METHOD CHOICE (STACKED) */
         .method-stack { display: flex; flex-direction: column; gap: 10px; }
         .btn-choice { 
             display: flex; align-items: center; gap: 12px; background: #f8fafc; 
@@ -49,12 +46,10 @@
 
         .upload-area { background: var(--primary); color: white; padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; margin-top: 15px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
-        /* DATA TABLES */
         .data-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
         .data-table th { background: #f8fafc; text-align: left; padding: 10px; color: var(--slate); border: 1px solid #e2e8f0; }
         .data-table td { padding: 10px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); }
 
-        /* MAP OVERLAYS */
         .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #e2e8f0; }
         .stasiun-label { background: white !important; border: 1.5px solid #1c2b4a !important; font-weight: 800 !important; padding: 2px 8px !important; border-radius: 4px !important; font-size: 10px !important; color: #1c2b4a !important; }
 
@@ -125,7 +120,7 @@
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
 <script>
-    // --- 1. SETUP MAP & LAYERS ---
+    // --- 1. SETUP MAP & LAYERS (MASTER) ---
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
 
@@ -136,22 +131,18 @@
     var stationLayer = L.layerGroup().addTo(map);
     var layerMikro = L.layerGroup().addTo(map);
     var layerPHB = L.layerGroup().addTo(map);
-    var thiessenLayer = L.layerGroup().addTo(map);
+    var thiessenLayer = L.layerGroup().addTo(map); // Layer khusus warna wilayah
 
-    // Kontrol Layer (Kanan Atas)
-L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, { 
-    "Saluran Mikro": layerMikro, 
-    "Saluran PHB": layerPHB, 
-    "Stasiun Hujan": stationLayer, 
-    "Wilayah Pengaruh": thiessenLayer, // Tambahkan ke kontrol
-    "Area DAS": drawnItems 
-}, { collapsed: false, position: 'topright' }).addTo(map);
+    L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, { 
+        "Saluran Mikro": layerMikro, "Saluran PHB": layerPHB, 
+        "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems 
+    }, { collapsed: false, position: 'topright' }).addTo(map);
 
     var drawControl = new L.Control.Draw({
         draw: { polygon: { shapeOptions: { color: '#2f80ed' } }, polyline:false, circle:false, rectangle:false, marker:false, circlemarker:false }
     });
 
-    // --- 2. DATA STASIUN LENGKAP (22 TITIK) ---
+    // --- 2. DATA STASIUN ---
     const STATIONS_LIST = [
         {n:"KEMAYORAN", lat:-6.1556, lng:106.8400}, {n:"HALIM", lat:-6.2704, lng:106.8893},
         {n:"KLIMAT JATENG", lat:-6.5000, lng:106.7500}, {n:"KLIMAT BANTEN", lat:-6.2615, lng:106.7508},
@@ -167,15 +158,12 @@ L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, {
     ];
 
     function initSystem() {
-        // Load Saluran Mikro & PHB
         if (typeof dataMikro !== 'undefined') {
             L.geoJSON(dataMikro, { style: { color: '#06b6d4', weight: 2.5, opacity: 0.8 } }).addTo(layerMikro);
         }
         if (typeof dataPHB !== 'undefined') {
             L.geoJSON(dataPHB, { style: { color: '#1d4ed8', weight: 4.5, opacity: 1 } }).addTo(layerPHB);
         }
-        
-        // Load All Stations
         STATIONS_LIST.forEach(st => {
             L.circleMarker([st.lat, st.lng], {
                 radius: 7, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
@@ -184,7 +172,6 @@ L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, {
         });
     }
 
-    // --- 3. LOGIKA INTERAKSI ---
     function setMode(mode) {
         document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
         document.getElementById('upload-section').style.display = 'none';
@@ -216,82 +203,65 @@ L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, {
         reader.readAsText(file);
     };
 
-    // --- 4. ANALISIS HIDROLOGI ---
+    // --- 3. LOGIKA ANALISIS (DENGAN MASTER PALETTE) ---
     let rainChart = null;
-    // --- Ganti fungsi processHydrology lama dengan yang ini ---
 
-function processHydrology(geojson) {
-    // 1. Bersihkan layer lama tiap kali analisa baru
-    thiessenLayer.clearLayers();
-    
-    // 2. Hitung total luas DAS
-    const areaHa = turf.area(geojson) / 10000;
-    document.getElementById('area-val').innerText = areaHa.toFixed(2);
+    function processHydrology(geojson) {
+        thiessenLayer.clearLayers();
+        const areaHa = turf.area(geojson) / 10000;
+        document.getElementById('area-val').innerText = areaHa.toFixed(2);
 
-    // 3. Siapkan titik stasiun
-    const pts = turf.featureCollection(STATIONS_LIST.map(s => turf.point([s.lng, s.lat], { n: s.n })));
-    
-    // 4. Buat Bounding Box
-    const bbox = turf.bbox(geojson);
-    const options = { bbox: [bbox[0]-0.2, bbox[1]-0.2, bbox[2]+0.2, bbox[3]+0.2] };
-    
-    // 5. Generate Poligon Thiessen
-    const voronoiPolygons = turf.voronoi(pts, options);
+        const pts = turf.featureCollection(STATIONS_LIST.map(s => turf.point([s.lng, s.lat], { n: s.n })));
+        const bbox = turf.bbox(geojson);
+        const options = { bbox: [bbox[0]-0.1, bbox[1]-0.1, bbox[2]+0.1, bbox[3]+0.1] };
+        const voronoiPolygons = turf.voronoi(pts, options);
 
-    let found = [];
-    const tBody = document.getElementById('tBody');
-    tBody.innerHTML = "";
+        let found = [];
+        const tBody = document.getElementById('tBody');
+        tBody.innerHTML = "";
 
-    const palette = ["#f2994a", "#27ae60", "#2f80ed", "#eb5757", "#9b51e0", "#f2c94c"];
+        const palette = ["#f2994a", "#27ae60", "#2f80ed", "#eb5757", "#9b51e0", "#f2c94c"];
 
-    // 6. Iris (Intersect) dan Warnai
-    voronoiPolygons.features.forEach((cell, i) => {
-        const intersect = turf.intersect(cell, geojson);
-        
-        if (intersect) {
-            const subAreaHa = turf.area(intersect) / 10000;
-            const stName = cell.properties.site.n; 
+        voronoiPolygons.features.forEach((cell, i) => {
+            const intersect = turf.intersect(cell, geojson);
+            if (intersect) {
+                const subAreaHa = turf.area(intersect) / 10000;
+                if (subAreaHa > 0.001) {
+                    const stName = cell.properties.site.n; 
+                    const weight = subAreaHa / areaHa;
+                    found.push({ name: stName, data: [120, 145, 110, 160, 130] });
 
-            if (subAreaHa > 0.001) {
-                const weight = subAreaHa / areaHa;
-                found.push({ name: stName, data: [120, 145, 110, 160, 130] });
+                    L.geoJSON(intersect, {
+                        style: {
+                            fillColor: palette[i % palette.length],
+                            fillOpacity: 0.5,
+                            color: "white",
+                            weight: 1.5
+                        }
+                    }).addTo(thiessenLayer);
 
-                // TAMPILKAN DI PETA DENGAN WARNA BERBEDA
-                L.geoJSON(intersect, {
-                    style: {
-                        fillColor: palette[i % palette.length],
-                        fillOpacity: 0.5,
-                        color: "white",
-                        weight: 1.5
-                    }
-                }).addTo(thiessenLayer);
-
-                // Update Tabel
-                tBody.innerHTML += `<tr><td>${stName}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+                    tBody.innerHTML += `<tr><td>${stName}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+                }
             }
+        });
+
+        const statusBox = document.getElementById('status-display');
+        if (found.length > 0) {
+            statusBox.innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${found.length} Wilayah Stasiun Berpengaruh</div>`;
+            const avgWeight = 1 / found.length;
+            let combined = [0,0,0,0,0];
+            found.forEach(st => st.data.forEach((v, i) => combined[i] += v * avgWeight));
+            renderChart([2020, 2021, 2022, 2023, 2024], combined);
+            document.getElementById('resThiessen').style.display = 'block';
+            document.getElementById('resYearly').style.display = 'block';
+        } else {
+            statusBox.innerHTML = `<div class="status-msg status-error"><i data-lucide="alert-triangle"></i> Stasiun tidak ditemukan!</div>`;
+            document.getElementById('resThiessen').style.display = 'block';
+            document.getElementById('resYearly').style.display = 'none';
         }
-    });
-
-    // 7. Update UI
-    const statusBox = document.getElementById('status-display');
-    if (found.length > 0) {
-        statusBox.innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${found.length} Stasiun Berpengaruh</div>`;
-        
-        // Logika grafik (Rerata hujan)
-        const avgWeight = 1 / found.length;
-        let combined = [0,0,0,0,0];
-        found.forEach(st => st.data.forEach((v, i) => combined[i] += v * avgWeight));
-
-        renderChart([2020, 2021, 2022, 2023, 2024], combined);
-        document.getElementById('resThiessen').style.display = 'block';
-        document.getElementById('resYearly').style.display = 'block';
-    } else {
-        statusBox.innerHTML = `<div class="status-msg status-error"><i data-lucide="alert-triangle"></i> Stasiun tidak ditemukan!</div>`;
-        document.getElementById('resYearly').style.display = 'none';
+        lucide.createIcons();
     }
-    lucide.createIcons();
-}
-    
+
     function renderChart(labels, data) {
         const ctx = document.getElementById('rainChart').getContext('2d');
         if (rainChart) rainChart.destroy();
