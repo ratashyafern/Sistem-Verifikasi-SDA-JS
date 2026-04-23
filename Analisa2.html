@@ -194,18 +194,32 @@
 
     // --- 2. FUNGSI LOAD SALURAN (PENTING!) ---
     function initSystem() {
-        console.log("Memuat layer saluran...");
-        
-        // Load Saluran Mikro (Pastikan variabel di data_saluranmikro.js namanya sesuai)
-        if (typeof dataMikro !== 'undefined') {
-            mikroLayer.addData(dataMikro).addTo(map);
-        }
+    console.log("Memuat layer saluran...");
+    
+    // Style Saluran Mikro (Biru Muda)
+    const styleMikro = {
+        color: "#7dd3fc", // Sky blue / Biru muda
+        weight: 2,
+        opacity: 0.8
+    };
 
-        // Load Saluran PHB (Pastikan variabel di data_saluranphb.js namanya sesuai)
-        if (typeof dataPHB !== 'undefined') {
-            phbLayer.addData(dataPHB).addTo(map);
-        }
+    // Style Saluran PHB (Biru Tua & Tebal)
+    const stylePHB = {
+        color: "#1e3a8a", // Dark blue / Biru tua
+        weight: 5,        // Thicker
+        opacity: 1
+    };
+
+    if (typeof dataMikro !== 'undefined') {
+        mikroLayer.clearLayers();
+        mikroLayer.addData(dataMikro).setStyle(styleMikro).addTo(map);
     }
+
+    if (typeof dataPHB !== 'undefined') {
+        phbLayer.clearLayers();
+        phbLayer.addData(dataPHB).setStyle(stylePHB).addTo(map);
+    }
+}
 
     // --- 3. LOGIKA HIDROLOGI & RESET ---
     function resetAnalysis() {
@@ -277,33 +291,43 @@
 
     // --- 4. PERHITUNGAN HUJAN (DIPERBAIKI) ---
     function calculateRegionalRain(foundStations) {
-        const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
-        let labels = []; 
-        let dataValues = [];
-        const tBodyRain = document.getElementById('tBodyRain');
-        tBodyRain.innerHTML = ""; 
+    const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
+    let labels = []; 
+    let dataValues = [];
+    const tBodyRain = document.getElementById('tBodyRain');
+    tBodyRain.innerHTML = ""; 
 
-        years.forEach(year => {
-            let total = 0;
-            foundStations.forEach(st => {
-                const stationEntry = RAIN_DATABASE[st.id];
-                // Cek apakah stasiun punya data harian (properti 'd')
-                if (stationEntry && stationEntry.d) {
-                    const point = stationEntry.d.find(d => d.y == year);
-                    if (point) {
-                        total += parseFloat(point.v) * st.weight;
-                    }
-                }
-            });
+    // Loop berdasarkan daftar tahun
+    years.forEach((year, index) => {
+        let total = 0;
+        
+        foundStations.forEach(st => {
+            const stationEntry = RAIN_DATABASE[st.id];
             
-            const val = total.toFixed(2);
-            labels.push(year);
-            dataValues.push(parseFloat(val));
-            tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
+            // Cek apakah stasiun ada dan punya array 'd'
+            if (stationEntry && Array.isArray(stationEntry.d)) {
+                // Ambil nilai hujan berdasarkan index (0=2014, 1=2015, dst)
+                const rainValue = stationEntry.d[index];
+                
+                if (rainValue !== undefined) {
+                    total += parseFloat(rainValue) * st.weight;
+                }
+            }
         });
+        
+        const val = total.toFixed(2);
+        labels.push(year);
+        dataValues.push(parseFloat(val));
+        
+        // Update Tabel
+        tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
+    });
 
-        if (labels.length > 0) renderChart(labels, dataValues);
+    // Update Grafik
+    if (labels.length > 0) {
+        renderChart(labels, dataValues);
     }
+}
 
     // --- RE-USE FUNGSI LAINNYA (processHydrology, renderChart, dll sesuai kode kamu) ---
     // ... (Fungsi processHydrology dan renderChart tetap sama seperti sebelumnya) ...
