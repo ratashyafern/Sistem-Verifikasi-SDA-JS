@@ -152,19 +152,33 @@
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
 <script>
-    // --- SETUP MAP ---
+    // --- 1. SETUP MAP & LAYERS ---
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+    
     var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // Grouping Layer
     var drawnItems = new L.FeatureGroup().addTo(map);
     var thiessenLayer = L.layerGroup().addTo(map);
     var stationLayer = L.layerGroup().addTo(map);
+    
+    // Inisialisasi layer saluran agar tidak error saat dipanggil
+    var mikroLayer = L.geoJSON(null, { style: { color: "#34d399", weight: 2 } });
+    var phbLayer = L.geoJSON(null, { style: { color: "#3b82f6", weight: 3 } });
 
-    L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, { 
-        "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems 
-    }, { collapsed: true, position: 'topright' }).addTo(map);
+    // Tambahkan ke Control Layers
+    L.control.layers({ 
+        "Peta Jalan": osm, 
+        "Satelit": satellite 
+    }, { 
+        "Saluran Mikro": mikroLayer,
+        "Saluran PHB": phbLayer,
+        "Stasiun Hujan": stationLayer, 
+        "Wilayah Pengaruh": thiessenLayer, 
+        "Area": drawnItems 
+    }, { collapsed: false, position: 'topright' }).addTo(map);
 
     var drawControl = new L.Control.Draw({
         draw: {
@@ -178,35 +192,42 @@
     let myChart = null;
     const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
 
-    // --- FUNCTION RESET ANALYSIS (Taro di sini agar bisa dipanggil kapanpun) ---
+    // --- 2. FUNGSI LOAD SALURAN (PENTING!) ---
+    function initSystem() {
+        console.log("Memuat layer saluran...");
+        
+        // Load Saluran Mikro (Pastikan variabel di data_saluranmikro.js namanya sesuai)
+        if (typeof dataMikro !== 'undefined') {
+            mikroLayer.addData(dataMikro).addTo(map);
+        }
+
+        // Load Saluran PHB (Pastikan variabel di data_saluranphb.js namanya sesuai)
+        if (typeof dataPHB !== 'undefined') {
+            phbLayer.addData(dataPHB).addTo(map);
+        }
+    }
+
+    // --- 3. LOGIKA HIDROLOGI & RESET ---
     function resetAnalysis() {
-    // 1. Bersihkan semua layer di peta
-    if (drawnItems) drawnItems.clearLayers();
-    if (thiessenLayer) thiessenLayer.clearLayers();
-    
-    // 2. Reset tampilan angka di UI
-    document.getElementById('area-val').innerText = "0.00";
-    if(document.getElementById('totalAreaFooter')) {
-        document.getElementById('totalAreaFooter').innerText = "0.00";
+        if (drawnItems) drawnItems.clearLayers();
+        if (thiessenLayer) thiessenLayer.clearLayers();
+        
+        document.getElementById('area-val').innerText = "0.00";
+        if(document.getElementById('totalAreaFooter')) document.getElementById('totalAreaFooter').innerText = "0.00";
+
+        document.getElementById('tBody').innerHTML = "";
+        document.getElementById('tBodyRain').innerHTML = "";
+        document.getElementById('resThiessen').style.display = 'none';
+        document.getElementById('resYearly').style.display = 'none';
+        
+        if (myChart) {
+            myChart.destroy();
+            myChart = null;
+        }
+
+        const oldBtn = document.getElementById('btn-next-calc');
+        if(oldBtn) oldBtn.remove();
     }
-
-    // 3. Kosongkan tabel
-    document.getElementById('tBody').innerHTML = "";
-    document.getElementById('tBodyRain').innerHTML = "";
-
-    // 4. Sembunyikan card analisa & hapus grafik
-    document.getElementById('resThiessen').style.display = 'none';
-    document.getElementById('resYearly').style.display = 'none';
-    
-    if (myChart) {
-        myChart.destroy();
-        myChart = null;
-    }
-
-    // 5. Hapus tombol lanjut jika ada
-    const oldBtn = document.getElementById('btn-next-calc');
-    if(oldBtn) oldBtn.remove();
-}
 
     async function loadStationData() {
         const url = `https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/hujan.json?t=${Date.now()}`;
@@ -229,7 +250,10 @@
     }
 
     function setMode(mode) {
-        resetAnalysis();
+        // Reset hanya poligon coret-coretan, jangan hapus layer saluran
+        if (drawnItems) drawnItems.clearLayers();
+        if (thiessenLayer) thiessenLayer.clearLayers();
+        
         document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
         if(mode === 'draw') {
             document.getElementById('btn-draw').classList.add('active');
@@ -242,7 +266,6 @@
             document.getElementById('draw-section').style.display = 'none';
             map.removeControl(drawControl);
         }
-        lucide.createIcons();
     }
 
     map.on(L.Draw.Event.CREATED, function (e) {
@@ -252,10 +275,66 @@
         processHydrology(layer.toGeoJSON());
     });
 
+    // --- 4. PERHITUNGAN HUJAN (DIPERBAIKI) ---
+    function calculateRegionalRain(foundStations) {
+        const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
+        let labels = []; 
+        let dataValues = [];
+        const tBodyRain = document.getElementById('tBodyRain');
+        tBodyRain.innerHTML = ""; 
+
+        years.forEach(year => {
+            let total = 0;
+            foundStations.forEach(st => {
+                const stationEntry = RAIN_DATABASE[st.id];
+                // Cek apakah stasiun punya data harian (properti 'd')
+                if (stationEntry && stationEntry.d) {
+                    const point = stationEntry.d.find(d => d.y == year);
+                    if (point) {
+                        total += parseFloat(point.v) * st.weight;
+                    }
+                }
+            });
+            
+            const val = total.toFixed(2);
+            labels.push(year);
+            dataValues.push(parseFloat(val));
+            tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
+        });
+
+        if (labels.length > 0) renderChart(labels, dataValues);
+    }
+
+    // --- RE-USE FUNGSI LAINNYA (processHydrology, renderChart, dll sesuai kode kamu) ---
+    // ... (Fungsi processHydrology dan renderChart tetap sama seperti sebelumnya) ...
+
+    function renderChart(labels, data) {
+        const ctx = document.getElementById('rainChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'CH Rerata (mm)',
+                    data: data,
+                    borderColor: '#2f80ed',
+                    backgroundColor: 'rgba(47, 128, 237, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: { tooltip: { enabled: true } }
+            }
+        });
+    }
+
     function processHydrology(geojson) {
         const areaHa = turf.area(geojson) / 10000;
         document.getElementById('area-val').innerText = areaHa.toFixed(2);
-        document.getElementById('totalAreaFooter').innerText = areaHa.toFixed(2);
 
         const points = turf.featureCollection(
             Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { id: id }))
@@ -297,100 +376,15 @@
             calculateRegionalRain(foundStations);
             document.getElementById('resThiessen').style.display = 'block';
             document.getElementById('resYearly').style.display = 'block';
-            showNextStepButton();
         }
     }
 
-    function calculateRegionalRain(foundStations) {
-    const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
-    let labels = []; 
-    let dataValues = [];
-    const tBodyRain = document.getElementById('tBodyRain');
-    tBodyRain.innerHTML = ""; 
-
-    years.forEach(year => {
-        let total = 0;
-        foundStations.forEach(st => {
-            const stationEntry = RAIN_DATABASE[st.id];
-            // Pastikan data stasiun dan data hujan (.d) ada
-            if (stationEntry && stationEntry.d) {
-                const point = stationEntry.d.find(d => d.y == year);
-                if (point) {
-                    total += parseFloat(point.v) * st.weight;
-                }
-            }
-        });
-        
-        const val = total.toFixed(2);
-        labels.push(year);
-        dataValues.push(parseFloat(val));
-        
-        // Masukkan ke tabel
-        tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
-    });
-
-    // Pastikan grafik diupdate setelah tabel terisi
-    if (labels.length > 0) {
-        renderChart(labels, dataValues);
-    }
-}
-
-    function renderChart(labels, data) {
-        const ctx = document.getElementById('rainChart').getContext('2d');
-        if (myChart) myChart.destroy();
-        myChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'CH Rerata (mm)',
-                    data: data,
-                    borderColor: '#2f80ed',
-                    backgroundColor: 'rgba(47, 128, 237, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false,
-                plugins: { tooltip: { enabled: true, mode: 'index', intersect: false } }
-            }
-        });
-    }
-
-    function showNextStepButton() {
-        if (!document.getElementById('btn-next-calc')) {
-            const btn = document.createElement('div');
-            btn.id = 'btn-next-calc';
-            btn.className = 'upload-area'; 
-            btn.style.background = '#16a34a'; btn.style.marginTop = '20px';
-            btn.innerHTML = '<i data-lucide="calculator"></i> LANJUT HITUNG SALURAN';
-            btn.onclick = () => alert("Lanjut ke modul hidrolika...");
-            document.querySelector('.sidebar-content').appendChild(btn);
-            lucide.createIcons();
-        }
-    }
-
-    document.getElementById('fKML').onchange = (e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const kml = new DOMParser().parseFromString(ev.target.result, 'text/xml');
-            const converted = toGeoJSON.kml(kml);
-            resetAnalysis();
-            const gLayer = L.geoJSON(converted, { style: { color: '#2f80ed' } }).addTo(drawnItems);
-            map.fitBounds(gLayer.getBounds());
-            processHydrology(converted.features[0]);
-        };
-        reader.readAsText(file);
-    };
-
+    // --- RUNTIME ---
     window.onload = async () => { 
-    await loadStationData(); // Tunggu data stasiun selesai load
-    initSystem();            // Baru gambar saluran mikro & phb
-    lucide.createIcons(); 
-};
+        await loadStationData();
+        initSystem(); // Memanggil fungsi gambar saluran
+        lucide.createIcons(); 
+    };
 </script>
 </body>
 </html>
