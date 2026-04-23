@@ -3,507 +3,285 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SDA JS | Data Repository</title>
+    <title>SDA JS | Verification System</title>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <script src="https://unpkg.com/@mapbox/togeojson@0.16.0/togeojson.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+    <script src="data_saluranmikro.js"></script>
+    <script src="data_saluranphb.js"></script>
+
     <style>
-        :root { 
-            --primary: #1e2b4a; --accent: #2f80ed; --white: #ffffff;
-            --danger: #ef4444; --success: #059669; --warning: #f59e0b;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%); 
-            color: var(--primary); min-height: 100vh; display: flex; flex-direction: column; padding: 40px 5% 20px;
-        }
-
-        .back-link { 
-            text-decoration: none; color: var(--accent); font-size: 14px; font-weight: 700; 
-            display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px; transition: 0.2s;
-        }
-        .back-link:hover { transform: translateX(-5px); color: var(--primary); }
+        /* MASTER DISPLAY SETTINGS */
+        :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+        body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
         
-        .header-title { font-size: 42px; font-weight: 800; margin-bottom: 8px; }
-        .header-desc { color: #64748b; margin-bottom: 35px; }
+        #sidebar { width: 400px; background: var(--white); border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; }
+        .sidebar-header { padding: 25px; border-bottom: 1px solid #f1f5f9; }
+        .sidebar-content { padding: 20px; flex-grow: 1; overflow-y: auto; }
+        #map { flex-grow: 1; position: relative; }
 
-        .tab-nav { display: flex; gap: 30px; border-bottom: 1px solid rgba(30, 43, 74, 0.1); margin-bottom: 30px; }
-        .tab-item { padding-bottom: 15px; cursor: pointer; font-weight: 700; color: #94a3b8; display: flex; align-items: center; gap: 8px; border-bottom: 3px solid transparent; transition: 0.3s; }
-        .tab-item.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-        .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 20px 50px rgba(30, 43, 74, 0.05); display: flex; min-height: 650px; overflow: hidden; flex: 1; }
-
-        .sidebar { width: 320px; border-right: 1px solid #eef2f6; background: #fff; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 25px; display: flex; flex-direction: column; gap: 15px; border-bottom: 1px solid #f8fafc; }
-        .sidebar-label { font-size: 10px; font-weight: 800; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase; }
-        .btn-add { background: #f0f7ff; color: var(--accent); border: 2px dashed var(--accent); padding: 10px; border-radius: 10px; font-size: 11px; font-weight: 800; cursor: pointer; transition: 0.2s; text-align: center; }
-        .btn-add:hover { background: var(--accent); color: white; border-style: solid; }
-
-        .st-list { overflow-y: auto; flex: 1; }
-        .st-item { padding: 20px 25px; cursor: pointer; border-bottom: 1px solid #f8fafc; border-left: 4px solid transparent; transition: 0.2s; display: flex; justify-content: space-between; align-items: center; }
-        .st-item:hover { background: #f8fafc; }
-        .st-item.active { background: #eff6ff; border-left-color: var(--accent); }
-        .st-item h4 { font-size: 13px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; }
-        .st-item span { font-size: 10px; color: #94a3b8; }
+        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; }
         
-        .btn-del-st { color: #cbd5e1; padding: 5px; border-radius: 5px; transition: 0.2s; }
-        .btn-del-st:hover { color: var(--danger); background: #fee2e2; }
-
-        .editor { flex: 1; padding: 45px; display: none; }
-        .editor.active { display: block; }
-        .placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: #94a3b8; flex-direction: column; gap: 10px; }
-
-        .editor-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 35px; }
-        .coord-input-group { display: flex; gap: 15px; margin-top: 10px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #edf2f7; }
-        .coord-input-group label { font-size: 11px; font-weight: 700; color: #64748b; display: flex; align-items: center; gap: 5px; }
-        .small-input { border: 1px solid #cbd5e1; padding: 4px 8px; border-radius: 4px; font-weight: 700; width: 100px; color: var(--primary); }
-
-        .btn-primary-action { background: var(--accent); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
-        .btn-primary-action:hover { background: #1a66d1; }
-        .btn-primary-action:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .table-container { max-height: 400px; overflow-y: auto; border: 1px solid #f1f5f9; border-radius: 12px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; font-size: 11px; color: #94a3b8; text-transform: uppercase; padding: 15px; border-bottom: 1px solid #eee; position: sticky; top: 0; background: #fff; z-index: 10; }
-        td { padding: 12px 15px; border-bottom: 1px solid #f8fafc; font-weight: 600; font-size: 14px; }
-
-        .input-val { border: 1px solid transparent; padding: 8px; border-radius: 6px; width: 100%; font-weight: 700; transition: 0.2s; font-family: inherit; }
-        .input-val:focus { outline: none; border-color: var(--accent); background: #fff; }
-        .input-val.unsync { border-color: var(--warning); background: #fffbeb; }
-
-        .badge { font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 6px; }
-        .badge-sync { background: #dcfce7; color: var(--success); }
-        .badge-unsync { background: #fef3c7; color: var(--warning); }
-
-        .btn-sync { background: var(--primary); color: white; border: none; padding: 18px; border-radius: 12px; font-weight: 700; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
-        .btn-sync:hover { background: #0f172a; }
+        .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .card h3 { font-size: 11px; text-transform: uppercase; color: var(--slate); margin-bottom: 12px; font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
         
-        .action-row { display: flex; gap: 10px; justify-content: center; }
-        .btn-row-del { color: #cbd5e1; cursor: pointer; transition: 0.2s; }
-        .btn-row-del:hover { color: var(--danger); transform: scale(1.2); }
-
-        footer { margin-top: 40px; padding: 20px; text-align: center; border-top: 1px solid rgba(0,0,0,0.05); }
-        .footer-text { font-size: 12px; color: #94a3b8; font-weight: 600; }
-
-        .animate-spin { 
-            animation: spin 1s linear infinite; 
-            display: inline-block;
+        .method-stack { display: flex; flex-direction: column; gap: 10px; }
+        .btn-choice { 
+            display: flex; align-items: center; gap: 12px; background: #f8fafc; 
+            border: 1px solid #e2e8f0; padding: 12px 15px; border-radius: 8px; 
+            cursor: pointer; transition: 0.2s; 
         }
-        @keyframes spin { 
-            from { transform: rotate(0deg); } 
-            to { transform: rotate(360deg); } 
-        }
+        .btn-choice span { font-size: 12px; font-weight: 700; color: var(--primary); }
+        .btn-choice i { color: var(--accent); width: 18px; }
+        .btn-choice.active { background: var(--primary); border-color: var(--primary); }
+        .btn-choice.active span, .btn-choice.active i { color: white; }
 
-        /* Hapus Panah Naik Turun */
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
+        .upload-area { background: var(--primary); color: white; padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; margin-top: 15px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+        .data-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+        .data-table th { background: #f8fafc; text-align: left; padding: 10px; color: var(--slate); border: 1px solid #e2e8f0; }
+        .data-table td { padding: 10px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); }
+
+        .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #e2e8f0; }
+        .stasiun-label { background: white !important; border: 1.5px solid #1c2b4a !important; font-weight: 800 !important; padding: 2px 8px !important; border-radius: 4px !important; font-size: 10px !important; color: #1c2b4a !important; }
+
+        .status-msg { padding: 10px; border-radius: 6px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+        .status-ok { background: #dcfce7; color: #166534; }
+        .status-error { background: #fee2e2; color: #991b1b; }
     </style>
 </head>
 <body>
 
-    <a href="index.html" class="back-link"><i data-lucide="arrow-left" size="18"></i> Kembali ke Menu Utama</a>
-    <h1 class="header-title">DATA REPOSITORY</h1>
-    <p class="header-desc">Manajemen Database & Parameter Teknis Hidrologi Jakarta Selatan.</p>
-
-    <div class="tab-nav">
-        <div class="tab-item active" id="tabHujan" onclick="switchTab('hujan')"><i data-lucide="cloud-rain"></i> Data Hujan</div>
-        <div class="tab-item" id="tabKatalog" onclick="switchTab('katalog')"><i data-lucide="box"></i> Katalog Precast</div>
-        <div class="tab-item" id="tabKoefisien" onclick="switchTab('koefisien')"><i data-lucide="layers"></i> Koefisien Teknis</div>
+<div id="sidebar">
+    <div class="sidebar-header">
+        <a href="index.html" class="back-link"><i data-lucide="arrow-left" style="width:18px"></i> Kembali ke Menu Utama</a>
+        <h1 style="font-size: 24px; font-weight: 800; color: var(--primary); line-height: 1.1;">VERIFICATION SYSTEM</h1>
+        <p style="font-size: 12px; color: var(--slate); margin-top: 4px;">Suku Dinas SDA Jakarta Selatan</p>
     </div>
-
-    <div class="glass-card">
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <span class="sidebar-label" id="sideLabel">Stasiun Hujan</span>
-                <button class="btn-add" id="btnAdd" onclick="addItem()">+ TAMBAH DATA BARU</button>
-            </div>
-            <div class="st-list" id="itemList"></div>
-        </div>
-
-        <div id="placeholder" class="placeholder">
-            <i data-lucide="database" size="40"></i>
-            <p>Pilih item di sidebar untuk mengelola database.</p>
-        </div>
-
-        <div id="mainEditor" class="editor">
-            <div class="editor-header">
-                <div>
-                    <h2 id="activeTitle" style="font-size: 28px; font-weight: 800; color: var(--primary);"></h2>
-                    <div id="subtitleContainer"></div>
+    
+    <div class="sidebar-content">
+        <div class="card">
+            <h3>1. Input Area DAS (KML/Peta)</h3>
+            <div class="method-stack">
+                <div class="btn-choice" id="btn-upload" onclick="setMode('upload')">
+                    <i data-lucide="file-up"></i>
+                    <span>UPLOAD FILE KML</span>
                 </div>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn-primary-action" style="background:var(--success)" id="btnExport" onclick="exportPDF()"><i data-lucide="download"></i> Export PDF</button>
-                    <button class="btn-primary-action" id="btnTambahBaris" onclick="addNewRow()"><i data-lucide="plus"></i> Tambah Baris</button>
+                <div class="btn-choice" id="btn-draw" onclick="setMode('draw')">
+                    <i data-lucide="pencil-line"></i>
+                    <span>DIGITASI PETA LANGSUNG</span>
                 </div>
             </div>
 
-            <div class="table-container">
-                <table id="dataTable">
-                    <thead id="tableHead"></thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
+            <div id="upload-section" style="display:none">
+                <div class="upload-area" onclick="document.getElementById('fKML').click()">
+                    <i data-lucide="folder-open"></i> PILIH FILE KML
+                </div>
+                <input type="file" id="fKML" style="display:none" accept=".kml">
             </div>
+            
+            <div id="draw-section" style="display:none; margin-top:15px; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
+                <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
+            </div>
+        </div>
 
-            <button class="btn-sync" id="btnSync" onclick="syncAll()">SINKRONKAN DATA KE SISTEM <i data-lucide="save"></i></button>
+        <div id="resThiessen" class="card" style="display:none">
+            <h3>2. Analisa Stasiun Terdeteksi</h3>
+            <div id="status-display"></div>
+            <table class="data-table">
+                <thead><tr><th>Stasiun</th><th>Luas (Ha)</th><th>W</th></tr></thead>
+                <tbody id="tBody"></tbody>
+            </table>
+        </div>
+
+        <div id="resYearly" class="card" style="display:none">
+            <h3>3. Tren Hujan Rerata</h3>
+            <canvas id="rainChart" height="240"></canvas>
         </div>
     </div>
+</div>
 
-    <footer><p class="footer-text">© 2026 Seksi Perencanaan - Sudin SDA Jakarta Selatan</p></footer>
+<div id="map">
+    <div class="area-info-box">
+        <div style="font-size: 9px; color: var(--slate); font-weight: 800; text-transform: uppercase;">LUAS CATCHMENT</div>
+        <div style="font-size: 24px; font-weight: 800; color: var(--accent);"><span id="area-val">0.00</span> Ha</div>
+    </div>
+</div>
 
-    <script>
-        const P1 = "ghp_vLcAZDzdpMVH0FaYC"; 
-        const P2 = "P3T2X0X7iDrOY2vULUS";
-        const GH_CONFIG = { token: P1 + P2, owner: "ratashyafern", repo: "Sistem-Verifikasi-SDA-JS", branch: "main" };
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
-        let rainDB = {}, catalogDB = {}, coefDB = {};
-        let currentMode = 'hujan', currentId = null;
+<script>
+    // --- 1. SETUP MAP & LAYERS (MASTER) ---
+    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
 
-        async function loadDatabase(key, fileName) {
-            const url = `https://raw.githubusercontent.com/${GH_CONFIG.owner}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/data/${fileName}?t=${Date.now()}`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("Not Found");
-                return await response.json();
-            } catch (err) {
-                const local = localStorage.getItem(key);
-                return local ? JSON.parse(local) : {}; 
-            }
-        }
+    var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        async function initializeApp() {
-            const [hujan, katalog, koef] = await Promise.all([
-                loadDatabase('sda_rainDB', 'hujan.json'),
-                loadDatabase('sda_catalogDB', 'precast.json'),
-                loadDatabase('sda_coefDB', 'koefisien.json')
-            ]);
-            rainDB = hujan; catalogDB = katalog; coefDB = koef;
-            renderSidebar();
-        }
+    var drawnItems = new L.FeatureGroup().addTo(map);
+    var stationLayer = L.layerGroup().addTo(map);
+    var layerMikro = L.layerGroup().addTo(map);
+    var layerPHB = L.layerGroup().addTo(map);
+    var thiessenLayer = L.layerGroup().addTo(map); // Layer khusus warna wilayah
 
-        window.onload = initializeApp;
+    L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, { 
+        "Saluran Mikro": layerMikro, "Saluran PHB": layerPHB, 
+        "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems 
+    }, { collapsed: false, position: 'topright' }).addTo(map);
 
-        function saveToLocal() {
-            if (currentMode === 'hujan') localStorage.setItem('sda_rainDB', JSON.stringify(rainDB));
-            else if (currentMode === 'katalog') localStorage.setItem('sda_catalogDB', JSON.stringify(catalogDB));
-            else if (currentMode === 'koefisien') localStorage.setItem('sda_coefDB', JSON.stringify(coefDB));
-        }
-
-        function switchTab(mode) {
-            currentMode = mode; currentId = null;
-            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
-            document.getElementById('placeholder').style.display = 'flex';
-            document.getElementById('mainEditor').classList.remove('active');
-            renderSidebar();
-        }
-
-        function renderSidebar() {
-            let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
-            document.getElementById('sideLabel').innerText = currentMode === 'hujan' ? "Stasiun Hujan" : (currentMode === 'katalog' ? "Katalog Precast" : "Parameter Teknis");
-            const list = document.getElementById('itemList');
-            list.innerHTML = "";
-            Object.keys(db).forEach(id => {
-                const item = document.createElement('div');
-                item.className = 'st-item' + (currentId === id ? ' active' : '');
-                item.onclick = (e) => { if(!e.target.closest('.btn-del-st')) selectItem(id); };
-                item.innerHTML = `<div><h4>${db[id].n}</h4><span>${db[id].type || 'DATABASE'}</span></div>
-                                  <div class="btn-del-st" onclick="deleteItem('${id}')"><i data-lucide="trash-2" size="14"></i></div>`;
-                list.appendChild(item);
-            });
-            lucide.createIcons();
-        }
-
-        function selectItem(id) {
-            currentId = id;
-            document.getElementById('placeholder').style.display = 'none';
-            document.getElementById('mainEditor').classList.add('active');
-            let db = currentMode === 'hujan' ? rainDB : (currentMode === 'katalog' ? catalogDB : coefDB);
-            const item = db[id];
-            document.getElementById('activeTitle').innerText = item.n;
-            const subContainer = document.getElementById('subtitleContainer');
-            if(currentMode === 'hujan') {
-                subContainer.innerHTML = `<div class="coord-input-group">
-                    <label>LAT <input type="text" class="small-input" value="${item.lat}" oninput="updateCoord('lat', this.value)"></label>
-                    <label>LNG <input type="text" class="small-input" value="${item.lng}" oninput="updateCoord('lng', this.value)"></label>
-                </div>`;
-            } else {
-                subContainer.innerHTML = `<p style="color: #64748b; font-size: 14px; font-weight: 600; text-transform:uppercase;">${item.type}</p>`;
-            }
-            renderTable();
-        }
-
-        function renderTable() {
-    const thead = document.getElementById('tableHead');
-    const tbody = document.getElementById('tableBody');
-    const container = document.querySelector('.table-container');
-    const scrollPos = container ? container.scrollTop : 0;
-
-    tbody.innerHTML = "";
-    let hasUnsync = false;
-
-    if (currentMode === 'hujan') {
-        thead.innerHTML = `<tr><th>Tahun</th><th>Hujan Maks (mm)</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
-        
-        // Mengambil array "d" dari stasiun yang terpilih
-        rainDB[currentId].d.forEach((item, idx) => {
-            let displayYear, displayVal, status;
-
-            // Cek apakah item itu objek (hasil edit baru) atau angka (data asli json)
-            if (typeof item === 'object' && item !== null) {
-                displayYear = item.y;
-                displayVal = item.v;
-                status = item.s || 'sync';
-            } else {
-                displayYear = 2014 + idx; // Asumsi tahun mulai dari 2014
-                displayVal = item;
-                status = 'sync';
-            }
-
-            if(status === 'unsync') hasUnsync = true;
-            
-            tbody.innerHTML += `<tr>
-                <td><input type="text" class="input-val" value="${displayYear}" oninput="updateVal(${idx}, 'y', this.value)"></td>
-                <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${displayVal}" oninput="updateVal(${idx}, 'v', this.value)"></td>
-                <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
-                <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
-            </tr>`;
-        });
-    } else if (currentMode === 'katalog') {
-        thead.innerHTML = `<tr><th>Tipe</th><th>Lebar B (m)</th><th>Tinggi H (m)</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
-        catalogDB[currentId].data.forEach((item, idx) => {
-            const status = item.s || 'sync'; if(status === 'unsync') hasUnsync = true;
-            tbody.innerHTML += `<tr>
-                <td><input type="text" class="input-val" value="${item.k}" oninput="updateVal(${idx}, 'k', this.value)"></td>
-                <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${item.b}" oninput="updateVal(${idx}, 'b', this.value)"></td>
-                <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${item.h}" oninput="updateVal(${idx}, 'h', this.value)"></td>
-                <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
-                <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
-            </tr>`;
-        });
-    } else if (currentMode === 'koefisien') {
-        thead.innerHTML = `<tr><th>Parameter</th><th>Nilai</th><th>Status</th><th style="text-align:center">Aksi</th></tr>`;
-        coefDB[currentId].data.forEach((item, idx) => {
-            const status = item.s || 'sync'; if(status === 'unsync') hasUnsync = true;
-            tbody.innerHTML += `<tr>
-                <td><input type="text" class="input-val" value="${item.k}" oninput="updateVal(${idx}, 'k', this.value)"></td>
-                <td><input type="text" class="input-val ${status==='unsync'?'unsync':''}" value="${item.v}" oninput="updateVal(${idx}, 'v', this.value)"></td>
-                <td><span class="badge badge-${status}">${status.toUpperCase()}ED</span></td>
-                <td class="action-row"><div class="btn-row-del" onclick="deleteRow(${idx})"><i data-lucide="trash-2" size="16"></i></div></td>
-            </tr>`;
-        });
-    }
-    
-    document.getElementById('btnExport').disabled = hasUnsync;
-    lucide.createIcons();
-    if(container) container.scrollTop = scrollPos;
-}
-
-        function updateVal(idx, key, val) {
-    let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-
-    // FIX: Jika mode hujan dan data masih berupa angka (format lama), ubah dulu jadi objek
-    if (currentMode === 'hujan' && typeof dataArr[idx] !== 'object') {
-        dataArr[idx] = {
-            y: 2014 + idx,      // Default tahun
-            v: dataArr[idx],    // Nilai hujan asli
-            s: 'unsync'         // Status baru
-        };
-    }
-
-    // Sekarang aman untuk melakukan assignment karena dataArr[idx] pasti sudah jadi objek
-    dataArr[idx][key] = val; 
-    dataArr[idx].s = 'unsync';
-    
-    saveToLocal();
-    
-    // Update visual tanpa render ulang total agar cursor tidak lompat
-    const inputEl = event.target;
-    if (inputEl) {
-        inputEl.classList.add('unsync');
-        const row = inputEl.closest('tr');
-        if (row) {
-            const badge = row.querySelector('.badge');
-            if(badge) { 
-                badge.className = 'badge badge-unsync'; 
-                badge.innerText = 'UNSYNCED'; 
-            }
-        }
-    }
-    document.getElementById('btnExport').disabled = true;
-}
-
-        function updateCoord(key, val) {
-            rainDB[currentId][key] = val;
-            rainDB[currentId].d.forEach(i => i.s = 'unsync');
-            saveToLocal();
-            renderTable();
-        }
-
-        function addItem() {
-            let n = prompt("Masukkan Nama Baru:");
-            if (!n) return;
-            let typeDesc = prompt("Keterangan Sumber:", "SNI / DATABASE");
-            let id = "item_" + Date.now();
-            if (currentMode === 'hujan') rainDB[id] = { n: n.toUpperCase(), lat: 0, lng: 0, type: typeDesc.toUpperCase(), d: [] };
-            else if (currentMode === 'katalog') catalogDB[id] = { n: n, type: typeDesc.toUpperCase(), data: [] };
-            else coefDB[id] = { n: n, type: typeDesc.toUpperCase(), data: [] };
-            saveToLocal(); renderSidebar(); selectItem(id);
-        }
-
-        function addNewRow() {
-            if (!currentId) return;
-            let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-            if (currentMode === 'hujan') dataArr.push({ y: new Date().getFullYear(), v: 0, s: 'unsync' });
-            else if (currentMode === 'katalog') dataArr.push({ k: "Tipe Baru", b: 0, h: 0, s: 'unsync' });
-            else dataArr.push({ k: "Parameter Baru", v: 0, s: 'unsync' });
-            renderTable();
-        }
-
-        function deleteRow(idx) {
-            let dataArr = currentMode === 'hujan' ? rainDB[currentId].d : (currentMode === 'katalog' ? catalogDB[currentId].data : coefDB[currentId].data);
-            dataArr.splice(idx, 1);
-            renderTable();
-        }
-
-        async function syncAll() {
-    if (!currentId) return;
-    let fileName = (currentMode === 'hujan') ? "hujan.json" : (currentMode === 'katalog') ? "precast.json" : "koefisien.json";
-    let dataOriginal = (currentMode === 'hujan') ? rainDB : (currentMode === 'katalog') ? catalogDB : coefDB;
-    
-    // Kita buat salinan (clone) agar data di browser tidak rusak saat kita "bersihkan"
-    let dataToSync = JSON.parse(JSON.stringify(dataOriginal));
-
-    const url = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/data/${fileName}`;
-
-    try {
-        const btn = document.getElementById('btnSync');
-        btn.innerHTML = `<i data-lucide="loader-2" class="animate-spin"></i> MENGIRIM KE SERVER...`; 
-        btn.disabled = true;
-        lucide.createIcons();
-
-        const getFile = await fetch(url, { headers: { "Authorization": `token ${GH_CONFIG.token}` } });
-        let sha = getFile.ok ? (await getFile.json()).sha : "";
-
-        // --- PROSES PEMBERSIHAN DATA SEBELUM SYNC ---
-        Object.keys(dataToSync).forEach(id => {
-            if (currentMode === 'hujan') {
-                // Kembalikan ke array angka murni [147.9, 277.5, ...]
-                dataToSync[id].d = dataToSync[id].d.map(item => {
-                    if (typeof item === 'object' && item !== null) {
-                        return parseFloat(item.v); // Ambil nilainya saja
-                    }
-                    return parseFloat(item);
-                });
-            } else {
-                // Untuk katalog & koefisien, cukup hapus properti status "s"
-                let arr = dataToSync[id].data;
-                if(arr) arr.forEach(row => delete row.s);
-            }
-        });
-
-        const update = await fetch(url, {
-            method: "PUT",
-            headers: { "Authorization": `token ${GH_CONFIG.token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-                message: `Update ${fileName} via Admin Panel`,
-                content: btoa(unescape(encodeURIComponent(JSON.stringify(dataToSync, null, 2)))),
-                sha: sha
-            })
-        });
-
-        if (update.ok) { 
-            // Jika berhasil di server, tandai data lokal kita sebagai 'sync'
-            Object.keys(dataOriginal).forEach(id => {
-                let arr = currentMode === 'hujan' ? dataOriginal[id].d : dataOriginal[id].data;
-                if(arr) arr.forEach(row => { if(typeof row === 'object') row.s = 'sync'; });
-            });
-            
-            alert("SINKRONISASI BERHASIL!"); 
-            saveToLocal(); 
-            renderTable(); 
-        } else {
-            throw new Error("Gagal Update ke GitHub");
-        }
-    } catch (err) { 
-        alert("Error: " + err.message); 
-    } finally {
-        const btn = document.getElementById('btnSync');
-        btn.innerHTML = `SINKRONKAN DATA KE SISTEM <i data-lucide="save"></i>`;
-        btn.disabled = false; 
-        lucide.createIcons();
-    }
-}
-        function deleteItem(id) {
-            if(!confirm("Hapus permanen?")) return;
-            if(currentMode === 'hujan') delete rainDB[id];
-            else if(currentMode === 'katalog') delete catalogDB[id];
-            else delete coefDB[id];
-            saveToLocal();
-            if(currentId === id) { currentId = null; document.getElementById('mainEditor').classList.remove('active'); document.getElementById('placeholder').style.display = 'flex'; }
-            renderSidebar();
-        }
-
-        function exportPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const title = document.getElementById('activeTitle').innerText;
-    
-    // Header teks laporan
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text(`DATA REPOSITORY - SUDIN SDA JAKARTA SELATAN`, 14, 20);
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100);
-    doc.text(`Kategori : ${title.toUpperCase()}`, 14, 28);
-    doc.text(`Tanggal  : ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 14, 34);
-
-    doc.autoTable({
-        html: '#dataTable',
-        startY: 40,
-        theme: 'grid',
-        // Menyembunyikan kolom ke-4 (indeks 3) yaitu kolom "Aksi"
-        columns: [0, 1, 2], 
-        headStyles: {
-            fillColor: [30, 43, 74], 
-            textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            halign: 'center'
-        },
-        styles: {
-            cellPadding: 3,
-            fontSize: 9,
-            valign: 'middle'
-        },
-        columnStyles: {
-            0: { halign: 'center' }, // Tahun / Parameter di tengah
-            1: { halign: 'center' }, // Nilai di tengah
-            2: { halign: 'center' }  // Status di tengah
-        },
-        didParseCell: (data) => {
-            // Ambil teks dari input agar tidak kosong
-            const input = data.cell.raw.querySelector('input');
-            if (input) {
-                data.cell.text = [input.value];
-            }
-            
-            // Bersihkan teks status agar lebih rapi (misal: SYNCED saja)
-            const badge = data.cell.raw.querySelector('.badge');
-            if (badge) {
-                data.cell.text = [badge.innerText];
-            }
-        }
+    var drawControl = new L.Control.Draw({
+        draw: { polygon: { shapeOptions: { color: '#2f80ed' } }, polyline:false, circle:false, rectangle:false, marker:false, circlemarker:false }
     });
 
-    doc.save(`Data_${title}.pdf`);
-}
-        
-        switchTab('hujan');
-    </script>
+    // --- 2. DATA STASIUN ---
+    const STATIONS_LIST = [
+        {n:"KEMAYORAN", lat:-6.1556, lng:106.8400}, {n:"HALIM", lat:-6.2704, lng:106.8893},
+        {n:"KLIMAT JATENG", lat:-6.5000, lng:106.7500}, {n:"KLIMAT BANTEN", lat:-6.2615, lng:106.7508},
+        {n:"KATULAMPA", lat:-6.6332, lng:106.8371}, {n:"DEPOK", lat:-6.4006, lng:106.8319},
+        {n:"MANGGARAI", lat:-6.2074, lng:106.8486}, {n:"KARET", lat:-6.1981, lng:106.8101},
+        {n:"SETIABUDI TIMUR", lat:-6.2046, lng:106.8294}, {n:"MELATI", lat:-6.2008, lng:106.8180},
+        {n:"ISTANA", lat:-6.1716, lng:106.8270}, {n:"KRUKUT HULU", lat:-6.3443, lng:106.7991},
+        {n:"SUNTER HULU", lat:-6.3178, lng:106.9211}, {n:"PESANGGRAHAN", lat:-6.3971, lng:106.7718},
+        {n:"ANGKE HULU", lat:-6.2183, lng:106.6945}, {n:"TANJUNGAN", lat:-6.1067, lng:106.7259},
+        {n:"TOMANG BARAT", lat:-6.1671, lng:106.7800}, {n:"TELUK GONG", lat:-6.1335, lng:106.7776},
+        {n:"PULO GADUNG", lat:-6.1910, lng:106.9042}, {n:"SUNTER KODAMAR", lat:-6.1551, lng:106.8869},
+        {n:"RAWA BADAK", lat:-6.1211, lng:106.8967}, {n:"POMPA CIDENG", lat:-6.1736, lng:106.8063}
+    ];
+
+    function initSystem() {
+        if (typeof dataMikro !== 'undefined') {
+            L.geoJSON(dataMikro, { style: { color: '#06b6d4', weight: 2.5, opacity: 0.8 } }).addTo(layerMikro);
+        }
+        if (typeof dataPHB !== 'undefined') {
+            L.geoJSON(dataPHB, { style: { color: '#1d4ed8', weight: 4.5, opacity: 1 } }).addTo(layerPHB);
+        }
+        STATIONS_LIST.forEach(st => {
+            L.circleMarker([st.lat, st.lng], {
+                radius: 7, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
+            }).addTo(stationLayer)
+            .bindTooltip(st.n, { permanent: true, direction: 'top', className: 'stasiun-label', offset: [0,-10] });
+        });
+    }
+
+    function setMode(mode) {
+        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
+        document.getElementById('upload-section').style.display = 'none';
+        document.getElementById('draw-section').style.display = 'none';
+        map.removeControl(drawControl);
+
+        if(mode === 'upload') {
+            document.getElementById('btn-upload').classList.add('active');
+            document.getElementById('upload-section').style.display = 'block';
+        } else {
+            document.getElementById('btn-draw').classList.add('active');
+            document.getElementById('draw-section').style.display = 'block';
+            map.addControl(drawControl);
+        }
+    }
+
+    document.getElementById('fKML').onchange = (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const parser = new DOMParser();
+            const kml = parser.parseFromString(ev.target.result, 'text/xml');
+            const converted = toGeoJSON.kml(kml);
+            drawnItems.clearLayers();
+            const gLayer = L.geoJSON(converted, { style: { color: '#1c2b4a', weight: 2 } }).addTo(drawnItems);
+            map.fitBounds(gLayer.getBounds());
+            processHydrology(converted.features[0]);
+        };
+        reader.readAsText(file);
+    };
+
+    // --- 3. LOGIKA ANALISIS (DENGAN MASTER PALETTE) ---
+    let rainChart = null;
+
+    function processHydrology(geojson) {
+        thiessenLayer.clearLayers();
+        const areaHa = turf.area(geojson) / 10000;
+        document.getElementById('area-val').innerText = areaHa.toFixed(2);
+
+        const pts = turf.featureCollection(STATIONS_LIST.map(s => turf.point([s.lng, s.lat], { n: s.n })));
+        const bbox = turf.bbox(geojson);
+        const options = { bbox: [bbox[0]-0.1, bbox[1]-0.1, bbox[2]+0.1, bbox[3]+0.1] };
+        const voronoiPolygons = turf.voronoi(pts, options);
+
+        let found = [];
+        const tBody = document.getElementById('tBody');
+        tBody.innerHTML = "";
+
+        const palette = ["#f2994a", "#27ae60", "#2f80ed", "#eb5757", "#9b51e0", "#f2c94c"];
+
+        voronoiPolygons.features.forEach((cell, i) => {
+            const intersect = turf.intersect(cell, geojson);
+            if (intersect) {
+                const subAreaHa = turf.area(intersect) / 10000;
+                if (subAreaHa > 0.001) {
+                    const stName = cell.properties.site.n; 
+                    const weight = subAreaHa / areaHa;
+                    found.push({ name: stName, data: [120, 145, 110, 160, 130] });
+
+                    L.geoJSON(intersect, {
+                        style: {
+                            fillColor: palette[i % palette.length],
+                            fillOpacity: 0.5,
+                            color: "white",
+                            weight: 1.5
+                        }
+                    }).addTo(thiessenLayer);
+
+                    tBody.innerHTML += `<tr><td>${stName}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+                }
+            }
+        });
+
+        const statusBox = document.getElementById('status-display');
+        if (found.length > 0) {
+            statusBox.innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${found.length} Wilayah Stasiun Berpengaruh</div>`;
+            const avgWeight = 1 / found.length;
+            let combined = [0,0,0,0,0];
+            found.forEach(st => st.data.forEach((v, i) => combined[i] += v * avgWeight));
+            renderChart([2020, 2021, 2022, 2023, 2024], combined);
+            document.getElementById('resThiessen').style.display = 'block';
+            document.getElementById('resYearly').style.display = 'block';
+        } else {
+            statusBox.innerHTML = `<div class="status-msg status-error"><i data-lucide="alert-triangle"></i> Stasiun tidak ditemukan!</div>`;
+            document.getElementById('resThiessen').style.display = 'block';
+            document.getElementById('resYearly').style.display = 'none';
+        }
+        lucide.createIcons();
+    }
+
+    function renderChart(labels, data) {
+        const ctx = document.getElementById('rainChart').getContext('2d');
+        if (rainChart) rainChart.destroy();
+        rainChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{ label: 'Hujan (mm)', data: data, borderColor: '#2f80ed', backgroundColor: 'rgba(47,128,237,0.1)', fill: true, tension: 0.4 }]
+            },
+            options: { plugins: { legend: { display: false } } }
+        });
+    }
+
+    map.on(L.Draw.Event.CREATED, (e) => {
+        drawnItems.clearLayers();
+        drawnItems.addLayer(e.layer);
+        processHydrology(e.layer.toGeoJSON());
+    });
+
+    window.onload = () => { initSystem(); lucide.createIcons(); };
+</script>
 </body>
 </html>
