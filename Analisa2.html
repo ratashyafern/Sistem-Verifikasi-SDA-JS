@@ -1,124 +1,125 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SDA JS | Verification System</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <title>Verification System - SDA Jaksel</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/@mapbox/togeojson@0.16.0/togeojson.js"></script>
-    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
-
-    <script src="data_saluranmikro.js"></script>
-    <script src="data_saluranphb.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-    :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
-    * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
-    
-    /* Layout Fix */
-    body { display: flex; height: 100vh; width: 100vw; overflow: hidden; background: var(--bg); }
-    
-    #sidebar { 
-        width: 400px; 
-        background: #ffffff; 
-        border-right: 1px solid #e2e8f0; 
-        display: flex; 
-        flex-direction: column; 
-        z-index: 1000;
-        box-shadow: 4px 0 10px rgba(0,0,0,0.05);
-    }
-    
-    .sidebar-header { padding: 20px; border-bottom: 1px solid #f1f5f9; }
-    .sidebar-content { padding: 15px; flex-grow: 1; overflow-y: auto; }
-    
-    /* Peta harus mengambil sisa layar */
-    #map { flex-grow: 1; height: 100vh; position: relative; }
+        :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+        
+        /* FIX LAYOUT: Pastikan body tidak scroll, sidebar & map sejajar */
+        body { 
+            display: flex; 
+            height: 100vh; 
+            width: 100vw; 
+            overflow: hidden; 
+            background: var(--bg); 
+        }
+        
+        #sidebar { 
+            width: 400px; 
+            min-width: 400px;
+            background: #ffffff; 
+            border-right: 1px solid #e2e8f0; 
+            display: flex; 
+            flex-direction: column; 
+            z-index: 10;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.05);
+        }
+        
+        /* Map harus mengambil SISA layar dan posisinya RELATIVE */
+        #map { 
+            flex-grow: 1; 
+            height: 100vh; 
+            position: relative; 
+            z-index: 1;
+        }
 
-    .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 600; margin-bottom: 15px; }
-    .card { background: #ffffff; border: 1px solid #eef2f6; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-    .card h3 { font-size: 11px; text-transform: uppercase; color: var(--slate); margin-bottom: 12px; font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
-    
-    /* Legend Warna di Tabel */
-    .color-legend { 
-        display: inline-block; 
-        width: 12px; 
-        height: 12px; 
-        border-radius: 3px; 
-        margin-right: 8px; 
-        vertical-align: middle; 
-    }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #f1f5f9; }
+        .sidebar-content { padding: 15px; flex-grow: 1; overflow-y: auto; }
+        
+        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 600; margin-bottom: 15px; }
+        .card { background: #ffffff; border: 1px solid #eef2f6; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .card h3 { font-size: 11px; text-transform: uppercase; color: var(--slate); margin-bottom: 12px; font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
+        
+        /* Legend Warna di Tabel */
+        .color-dot { 
+            display: inline-block; 
+            width: 12px; 
+            height: 12px; 
+            border-radius: 3px; 
+            margin-right: 8px; 
+            vertical-align: middle; 
+        }
 
-    .table-container { max-height: 200px; overflow-y: auto; border-radius: 8px; border: 1px solid #f1f5f9; }
-    .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    .data-table th { background: #f8fafc; padding: 8px; text-align: left; color: var(--slate); border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; }
-    .data-table td { padding: 8px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: var(--primary); }
+        .table-container { border-radius: 8px; border: 1px solid #f1f5f9; overflow: hidden; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .data-table th { background: #f8fafc; padding: 10px; text-align: left; color: var(--slate); border-bottom: 1px solid #e2e8f0; }
+        .data-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: var(--primary); }
 
-    /* Grafik Sidebar (Bukan Sparkline lagi) */
-    .chart-container-sidebar { 
-        height: 180px; 
-        width: 100%; 
-        margin-top: 10px; 
-        padding: 5px;
-        background: #fcfcfc;
-        border-radius: 8px;
-    }
+        /* Grafik Sidebar (Kembali ke ukuran standar) */
+        .chart-box { 
+            height: 200px; 
+            width: 100%; 
+            margin-top: 10px; 
+            background: #fcfcfc;
+            border-radius: 8px;
+            padding: 10px;
+        }
 
-    .method-stack { display: flex; flex-direction: column; gap: 8px; }
-    .btn-choice { display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 12px; font-weight: 700; color: var(--primary); }
-    .btn-choice.active { background: var(--primary); color: white; border-color: var(--primary); }
-    .btn-choice i { width: 16px; }
+        .method-stack { display: flex; flex-direction: column; gap: 8px; }
+        .btn-choice { display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 700; color: var(--primary); }
+        .btn-choice.active { background: var(--primary); color: white; }
 
-    /* Info Box on Map */
-    .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #eef2f6; }
-
-    /* Modal */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: none; align-items: center; justify-content: center; }
-    .modal-content { background: white; padding: 25px; border-radius: 16px; width: 90%; max-width: 800px; position: relative; }
-</style>
-
+        .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 1000; }
+    </style>
+</head>
 <body>
+
     <div id="sidebar">
         <div class="sidebar-header">
             <a href="#" class="back-link"><i data-lucide="arrow-left"></i> Kembali ke Menu Utama</a>
-            <h1 style="font-size: 20px; font-weight: 800; color: var(--primary);">VERIFICATION SYSTEM</h1>
-            <p style="font-size: 11px; color: var(--slate);">Suku Dinas SDA Jakarta Selatan</p>
+            <h1 style="font-size: 18px; font-weight: 800; color: var(--primary);">VERIFICATION SYSTEM</h1>
+            <p style="font-size: 10px; color: var(--slate);">Suku Dinas SDA Jakarta Selatan</p>
         </div>
         
         <div class="sidebar-content">
             <div class="card">
-                <h3>1. Input Area DAS (KML/Peta)</h3>
+                <h3>1. Input Area DAS</h3>
                 <div class="method-stack">
-                    <div class="btn-choice" id="btn-upload" onclick="setMode('upload')"><i data-lucide="file-up"></i> UPLOAD FILE KML</div>
-                    <div class="btn-choice" id="btn-draw" onclick="setMode('draw')"><i data-lucide="pencil-line"></i> DIGITASI PETA LANGSUNG</div>
-                    <button id="btn-reset" onclick="resetAnalysis()" style="margin-top:5px; padding:8px; border-radius:8px; border:1px solid #fecaca; background:#fef2f2; color:#ef4444; font-weight:700; cursor:pointer; font-size:11px;"><i data-lucide="trash-2" style="width:12px; vertical-align:middle"></i> HAPUS SEMUA & RESET</button>
+                    <div class="btn-choice"><i data-lucide="file-up"></i> UPLOAD FILE KML</div>
+                    <div class="btn-choice active"><i data-lucide="pencil-line"></i> DIGITASI PETA LANGSUNG</div>
                 </div>
-                <input type="file" id="fKML" style="display:none" accept=".kml">
             </div>
 
-            <div id="resThiessen" class="card" style="display:none">
+            <div class="card">
                 <h3>2. Analisa Stasiun Pengaruh</h3>
                 <div class="table-container">
                     <table class="data-table">
                         <thead><tr><th>Stasiun</th><th>Luas (Ha)</th><th>W</th></tr></thead>
-                        <tbody id="tBody"></tbody>
+                        <tbody id="tBody">
+                            <tr>
+                                <td><span class="color-dot" style="background: #f39c12;"></span> Manggarai</td>
+                                <td>27.86</td>
+                                <td>0.3190</td>
+                            </tr>
+                            <tr>
+                                <td><span class="color-dot" style="background: #3498db;"></span> Setiabudi Timur</td>
+                                <td>59.48</td>
+                                <td>0.6810</td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
 
-            <div id="resYearly" class="card" style="display:none">
+            <div class="card">
                 <h3>3. Curah Hujan Wilayah</h3>
-                <div class="table-container" style="max-height: 130px;">
-                    <table class="data-table">
-                        <thead><tr><th>Tahun</th><th>Hujan (mm)</th></tr></thead>
-                        <tbody id="tBodyRain"></tbody>
-                    </table>
-                </div>
-                <div class="chart-container-sidebar" onclick="openModal()" style="cursor:pointer">
+                <div class="chart-box">
                     <canvas id="rainChart"></canvas>
                 </div>
             </div>
@@ -127,98 +128,44 @@
 
     <div id="map">
         <div class="area-info-box">
-            <div style="font-size: 9px; color: var(--slate); font-weight: 800; text-transform: uppercase;">LUAS CATCHMENT</div>
-            <div style="font-size: 24px; font-weight: 800; color: var(--accent);"><span id="area-val">0.00</span> Ha</div>
-        </div>
-    </div>
-
-    <div id="graphModal" class="modal-overlay" onclick="closeModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h2 style="font-size: 16px; margin-bottom:15px">Grafik Curah Hujan Wilayah (Detail)</h2>
-            <div style="height: 400px;"><canvas id="rainChartFull"></canvas></div>
+            <div style="font-size: 9px; color: var(--slate); font-weight: 800;">LUAS CATCHMENT</div>
+            <div style="font-size: 22px; font-weight: 800; color: var(--accent);">87.34 Ha</div>
         </div>
     </div>
 
     <script>
-        // Inisialisasi Map
-        var map = L.map('map', { zoomControl: false }).setView([-6.2845, 106.8124], 12);
+        // Inisialisasi Peta (FIX: Pastikan ID map sudah ada)
+        var map = L.map('map', { zoomControl: false }).setView([-6.2845, 106.8124], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        var drawnItems = new L.FeatureGroup().addTo(map);
-        var thiessenLayer = L.layerGroup().addTo(map);
-        let myChart = null;
-        let myChartFull = null;
-        const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
-        
-        // Mock Data Database Stasiun (Sesuaikan dengan file JSON kamu nanti)
-        let RAIN_DATABASE = {
-            "st1": { n: "Manggarai", lat: -6.2088, lng: 106.8475, d: [138, 214, 120, 90, 110, 150, 100, 130, 95, 140, 115] },
-            "st2": { n: "Setiabudi Timur", lat: -6.2125, lng: 106.8286, d: [145, 200, 110, 85, 120, 140, 110, 125, 100, 135, 120] }
-        };
-
-        function setMode(mode) {
-            if(mode === 'draw') {
-                document.getElementById('btn-draw').classList.add('active');
-                // Tambahkan logika Leaflet.Draw di sini
-            } else {
-                document.getElementById('fKML').click();
-            }
-        }
-
-        function resetAnalysis() {
-            drawnItems.clearLayers();
-            thiessenLayer.clearLayers();
-            document.getElementById('resThiessen').style.display = 'none';
-            document.getElementById('resYearly').style.display = 'none';
-            document.getElementById('area-val').innerText = "0.00";
-        }
-
-        function processHydrology(geojson) {
-            const areaHa = turf.area(geojson) / 10000;
-            document.getElementById('area-val').innerText = areaHa.toFixed(2);
-            
-            // Logika Thiessen Polygon & Hitung Hujan (Sama seperti sebelumnya)
-            // Bagian update Tabel harus mencakup class "color-legend":
-            // tBody.innerHTML += `<tr>
-            //    <td><span class="color-legend" style="background:${stColor}"></span>${stName}</td>
-            //    ... dst
-        }
-
-        function renderChart(labels, data) {
-            // Render Chart Sidebar (Normal, bukan sparkline)
-            const ctx = document.getElementById('rainChart').getContext('2d');
-            if (myChart) myChart.destroy();
-            myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'CH Rerata (mm)',
-                        data: data,
-                        borderColor: '#2f80ed',
-                        backgroundColor: 'rgba(47, 128, 237, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { font: { size: 9 } } },
-                        x: { ticks: { font: { size: 9 } } }
-                    }
+        // Grafik Sidebar (Balik ke format awal, bukan sparkline)
+        const ctx = document.getElementById('rainChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['2014', '2015', '2016', '2017', '2018', '2019', '2020'],
+                datasets: [{
+                    label: 'CH Rerata',
+                    data: [138, 214, 120, 180, 150, 190, 110],
+                    borderColor: '#2f80ed',
+                    backgroundColor: 'rgba(47, 128, 237, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { font: { size: 9 } } },
+                    y: { beginAtZero: true, ticks: { font: { size: 9 } } }
                 }
-            });
-        }
+            }
+        });
 
-        function openModal() { document.getElementById('graphModal').style.display = 'flex'; }
-        function closeModal() { document.getElementById('graphModal').style.display = 'none'; }
-        
-        window.onload = () => { lucide.createIcons(); };
+        lucide.createIcons();
     </script>
 </body>
 </html>
