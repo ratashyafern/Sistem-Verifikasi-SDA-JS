@@ -21,36 +21,18 @@
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
         body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
         
-        #sidebar { 
-            width: 450px; 
-            background: #f8fafc; 
-            border-right: 1px solid #e2e8f0; 
-            display: flex;
-            flex-direction: column;
-        }
-
+        #sidebar { width: 450px; background: #f8fafc; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; }
         .sidebar-header { padding: 25px; border-bottom: 1px solid #f1f5f9; background: white; }
         .sidebar-content { padding: 15px; flex-grow: 1; overflow-y: auto; }
         #map { flex-grow: 1; position: relative; }
 
         .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; }
         
-        .card { 
-            background: #ffffff; 
-            border: 1px solid #eef2f6; 
-            border-radius: 12px; 
-            padding: 15px; 
-            margin-bottom: 15px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        }
+        .card { background: #ffffff; border: 1px solid #eef2f6; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         .card h3 { font-size: 11px; text-transform: uppercase; color: var(--slate); margin-bottom: 12px; font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
         
-        .method-stack { display: flex; flex-direction: column; gap: 10px; }
-        .btn-choice { 
-            display: flex; align-items: center; gap: 12px; background: #f8fafc; 
-            border: 1px solid #e2e8f0; padding: 12px 15px; border-radius: 8px; 
-            cursor: pointer; transition: 0.2s; 
-        }
+        .method-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .btn-choice { display: flex; align-items: center; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .btn-choice span { font-size: 12px; font-weight: 700; color: var(--primary); }
         .btn-choice i { color: var(--accent); width: 18px; }
         .btn-choice.active { background: var(--primary); border-color: var(--primary); }
@@ -91,6 +73,10 @@
                     <i data-lucide="pencil-line"></i>
                     <span>DIGITASI PETA LANGSUNG</span>
                 </div>
+                <div class="btn-choice" id="btn-clear-manual" onclick="resetAnalysis()" style="border-color: #fca5a5; background: #fff5f5;">
+                    <i data-lucide="trash-2" style="color: #ef4444;"></i>
+                    <span style="color: #ef4444;">HAPUS SEMUA & RESET</span>
+                </div>
             </div>
 
             <div id="upload-section" style="display:none">
@@ -100,7 +86,7 @@
                 <input type="file" id="fKML" style="display:none" accept=".kml">
             </div>
             
-            <div id="draw-section" style="display:none; margin-top:15px; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
+            <div id="draw-section" style="display:none; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
                 <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
             </div>
         </div>
@@ -159,88 +145,56 @@
     var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Grouping Layer
     var drawnItems = new L.FeatureGroup().addTo(map);
     var thiessenLayer = L.layerGroup().addTo(map);
     var stationLayer = L.layerGroup().addTo(map);
     
-    // Inisialisasi layer saluran agar tidak error saat dipanggil
     var mikroLayer = L.geoJSON(null, { style: { color: "#34d399", weight: 2 } });
     var phbLayer = L.geoJSON(null, { style: { color: "#3b82f6", weight: 3 } });
 
-    // Tambahkan ke Control Layers
-    L.control.layers({ 
-        "Peta Jalan": osm, 
-        "Satelit": satellite 
-    }, { 
-        "Saluran Mikro": mikroLayer,
-        "Saluran PHB": phbLayer,
-        "Stasiun Hujan": stationLayer, 
-        "Wilayah Pengaruh": thiessenLayer, 
-        "Area": drawnItems 
-    }, { collapsed: false, position: 'topright' }).addTo(map);
+    L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, 
+    { "Saluran Mikro": mikroLayer, "Saluran PHB": phbLayer, "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems }, 
+    { collapsed: false, position: 'topright' }).addTo(map);
 
     var drawControl = new L.Control.Draw({
         draw: {
             polygon: { allowIntersection: false, shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } },
             polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
-        },
-        edit: { featureGroup: drawnItems, remove: true }
+        }
     });
 
     let RAIN_DATABASE = {}; 
     let myChart = null;
     const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
 
-    // --- 2. FUNGSI LOAD SALURAN (PENTING!) ---
     function initSystem() {
-    console.log("Memuat layer saluran...");
-    
-    // Style Saluran Mikro (Biru Muda)
-    const styleMikro = {
-        color: "#7dd3fc", // Sky blue / Biru muda
-        weight: 2,
-        opacity: 0.8
-    };
-
-    // Style Saluran PHB (Biru Tua & Tebal)
-    const stylePHB = {
-        color: "#1e3a8a", // Dark blue / Biru tua
-        weight: 5,        // Thicker
-        opacity: 1
-    };
-
-    if (typeof dataMikro !== 'undefined') {
-        mikroLayer.clearLayers();
-        mikroLayer.addData(dataMikro).setStyle(styleMikro).addTo(map);
+        const styleMikro = { color: "#00BFFF", weight: 2, opacity: 0.8 };
+        const stylePHB = { color: "#1e3a8a", weight: 5, opacity: 1 };
+        if (typeof dataMikro !== 'undefined') mikroLayer.addData(dataMikro).setStyle(styleMikro).addTo(map);
+        if (typeof dataPHB !== 'undefined') phbLayer.addData(dataPHB).setStyle(stylePHB).addTo(map);
     }
 
-    if (typeof dataPHB !== 'undefined') {
-        phbLayer.clearLayers();
-        phbLayer.addData(dataPHB).setStyle(stylePHB).addTo(map);
-    }
-}
-
-    // --- 3. LOGIKA HIDROLOGI & RESET ---
+    // --- 3. LOGIKA RESET (FIXED) ---
     function resetAnalysis() {
         if (drawnItems) drawnItems.clearLayers();
         if (thiessenLayer) thiessenLayer.clearLayers();
         
         document.getElementById('area-val').innerText = "0.00";
-        if(document.getElementById('totalAreaFooter')) document.getElementById('totalAreaFooter').innerText = "0.00";
-
         document.getElementById('tBody').innerHTML = "";
         document.getElementById('tBodyRain').innerHTML = "";
+        
+        if(document.getElementById('totalAreaFooter')) document.getElementById('totalAreaFooter').innerText = "0.00";
+        if(document.getElementById('totalWeightFooter')) document.getElementById('totalWeightFooter').innerText = "1.0000";
+
         document.getElementById('resThiessen').style.display = 'none';
         document.getElementById('resYearly').style.display = 'none';
         
-        if (myChart) {
-            myChart.destroy();
-            myChart = null;
-        }
-
-        const oldBtn = document.getElementById('btn-next-calc');
-        if(oldBtn) oldBtn.remove();
+        if (myChart) { myChart.destroy(); myChart = null; }
+        
+        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
+        map.removeControl(drawControl);
+        document.getElementById('upload-section').style.display = 'none';
+        document.getElementById('draw-section').style.display = 'none';
     }
 
     async function loadStationData() {
@@ -264,97 +218,22 @@
     }
 
     function setMode(mode) {
-        // Reset hanya poligon coret-coretan, jangan hapus layer saluran
-        if (drawnItems) drawnItems.clearLayers();
-        if (thiessenLayer) thiessenLayer.clearLayers();
-        
-        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
+        resetAnalysis(); // Bersihkan dulu tiap ganti mode
         if(mode === 'draw') {
             document.getElementById('btn-draw').classList.add('active');
             map.addControl(drawControl);
-            document.getElementById('upload-section').style.display = 'none';
             document.getElementById('draw-section').style.display = 'block';
         } else {
             document.getElementById('btn-upload').classList.add('active');
             document.getElementById('upload-section').style.display = 'block';
-            document.getElementById('draw-section').style.display = 'none';
-            map.removeControl(drawControl);
         }
     }
 
     map.on(L.Draw.Event.CREATED, function (e) {
-        resetAnalysis();
         var layer = e.layer;
         drawnItems.addLayer(layer);
         processHydrology(layer.toGeoJSON());
     });
-
-    // --- 4. PERHITUNGAN HUJAN (DIPERBAIKI) ---
-    function calculateRegionalRain(foundStations) {
-    const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
-    let labels = []; 
-    let dataValues = [];
-    const tBodyRain = document.getElementById('tBodyRain');
-    tBodyRain.innerHTML = ""; 
-
-    // Loop berdasarkan daftar tahun
-    years.forEach((year, index) => {
-        let total = 0;
-        
-        foundStations.forEach(st => {
-            const stationEntry = RAIN_DATABASE[st.id];
-            
-            // Cek apakah stasiun ada dan punya array 'd'
-            if (stationEntry && Array.isArray(stationEntry.d)) {
-                // Ambil nilai hujan berdasarkan index (0=2014, 1=2015, dst)
-                const rainValue = stationEntry.d[index];
-                
-                if (rainValue !== undefined) {
-                    total += parseFloat(rainValue) * st.weight;
-                }
-            }
-        });
-        
-        const val = total.toFixed(2);
-        labels.push(year);
-        dataValues.push(parseFloat(val));
-        
-        // Update Tabel
-        tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
-    });
-
-    // Update Grafik
-    if (labels.length > 0) {
-        renderChart(labels, dataValues);
-    }
-}
-
-    // --- RE-USE FUNGSI LAINNYA (processHydrology, renderChart, dll sesuai kode kamu) ---
-    // ... (Fungsi processHydrology dan renderChart tetap sama seperti sebelumnya) ...
-
-    function renderChart(labels, data) {
-        const ctx = document.getElementById('rainChart').getContext('2d');
-        if (myChart) myChart.destroy();
-        myChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'CH Rerata (mm)',
-                    data: data,
-                    borderColor: '#2f80ed',
-                    backgroundColor: 'rgba(47, 128, 237, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false,
-                plugins: { tooltip: { enabled: true } }
-            }
-        });
-    }
 
     function processHydrology(geojson) {
         const areaHa = turf.area(geojson) / 10000;
@@ -381,7 +260,7 @@
                     const stId = points.features[i].properties.id;
                     const stColor = colors[i % colors.length];
 
-                    foundStations.push({ id: stId, weight: weight });
+                    foundStations.push({ id: stId, weight: weight, area: subAreaHa });
 
                     L.geoJSON(intersect, {
                         style: { fillColor: stColor, fillOpacity: 0.5, color: 'white', weight: 1.5 }
@@ -397,17 +276,74 @@
         });
 
         if (foundStations.length > 0) {
+            const totalL = foundStations.reduce((sum, s) => sum + s.area, 0);
+            const totalW = foundStations.reduce((sum, s) => sum + s.weight, 0);
+            document.getElementById('totalAreaFooter').innerText = totalL.toFixed(2);
+            document.getElementById('totalWeightFooter').innerText = totalW.toFixed(4);
+            
             calculateRegionalRain(foundStations);
             document.getElementById('resThiessen').style.display = 'block';
             document.getElementById('resYearly').style.display = 'block';
         }
     }
 
-    // --- RUNTIME ---
+    function calculateRegionalRain(foundStations) {
+        const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
+        let labels = []; let dataValues = [];
+        const tBodyRain = document.getElementById('tBodyRain');
+        tBodyRain.innerHTML = ""; 
+
+        years.forEach((year, index) => {
+            let total = 0;
+            foundStations.forEach(st => {
+                const stationEntry = RAIN_DATABASE[st.id];
+                if (stationEntry && Array.isArray(stationEntry.d)) {
+                    const rainValue = stationEntry.d[index];
+                    if (rainValue !== undefined) total += parseFloat(rainValue) * st.weight;
+                }
+            });
+            const val = total.toFixed(2);
+            labels.push(year);
+            dataValues.push(parseFloat(val));
+            tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
+        });
+        renderChart(labels, dataValues);
+    }
+
+    function renderChart(labels, data) {
+        const ctx = document.getElementById('rainChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{ label: 'CH Rerata (mm)', data: data, borderColor: '#2f80ed', backgroundColor: 'rgba(47, 128, 237, 0.1)', fill: true, tension: 0.4 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
     window.onload = async () => { 
         await loadStationData();
-        initSystem(); // Memanggil fungsi gambar saluran
+        initSystem();
         lucide.createIcons(); 
+        
+        document.getElementById('fKML').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
+                const geojson = toGeoJSON.kml(kmlDom);
+                if (geojson.features.length > 0) {
+                    resetAnalysis();
+                    const layer = L.geoJSON(geojson).addTo(drawnItems);
+                    map.fitBounds(layer.getBounds());
+                    processHydrology(geojson.features[0]);
+                }
+            };
+            reader.readAsText(file);
+        });
     };
 </script>
 </body>
