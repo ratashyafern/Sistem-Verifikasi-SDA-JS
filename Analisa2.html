@@ -56,6 +56,20 @@
         .status-msg { padding: 10px; border-radius: 6px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-top: 10px; }
         .status-ok { background: #dcfce7; color: #166534; }
         .status-error { background: #fee2e2; color: #991b1b; }
+        #resThiessen { 
+            max-height: 250px; 
+            overflow-y: auto; 
+            border: 1px solid #e2e8f0;
+        }
+        .data-table thead { 
+            position: sticky; 
+            top: 0; 
+            z-index: 2; 
+        }
+        #rainChart { 
+            min-height: 220px; 
+            width: 100% !important; 
+        }
     </style>
 </head>
 <body>
@@ -190,7 +204,14 @@
     }
 
     function setMode(mode) {
-        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
+    
+    // TAMBAHKAN INI: Bersihkan area lama saat ganti mode atau mulai ulang
+    drawnItems.clearLayers(); 
+    thiessenLayer.clearLayers();
+    document.getElementById('area-val').innerText = "0.00";
+    document.getElementById('resThiessen').style.display = 'none';
+    document.getElementById('resYearly').style.display = 'none';
         if(mode === 'draw') {
             document.getElementById('btn-draw').classList.add('active');
             map.addControl(drawControl);
@@ -220,86 +241,84 @@
     });
 
     // --- 4. ANALISIS HIDROLOGI (FIXED) ---
-    function processHydrology(geojson) {
-        // Hitung Luas
-        const areaHa = turf.area(geojson) / 10000;
-        document.getElementById('area-val').innerText = areaHa.toFixed(2);
+    // --- 4. ANALISIS HIDROLOGI (FIXED & SINKRON) ---
+function processHydrology(geojson) {
+    // 1. Hitung Luas Total
+    const areaHa = turf.area(geojson) / 10000;
+    document.getElementById('area-val').innerText = areaHa.toFixed(2);
 
-        // Kumpulkan Titik Stasiun
-        const points = turf.featureCollection(
-            Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { 
-                name: RAIN_DATABASE[id].n, 
-                id: id 
-            }))
-        );
+    // 2. Siapkan Titik Stasiun dari Database
+    const points = turf.featureCollection(
+        Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { 
+            name: RAIN_DATABASE[id].n, 
+            id: id 
+        }))
+    );
 
-        // BBox Jakarta Selatan
-        const bbox = [106.5, -6.5, 107.0, -6.0]; 
-        const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
+    // 3. Generate Poligon Voronoi
+    const bbox = [106.5, -6.5, 107.0, -6.0]; 
+    const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
 
-        let foundStations = [];
-        const tBody = document.getElementById('tBody');
-        tBody.innerHTML = "";
-        thiessenLayer.clearLayers();
+    let foundStations = [];
+    const tBody = document.getElementById('tBody');
+    tBody.innerHTML = "";
+    thiessenLayer.clearLayers();
 
-        const colors = ['#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22'];
+    const colors = ['#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22'];
 
-        voronoiPolygons.features.forEach((cell, i) => {
-            const intersect = turf.intersect(cell, geojson);
-            if (intersect) {
-                const subAreaHa = turf.area(intersect) / 10000;
-                if (subAreaHa > 0.001) {
-                    const weight = subAreaHa / areaHa;
-                    // Pastikan cell punya koordinat yang bisa dicocokkan kembali ke stasiun
-const stId = points.features[i].properties.id;
-const props = RAIN_DATABASE[stId];
+    // 4. Irisan Area DAS dengan Voronoi
+    voronoiPolygons.features.forEach((cell, i) => {
+        const intersect = turf.intersect(cell, geojson);
+        if (intersect) {
+            const subAreaHa = turf.area(intersect) / 10000;
+            if (subAreaHa > 0.001) {
+                const weight = subAreaHa / areaHa;
+                
+                // FIX UNDEFINED: Ambil langsung dari points.features[i]
+                const stData = points.features[i].properties;
 
-                    foundStations.push({ id: props.id, weight: weight });
+                foundStations.push({ id: stData.id, weight: weight });
 
-                    // Munculkan Poligon Thiessen di Peta
-                    L.geoJSON(intersect, {
-                        style: { 
-                            fillColor: colors[i % colors.length], 
-                            fillOpacity: 0.4, 
-                            color: 'white', 
-                            weight: 2 
-                        }
-                    }).addTo(thiessenLayer);
+                const stColor = colors[i % colors.length];
+                L.geoJSON(intersect, {
+                    style: { fillColor: stColor, fillOpacity: 0.4, color: 'white', weight: 2 }
+                }).addTo(thiessenLayer);
 
-                    tBody.innerHTML += `<tr><td>${props.name}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
-                }
+                // Update Tabel
+                tBody.innerHTML += `<tr><td>${stData.name}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+            }
+        }
+    });
+
+    if (foundStations.length > 0) {
+        calculateRegionalRain(foundStations);
+        document.getElementById('resThiessen').style.display = 'block';
+        document.getElementById('resYearly').style.display = 'block';
+        showNextStepButton();
+    }
+}
+
+function calculateRegionalRain(foundStations) {
+    const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
+    let regionalResults = [];
+
+    years.forEach(year => {
+        let total = 0;
+        foundStations.forEach(st => {
+            const stFullData = RAIN_DATABASE[st.id];
+            if (stFullData && stFullData.d) {
+                const dataPoint = stFullData.d.find(d => d.y == year);
+                // FIX GRAFIK: Pastikan dikalikan angka (parseFloat)
+                const rainVal = dataPoint ? parseFloat(dataPoint.v) : 0;
+                total += rainVal * st.weight;
             }
         });
+        regionalResults.push(total.toFixed(2));
+    });
 
-        if (foundStations.length > 0) {
-            calculateRegionalRain(foundStations);
-            document.getElementById('resThiessen').style.display = 'block';
-            document.getElementById('resYearly').style.display = 'block';
-            
-            // Tampilkan Tombol Lanjut (Fungsi di bawah)
-            showNextStepButton();
-        } else {
-            alert("Area tidak mencakup stasiun hujan manapun!");
-        }
-    }
-
-    function calculateRegionalRain(foundStations) {
-        const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
-        let regionalResults = [];
-
-        years.forEach(year => {
-            let total = 0;
-            foundStations.forEach(st => {
-                const stData = RAIN_DATABASE[st.id];
-                if (stData && stData.d) {
-                    const dataPoint = stData.d.find(d => d.y == year);
-                    total += (dataPoint ? parseFloat(dataPoint.v) : 0) * st.weight;
-                }
-            });
-            regionalResults.push(total.toFixed(2));
-        });
-        renderChart(years, regionalResults);
-    }
+    // Pastikan data dikirim sebagai Array of Numbers
+    renderChart(years, regionalResults.map(v => parseFloat(v)));
+}
 
     function showNextStepButton() {
         if (!document.getElementById('btn-next-calc')) {
