@@ -1,171 +1,344 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <title>Verification System - SDA Jaksel</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDA JS | Verification System</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@mapbox/togeojson@0.16.0/togeojson.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+    <script src="data_saluranmikro.js"></script>
+    <script src="data_saluranphb.js"></script>
 
     <style>
         :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+        body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
         
-        
-        body { 
-            display: flex; 
-            height: 100vh; 
-            width: 100vw; 
-            overflow: hidden; 
-            background: var(--bg); 
-        }
-        
-        #sidebar { 
-            width: 400px; 
-            min-width: 400px;
-            background: #ffffff; 
-            border-right: 1px solid #e2e8f0; 
-            display: flex; 
-            flex-direction: column; 
-            z-index: 10;
-            box-shadow: 4px 0 10px rgba(0,0,0,0.05);
-        }
-        
-        /* Map harus mengambil SISA layar dan posisinya RELATIVE */
-        #map { 
-            flex-grow: 1; 
-            height: 100vh; 
-            position: relative; 
-            z-index: 1;
-        }
-
-        .sidebar-header { padding: 20px; border-bottom: 1px solid #f1f5f9; }
+        #sidebar { width: 450px; background: #f8fafc; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; }
+        .sidebar-header { padding: 25px; border-bottom: 1px solid #f1f5f9; background: white; }
         .sidebar-content { padding: 15px; flex-grow: 1; overflow-y: auto; }
+        #map { flex-grow: 1; position: relative; }
+
+        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; }
         
-        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 600; margin-bottom: 15px; }
-        .card { background: #ffffff; border: 1px solid #eef2f6; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .card { background: #ffffff; border: 1px solid #eef2f6; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         .card h3 { font-size: 11px; text-transform: uppercase; color: var(--slate); margin-bottom: 12px; font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
         
-        /* Legend Warna di Tabel */
-        .color-dot { 
-            display: inline-block; 
-            width: 12px; 
-            height: 12px; 
-            border-radius: 3px; 
-            margin-right: 8px; 
-            vertical-align: middle; 
-        }
+        .method-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .btn-choice { display: flex; align-items: center; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .btn-choice span { font-size: 12px; font-weight: 700; color: var(--primary); }
+        .btn-choice i { color: var(--accent); width: 18px; }
+        .btn-choice.active { background: var(--primary); border-color: var(--primary); }
+        .btn-choice.active span, .btn-choice.active i { color: white; }
 
-        .table-container { border-radius: 8px; border: 1px solid #f1f5f9; overflow: hidden; }
+        .upload-area { background: var(--primary); color: white; padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; margin-top: 15px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+        .table-container { max-height: 180px; overflow-y: auto; border: 1px solid #f1f5f9; margin-top: 10px; border-radius: 6px; }
         .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .data-table th { background: #f8fafc; padding: 10px; text-align: left; color: var(--slate); border-bottom: 1px solid #e2e8f0; }
-        .data-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: var(--primary); }
+        .data-table th { background: #f8fafc; text-align: left; padding: 10px; color: var(--slate); border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1; }
+        .data-table td { padding: 10px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); }
 
-        /* Grafik Sidebar (Kembali ke ukuran standar) */
-        .chart-box { 
-            height: 200px; 
-            width: 100%; 
-            margin-top: 10px; 
-            background: #fcfcfc;
-            border-radius: 8px;
-            padding: 10px;
+        .color-legend { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
+        .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #e2e8f0; }
+        .stasiun-label { background: white !important; border: 1.5px solid #1c2b4a !important; font-weight: 800 !important; padding: 2px 8px !important; border-radius: 4px !important; font-size: 10px !important; color: #1c2b4a !important; }
+        
+        #rainChart { min-height: 220px; width: 100% !important; }
+
+        /* Style Tombol Hapus Kecil di Popup */
+        .btn-delete-mini {
+            background: #ef4444; color: white; border: none; padding: 4px 8px; 
+            border-radius: 4px; cursor: pointer; font-family: 'Inter', sans-serif;
+            font-weight: 700; font-size: 10px; display: flex; align-items: center; gap: 4px;
+            margin-top: 5px; width: fit-content;
         }
-
-        .method-stack { display: flex; flex-direction: column; gap: 8px; }
-        .btn-choice { display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 700; color: var(--primary); }
-        .btn-choice.active { background: var(--primary); color: white; }
-
-        .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 1000; }
+        .btn-delete-mini:hover { background: #dc2626; }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <div class="sidebar-header">
-            <a href="#" class="back-link"><i data-lucide="arrow-left"></i> Kembali ke Menu Utama</a>
-            <h1 style="font-size: 18px; font-weight: 800; color: var(--primary);">VERIFICATION SYSTEM</h1>
-            <p style="font-size: 10px; color: var(--slate);">Suku Dinas SDA Jakarta Selatan</p>
+<div id="sidebar">
+    <div class="sidebar-header">
+        <a href="index.html" class="back-link"><i data-lucide="arrow-left"></i> Kembali ke Menu Utama</a>
+        <h1 style="font-size: 24px; font-weight: 800; color: var(--primary); line-height: 1.1;">VERIFICATION SYSTEM</h1>
+        <p style="font-size: 12px; color: var(--slate); margin-top: 4px;">Suku Dinas SDA Jakarta Selatan</p>
+    </div>
+    
+    <div class="sidebar-content">
+        <div class="card">
+            <h3>1. Input Area DAS (KML/Peta)</h3>
+            <div class="method-stack">
+                <div class="btn-choice" id="btn-upload" onclick="setMode('upload')">
+                    <i data-lucide="file-up"></i>
+                    <span>UPLOAD FILE KML</span>
+                </div>
+                <div class="btn-choice" id="btn-draw" onclick="setMode('draw')">
+                    <i data-lucide="pencil-line"></i>
+                    <span>DIGITASI PETA LANGSUNG</span>
+                </div>
+                </div>
+
+            <div id="upload-section" style="display:none">
+                <div class="upload-area" onclick="document.getElementById('fKML').click()">
+                    <i data-lucide="folder-open"></i> PILIH FILE KML
+                </div>
+                <input type="file" id="fKML" style="display:none" accept=".kml">
+            </div>
+            
+            <div id="draw-section" style="display:none; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
+                <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
+            </div>
         </div>
-        
-        <div class="sidebar-content">
-            <div class="card">
-                <h3>1. Input Area DAS</h3>
-                <div class="method-stack">
-                    <div class="btn-choice"><i data-lucide="file-up"></i> UPLOAD FILE KML</div>
-                    <div class="btn-choice active"><i data-lucide="pencil-line"></i> DIGITASI PETA LANGSUNG</div>
-                </div>
-            </div>
 
-            <div class="card">
-                <h3>2. Analisa Stasiun Pengaruh</h3>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead><tr><th>Stasiun</th><th>Luas (Ha)</th><th>W</th></tr></thead>
-                        <tbody id="tBody">
-                            <tr>
-                                <td><span class="color-dot" style="background: #f39c12;"></span> Manggarai</td>
-                                <td>27.86</td>
-                                <td>0.3190</td>
-                            </tr>
-                            <tr>
-                                <td><span class="color-dot" style="background: #3498db;"></span> Setiabudi Timur</td>
-                                <td>59.48</td>
-                                <td>0.6810</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+        <div id="resThiessen" class="card" style="display:none">
+            <h3>2. Analisa Stasiun Pengaruh</h3>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Stasiun</th><th>Luas (Ha)</th><th>W</th></tr>
+                    </thead>
+                    <tbody id="tBody"></tbody>
+                    <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; position: sticky; bottom: 0;">
+                        <tr>
+                            <td>TOTAL</td>
+                            <td id="totalAreaFooter">0.00</td>
+                            <td id="totalWeightFooter">1.0000</td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
+        </div>
 
-            <div class="card">
-                <h3>3. Curah Hujan Wilayah</h3>
-                <div class="chart-box">
-                    <canvas id="rainChart"></canvas>
-                </div>
+        <div id="resYearly" class="card" style="display:none">
+            <h3>3. Curah Hujan Wilayah</h3>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Tahun</th><th>Hujan (mm)</th></tr>
+                    </thead>
+                    <tbody id="tBodyRain"></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 15px; height: 240px;">
+                <canvas id="rainChart"></canvas>
             </div>
         </div>
     </div>
+</div>
 
-    <div id="map">
-        <div class="area-info-box">
-            <div style="font-size: 9px; color: var(--slate); font-weight: 800;">LUAS CATCHMENT</div>
-            <div style="font-size: 22px; font-weight: 800; color: var(--accent);">87.34 Ha</div>
-        </div>
+<div id="map">
+    <div class="area-info-box">
+        <div style="font-size: 9px; color: var(--slate); font-weight: 800; text-transform: uppercase;">LUAS CATCHMENT</div>
+        <div style="font-size: 24px; font-weight: 800; color: var(--accent);"><span id="area-val">0.00</span> Ha</div>
     </div>
+</div>
 
-    <script>
-        // Inisialisasi Peta (FIX: Pastikan ID map sudah ada)
-        var map = L.map('map', { zoomControl: false }).setView([-6.2845, 106.8124], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
-        // Grafik Sidebar (Balik ke format awal, bukan sparkline)
-        const ctx = document.getElementById('rainChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['2014', '2015', '2016', '2017', '2018', '2019', '2020'],
-                datasets: [{
-                    label: 'CH Rerata',
-                    data: [138, 214, 120, 180, 150, 190, 110],
-                    borderColor: '#2f80ed',
-                    backgroundColor: 'rgba(47, 128, 237, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { ticks: { font: { size: 9 } } },
-                    y: { beginAtZero: true, ticks: { font: { size: 9 } } }
+<script>
+    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+    
+    var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    var drawnItems = new L.FeatureGroup().addTo(map);
+    var thiessenLayer = L.layerGroup().addTo(map);
+    var stationLayer = L.layerGroup().addTo(map);
+    
+    var mikroLayer = L.geoJSON(null);
+    var phbLayer = L.geoJSON(null);
+
+    L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, 
+    { "Saluran Mikro": mikroLayer, "Saluran PHB": phbLayer, "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems }, 
+    { collapsed: false, position: 'topright' }).addTo(map);
+
+    var drawControl = new L.Control.Draw({
+        draw: {
+            polygon: { allowIntersection: false, shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } },
+            polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
+        }
+    });
+
+    let RAIN_DATABASE = {}; 
+    let myChart = null;
+    const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
+
+    function initSystem() {
+        if (typeof dataMikro !== 'undefined') {
+            mikroLayer.addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 }).addTo(map);
+        }
+        if (typeof dataPHB !== 'undefined') {
+            phbLayer.addData(dataPHB).setStyle({ color: "#1e3a8a", weight: 5, opacity: 1 }).addTo(map);
+        }
+    }
+
+    function resetAnalysis() {
+        drawnItems.clearLayers();
+        thiessenLayer.clearLayers();
+        document.getElementById('area-val').innerText = "0.00";
+        document.getElementById('tBody').innerHTML = "";
+        document.getElementById('tBodyRain').innerHTML = "";
+        document.getElementById('fKML').value = "";
+        if(document.getElementById('totalAreaFooter')) document.getElementById('totalAreaFooter').innerText = "0.00";
+        if(document.getElementById('totalWeightFooter')) document.getElementById('totalWeightFooter').innerText = "1.0000";
+        document.getElementById('resThiessen').style.display = 'none';
+        document.getElementById('resYearly').style.display = 'none';
+        if (myChart) { myChart.destroy(); myChart = null; }
+    }
+
+    // --- FUNGSI BARU: Tambah Tombol Hapus di Popup Poligon ---
+    function addMiniDelete(layer) {
+        const btn = document.createElement('button');
+        btn.className = 'btn-delete-mini';
+        btn.innerHTML = '🗑️ Hapus';
+        btn.onclick = function() {
+            resetAnalysis();
+            map.closePopup();
+        };
+        layer.bindPopup(btn, { closeButton: false, offset: L.point(0, -5) });
+    }
+
+    async function loadStationData() {
+        const url = `https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/hujan.json?t=${Date.now()}`;
+        try {
+            const response = await fetch(url);
+            RAIN_DATABASE = await response.json();
+            updateStationMarkers();
+        } catch (err) { console.error("Gagal sinkron data:", err); }
+    }
+
+    function updateStationMarkers() {
+        stationLayer.clearLayers();
+        Object.keys(RAIN_DATABASE).forEach(id => {
+            const st = RAIN_DATABASE[id];
+            L.circleMarker([st.lat, st.lng], {
+                radius: 6, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
+            }).addTo(stationLayer)
+            .bindTooltip(`<b>${st.n}</b>`, { permanent: true, direction: 'top', offset: [0,-10], className: 'stasiun-label' });
+        });
+    }
+
+    function setMode(mode) {
+        resetAnalysis();
+        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
+        map.removeControl(drawControl);
+        document.getElementById('upload-section').style.display = 'none';
+        document.getElementById('draw-section').style.display = 'none';
+
+        if(mode === 'draw') {
+            document.getElementById('btn-draw').classList.add('active');
+            map.addControl(drawControl);
+            document.getElementById('draw-section').style.display = 'block';
+        } else {
+            document.getElementById('btn-upload').classList.add('active');
+            document.getElementById('upload-section').style.display = 'block';
+        }
+    }
+
+    map.on(L.Draw.Event.CREATED, function (e) {
+        resetAnalysis();
+        var layer = e.layer;
+        drawnItems.addLayer(layer);
+        addMiniDelete(layer); // Pasang tombol hapus kecil
+        processHydrology(layer.toGeoJSON());
+    });
+
+    function processHydrology(geojson) {
+        const areaHa = turf.area(geojson) / 10000;
+        document.getElementById('area-val').innerText = areaHa.toFixed(2);
+        const points = turf.featureCollection(Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { id: id })));
+        const bbox = [106.5, -6.5, 107.0, -6.0]; 
+        const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
+        let foundStations = [];
+        const tBody = document.getElementById('tBody');
+        tBody.innerHTML = "";
+        thiessenLayer.clearLayers();
+
+        voronoiPolygons.features.forEach((cell, i) => {
+            const intersect = turf.intersect(cell, geojson);
+            if (intersect) {
+                const subAreaHa = turf.area(intersect) / 10000;
+                if (subAreaHa > 0.001) {
+                    const weight = subAreaHa / areaHa;
+                    const stId = points.features[i].properties.id;
+                    const stColor = colors[i % colors.length];
+                    foundStations.push({ id: stId, weight: weight, area: subAreaHa });
+                    L.geoJSON(intersect, { style: { fillColor: stColor, fillOpacity: 0.5, color: 'white', weight: 1.5 } }).addTo(thiessenLayer);
+                    tBody.innerHTML += `<tr><td><span class="color-legend" style="background:${stColor}"></span>${RAIN_DATABASE[stId].n}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
                 }
             }
         });
 
-        lucide.createIcons();
-    </script>
+        if (foundStations.length > 0) {
+            document.getElementById('totalAreaFooter').innerText = foundStations.reduce((sum, s) => sum + s.area, 0).toFixed(2);
+            document.getElementById('totalWeightFooter').innerText = foundStations.reduce((sum, s) => sum + s.weight, 0).toFixed(4);
+            calculateRegionalRain(foundStations);
+            document.getElementById('resThiessen').style.display = 'block';
+            document.getElementById('resYearly').style.display = 'block';
+        }
+    }
+
+    function calculateRegionalRain(foundStations) {
+        const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
+        let labels = []; let dataValues = [];
+        const tBodyRain = document.getElementById('tBodyRain');
+        tBodyRain.innerHTML = ""; 
+        years.forEach((year, index) => {
+            let total = 0;
+            foundStations.forEach(st => {
+                const stationEntry = RAIN_DATABASE[st.id];
+                if (stationEntry && Array.isArray(stationEntry.d)) {
+                    const rainValue = stationEntry.d[index];
+                    if (rainValue !== undefined) total += parseFloat(rainValue) * st.weight;
+                }
+            });
+            const val = total.toFixed(2);
+            labels.push(year); dataValues.push(parseFloat(val));
+            tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
+        });
+        renderChart(labels, dataValues);
+    }
+
+    function renderChart(labels, data) {
+        const ctx = document.getElementById('rainChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: [{ label: 'CH Rerata (mm)', data: data, borderColor: '#2f80ed', backgroundColor: 'rgba(47, 128, 237, 0.1)', fill: true, tension: 0.4 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+
+    window.onload = async () => { 
+        await loadStationData();
+        initSystem();
+        lucide.createIcons(); 
+        document.getElementById('fKML').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
+                const geojson = toGeoJSON.kml(kmlDom);
+                if (geojson.features.length > 0) {
+                    resetAnalysis();
+                    const layer = L.geoJSON(geojson, { style: { color: '#2f80ed', weight: 2 } }).addTo(drawnItems);
+                    addMiniDelete(layer); // Pasang tombol hapus kecil di KML
+                    map.fitBounds(layer.getBounds());
+                    processHydrology(geojson.features[0]);
+                }
+            };
+            reader.readAsText(file);
+        });
+    };
+</script>
 </body>
 </html>
