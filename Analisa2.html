@@ -40,16 +40,26 @@
 
         .upload-area { background: var(--primary); color: white; padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; margin-top: 15px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
-        .table-container { max-height: 160px; overflow-y: auto; border: 1px solid #f1f5f9; margin-top: 10px; border-radius: 6px; }
-        .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .data-table th { background: #f8fafc; text-align: left; padding: 10px; color: var(--slate); border: 1px solid #e2e8f0; position: sticky; top: 0; }
-        .data-table td { padding: 10px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); }
+        /* Tabel Lebih Rapat */
+        .table-container { max-height: 180px; overflow-y: auto; border: 1px solid #f1f5f9; margin-top: 8px; border-radius: 8px; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+        .data-table th { background: #f8fafc; text-align: left; padding: 6px 8px; color: var(--slate); border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 5; }
+        .data-table td { padding: 6px 8px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); }
 
-        .color-legend { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
-        .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #e2e8f0; }
-        .stasiun-label { background: white !important; border: 1.5px solid #1c2b4a !important; font-weight: 800 !important; padding: 2px 8px !important; border-radius: 4px !important; font-size: 10px !important; color: #1c2b4a !important; }
-        
-        #rainChart { min-height: 220px; width: 100% !important; }
+        /* Sparkline (Grafik Mini) */
+        .sparkline-box { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; height: 70px; margin-top: 10px; cursor: pointer; position: relative; transition: 0.2s; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .sparkline-box:hover { border-color: var(--accent); background: #f1f7ff; }
+        .sparkline-label { position: absolute; top: 4px; right: 8px; font-size: 8px; color: var(--slate); font-weight: 800; text-transform: uppercase; z-index: 2; }
+        #rainChart { width: 100% !important; height: 100% !important; pointer-events: none; }
+
+        /* Modal Pop-up */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(28, 43, 74, 0.6); backdrop-filter: blur(4px); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: white; padding: 25px; border-radius: 16px; width: 100%; max-width: 800px; position: relative; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .modal-close { position: absolute; top: 15px; right: 15px; cursor: pointer; color: var(--slate); }
+
+        /* Custom Reset Button di Peta */
+        .leaflet-custom-control { background: white; width: 34px; height: 34px; border-radius: 4px; border: 2px solid rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; cursor: pointer; color: #ef4444; }
+        .leaflet-custom-control:hover { background: #fff5f5; }
     </style>
 </head>
 <body>
@@ -73,10 +83,6 @@
                     <i data-lucide="pencil-line"></i>
                     <span>DIGITASI PETA LANGSUNG</span>
                 </div>
-                <div class="btn-choice" id="btn-clear-manual" onclick="resetAnalysis()" style="border-color: #fca5a5; background: #fff5f5;">
-                    <i data-lucide="trash-2" style="color: #ef4444;"></i>
-                    <span style="color: #ef4444;">HAPUS SEMUA & RESET</span>
-                </div>
             </div>
 
             <div id="upload-section" style="display:none">
@@ -87,7 +93,7 @@
             </div>
             
             <div id="draw-section" style="display:none; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
-                <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
+                <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di peta.
             </div>
         </div>
 
@@ -99,7 +105,7 @@
                         <tr><th>Stasiun</th><th>Luas (Ha)</th><th>W</th></tr>
                     </thead>
                     <tbody id="tBody"></tbody>
-                    <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0;">
+                    <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; font-size: 10px;">
                         <tr>
                             <td>TOTAL</td>
                             <td id="totalAreaFooter">0.00</td>
@@ -112,20 +118,18 @@
 
         <div id="resYearly" class="card" style="display:none">
             <h3>3. Curah Hujan Wilayah</h3>
-            <div class="table-container">
+            <div class="table-container" style="max-height: 120px;">
                 <table class="data-table">
-                    <thead>
-                        <tr><th>Tahun</th><th>Hujan (mm)</th></tr>
-                    </thead>
+                    <thead><tr><th>Tahun</th><th>Hujan (mm)</th></tr></thead>
                     <tbody id="tBodyRain"></tbody>
                 </table>
             </div>
-            <div style="margin-top: 15px; height: 240px;">
+            <div class="sparkline-box" onclick="openModal()">
+                <div class="sparkline-label">Tren 10 Thn • <i data-lucide="maximize-2" style="width:10px; height:10px; display:inline-block"></i></div>
                 <canvas id="rainChart"></canvas>
             </div>
         </div>
     </div>
-</div>
 
 <div id="map">
     <div class="area-info-box">
@@ -165,6 +169,7 @@
 
     let RAIN_DATABASE = {}; 
     let myChart = null;
+    let myChartFull = null; // FIXED: Deklarasi variabel
     const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
 
     function initSystem() {
@@ -174,22 +179,17 @@
         if (typeof dataPHB !== 'undefined') phbLayer.addData(dataPHB).setStyle(stylePHB).addTo(map);
     }
 
-    // --- 3. LOGIKA RESET (FIXED) ---
     function resetAnalysis() {
         if (drawnItems) drawnItems.clearLayers();
         if (thiessenLayer) thiessenLayer.clearLayers();
-        
         document.getElementById('area-val').innerText = "0.00";
         document.getElementById('tBody').innerHTML = "";
         document.getElementById('tBodyRain').innerHTML = "";
-        
-        if(document.getElementById('totalAreaFooter')) document.getElementById('totalAreaFooter').innerText = "0.00";
-        if(document.getElementById('totalWeightFooter')) document.getElementById('totalWeightFooter').innerText = "1.0000";
-
         document.getElementById('resThiessen').style.display = 'none';
         document.getElementById('resYearly').style.display = 'none';
         
         if (myChart) { myChart.destroy(); myChart = null; }
+        if (myChartFull) { myChartFull.destroy(); myChartFull = null; }
         
         document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
         map.removeControl(drawControl);
@@ -218,7 +218,7 @@
     }
 
     function setMode(mode) {
-        resetAnalysis(); // Bersihkan dulu tiap ganti mode
+        resetAnalysis();
         if(mode === 'draw') {
             document.getElementById('btn-draw').classList.add('active');
             map.addControl(drawControl);
@@ -238,14 +238,11 @@
     function processHydrology(geojson) {
         const areaHa = turf.area(geojson) / 10000;
         document.getElementById('area-val').innerText = areaHa.toFixed(2);
-
         const points = turf.featureCollection(
             Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { id: id }))
         );
-
         const bbox = [106.5, -6.5, 107.0, -6.0]; 
         const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
-
         let foundStations = [];
         const tBody = document.getElementById('tBody');
         tBody.innerHTML = "";
@@ -259,13 +256,10 @@
                     const weight = subAreaHa / areaHa;
                     const stId = points.features[i].properties.id;
                     const stColor = colors[i % colors.length];
-
                     foundStations.push({ id: stId, weight: weight, area: subAreaHa });
-
                     L.geoJSON(intersect, {
                         style: { fillColor: stColor, fillOpacity: 0.5, color: 'white', weight: 1.5 }
                     }).addTo(thiessenLayer);
-
                     tBody.innerHTML += `<tr>
                         <td><span class="color-legend" style="background:${stColor}"></span>${RAIN_DATABASE[stId].n}</td>
                         <td>${subAreaHa.toFixed(2)}</td>
@@ -276,11 +270,8 @@
         });
 
         if (foundStations.length > 0) {
-            const totalL = foundStations.reduce((sum, s) => sum + s.area, 0);
-            const totalW = foundStations.reduce((sum, s) => sum + s.weight, 0);
-            document.getElementById('totalAreaFooter').innerText = totalL.toFixed(2);
-            document.getElementById('totalWeightFooter').innerText = totalW.toFixed(4);
-            
+            document.getElementById('totalAreaFooter').innerText = (foundStations.reduce((s, a) => s + a.area, 0)).toFixed(2);
+            document.getElementById('totalWeightFooter').innerText = (foundStations.reduce((s, a) => s + a.weight, 0)).toFixed(4);
             calculateRegionalRain(foundStations);
             document.getElementById('resThiessen').style.display = 'block';
             document.getElementById('resYearly').style.display = 'block';
@@ -292,7 +283,6 @@
         let labels = []; let dataValues = [];
         const tBodyRain = document.getElementById('tBodyRain');
         tBodyRain.innerHTML = ""; 
-
         years.forEach((year, index) => {
             let total = 0;
             foundStations.forEach(st => {
@@ -317,16 +307,48 @@
             type: 'line',
             data: {
                 labels: labels,
-                datasets: [{ label: 'CH Rerata (mm)', data: data, borderColor: '#2f80ed', backgroundColor: 'rgba(47, 128, 237, 0.1)', fill: true, tension: 0.4 }]
+                datasets: [{ data: data, borderColor: '#2f80ed', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.4 }]
             },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: { 
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: { x: { display: false }, y: { display: false } }
+            }
+        });
+
+        const ctxFull = document.getElementById('rainChartFull').getContext('2d');
+        if (myChartFull) myChartFull.destroy();
+        myChartFull = new Chart(ctxFull, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{ label: 'CH Wilayah (mm)', data: data, backgroundColor: '#2f80ed', borderRadius: 5 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
     }
+
+    function openModal() { document.getElementById('graphModal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('graphModal').style.display = 'none'; }
 
     window.onload = async () => { 
         await loadStationData();
         initSystem();
         lucide.createIcons(); 
+
+        // FIXED: Pindahkan ResetControl ke sini agar hanya dibuat 1 kali
+        const ResetControl = L.Control.extend({
+            options: { position: 'topleft' },
+            onAdd: function() {
+                const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                const button = L.DomUtil.create('a', 'leaflet-custom-control', container);
+                button.innerHTML = '<i data-lucide="trash-2" style="width:18px"></i>';
+                button.title = "Reset Analisis";
+                button.onclick = function() { resetAnalysis(); };
+                return container;
+            }
+        });
+        map.addControl(new ResetControl());
         
         document.getElementById('fKML').addEventListener('change', function (e) {
             const file = e.target.files[0];
@@ -346,5 +368,12 @@
         });
     };
 </script>
+    <div id="graphModal" class="modal-overlay" onclick="closeModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-close" onclick="closeModal()"><i data-lucide="x"></i></div>
+        <h2 style="font-size: 18px; font-weight: 800; color: var(--primary); margin-bottom: 20px;">Grafik Curah Hujan Wilayah (mm)</h2>
+        <div style="height: 400px; width: 100%;">
+            <canvas id="rainChartFull"></canvas>
+        </div>
 </body>
 </html>
