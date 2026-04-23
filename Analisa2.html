@@ -22,13 +22,13 @@
         body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
         
         #sidebar { width: 450px; background: #f8fafc; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; }
-        .sidebar-header { padding: 25px; border-bottom: 1px solid #f1f5f9; background: white; }
-        .sidebar-content { padding: 15px; flex-grow: 1; overflow-y: auto; }
+        .sidebar-header { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; background: white; }
+        .sidebar-content { padding: 8px 15px; flex-grow: 1; overflow-y: auto; }
         #map { flex-grow: 1; position: relative; }
 
         .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; }
         
-        .card { background: #ffffff; border: 1px solid #eef2f6; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .card { background: #ffffff; border: 1px solid #eef2f6; border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         .card h3 { font-size: 11px; text-transform: uppercase; color: var(--slate); margin-bottom: 12px; font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
         
         .method-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
@@ -40,16 +40,16 @@
 
         .upload-area { background: var(--primary); color: white; padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; margin-top: 15px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
-        .table-container { max-height: 180px; overflow-y: auto; border: 1px solid #f1f5f9; margin-top: 10px; border-radius: 6px; }
+        .table-container { max-height: 135px; overflow-y: auto; border: 1px solid #f1f5f9; margin-top: 10px; border-radius: 6px; }
         .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .data-table th { background: #f8fafc; text-align: left; padding: 10px; color: var(--slate); border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1; }
-        .data-table td { padding: 10px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); }
+        .data-table th { background: #f8fafc; text-align: left; padding: 6px 10px; color: var(--slate); border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1; }
+.data-table td { padding: 6px 10px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); }
 
         .color-legend { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
         .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #e2e8f0; }
         .stasiun-label { background: white !important; border: 1.5px solid #1c2b4a !important; font-weight: 800 !important; padding: 2px 8px !important; border-radius: 4px !important; font-size: 10px !important; color: #1c2b4a !important; }
         
-        #rainChart { min-height: 220px; width: 100% !important; }
+        #rainChart { height: 180px !important; width: 100% !important; }
 
         /* Style Tombol Hapus Kecil di Popup */
         .btn-delete-mini {
@@ -116,19 +116,19 @@
         </div>
 
         <div id="resYearly" class="card" style="display:none">
-            <h3>3. Curah Hujan Wilayah</h3>
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr><th>Tahun</th><th>Hujan (mm)</th></tr>
-                    </thead>
-                    <tbody id="tBodyRain"></tbody>
-                </table>
-            </div>
-            <div style="margin-top: 15px; height: 240px;">
-                <canvas id="rainChart"></canvas>
-            </div>
-        </div>
+    <h3>3. Curah Hujan Wilayah</h3>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr><th>Tahun</th><th>Hujan (mm)</th></tr>
+            </thead>
+            <tbody id="tBodyRain"></tbody>
+        </table>
+    </div>
+    <div class="chart-wrapper">
+        <canvas id="rainChart"></canvas>
+    </div>
+</div>
     </div>
 </div>
 
@@ -308,14 +308,35 @@
     }
 
     function renderChart(labels, data) {
-        const ctx = document.getElementById('rainChart').getContext('2d');
-        if (myChart) myChart.destroy();
-        myChart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: labels, datasets: [{ label: 'CH Rerata (mm)', data: data, borderColor: '#2f80ed', backgroundColor: 'rgba(47, 128, 237, 0.1)', fill: true, tension: 0.4 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-        });
-    }
+    const ctx = document.getElementById('rainChart').getContext('2d');
+    if (myChart) myChart.destroy();
+    myChart = new Chart(ctx, {
+        type: 'line',
+        data: { 
+            labels: labels, 
+            datasets: [{ 
+                label: 'CH Rerata (mm)', 
+                data: data, 
+                borderColor: '#2f80ed', 
+                backgroundColor: 'rgba(47, 128, 237, 0.1)', 
+                fill: true, 
+                tension: 0.4,
+                pointRadius: 2 // Titik diperkecil
+            }] 
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { 
+                legend: { display: false } 
+            },
+            scales: {
+                x: { ticks: { font: { size: 9 } } }, // Font angka tahun diperkecil
+                y: { ticks: { font: { size: 9 } } }  // Font angka curah hujan diperkecil
+            }
+        }
+    });
+}
 
     window.onload = async () => { 
         await loadStationData();
