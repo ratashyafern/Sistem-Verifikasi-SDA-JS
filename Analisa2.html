@@ -180,18 +180,33 @@
 
     // --- FUNCTION RESET ANALYSIS (Taro di sini agar bisa dipanggil kapanpun) ---
     function resetAnalysis() {
-        drawnItems.clearLayers();
-        thiessenLayer.clearLayers();
-        document.getElementById('area-val').innerText = "0.00";
+    // 1. Bersihkan semua layer di peta
+    if (drawnItems) drawnItems.clearLayers();
+    if (thiessenLayer) thiessenLayer.clearLayers();
+    
+    // 2. Reset tampilan angka di UI
+    document.getElementById('area-val').innerText = "0.00";
+    if(document.getElementById('totalAreaFooter')) {
         document.getElementById('totalAreaFooter').innerText = "0.00";
-        document.getElementById('tBody').innerHTML = "";
-        document.getElementById('tBodyRain').innerHTML = "";
-        document.getElementById('resThiessen').style.display = 'none';
-        document.getElementById('resYearly').style.display = 'none';
-        if (myChart) { myChart.destroy(); myChart = null; }
-        const oldBtn = document.getElementById('btn-next-calc');
-        if(oldBtn) oldBtn.remove();
     }
+
+    // 3. Kosongkan tabel
+    document.getElementById('tBody').innerHTML = "";
+    document.getElementById('tBodyRain').innerHTML = "";
+
+    // 4. Sembunyikan card analisa & hapus grafik
+    document.getElementById('resThiessen').style.display = 'none';
+    document.getElementById('resYearly').style.display = 'none';
+    
+    if (myChart) {
+        myChart.destroy();
+        myChart = null;
+    }
+
+    // 5. Hapus tombol lanjut jika ada
+    const oldBtn = document.getElementById('btn-next-calc');
+    if(oldBtn) oldBtn.remove();
+}
 
     async function loadStationData() {
         const url = `https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/hujan.json?t=${Date.now()}`;
@@ -287,25 +302,38 @@
     }
 
     function calculateRegionalRain(foundStations) {
-        const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
-        let labels = []; let dataValues = [];
-        const tBodyRain = document.getElementById('tBodyRain');
-        tBodyRain.innerHTML = ""; 
+    const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
+    let labels = []; 
+    let dataValues = [];
+    const tBodyRain = document.getElementById('tBodyRain');
+    tBodyRain.innerHTML = ""; 
 
-        years.forEach(year => {
-            let total = 0;
-            foundStations.forEach(st => {
-                const stData = RAIN_DATABASE[st.id].d;
-                const point = stData.find(d => d.y == year);
-                total += (point ? parseFloat(point.v) : 0) * st.weight;
-            });
-            const val = total.toFixed(2);
-            labels.push(year);
-            dataValues.push(parseFloat(val));
-            tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
+    years.forEach(year => {
+        let total = 0;
+        foundStations.forEach(st => {
+            const stationEntry = RAIN_DATABASE[st.id];
+            // Pastikan data stasiun dan data hujan (.d) ada
+            if (stationEntry && stationEntry.d) {
+                const point = stationEntry.d.find(d => d.y == year);
+                if (point) {
+                    total += parseFloat(point.v) * st.weight;
+                }
+            }
         });
+        
+        const val = total.toFixed(2);
+        labels.push(year);
+        dataValues.push(parseFloat(val));
+        
+        // Masukkan ke tabel
+        tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
+    });
+
+    // Pastikan grafik diupdate setelah tabel terisi
+    if (labels.length > 0) {
         renderChart(labels, dataValues);
     }
+}
 
     function renderChart(labels, data) {
         const ctx = document.getElementById('rainChart').getContext('2d');
@@ -358,7 +386,11 @@
         reader.readAsText(file);
     };
 
-    window.onload = async () => { await loadStationData(); lucide.createIcons(); };
+    window.onload = async () => { 
+    await loadStationData(); // Tunggu data stasiun selesai load
+    initSystem();            // Baru gambar saluran mikro & phb
+    lucide.createIcons(); 
+};
 </script>
 </body>
 </html>
