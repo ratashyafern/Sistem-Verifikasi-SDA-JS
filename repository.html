@@ -10,35 +10,26 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <script src="https://unpkg.com/@mapbox/togeojson@0.16.0/togeojson.js"></script>
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
-    <script src="data_saluranmikro.js"></script>
-    <script src="data_saluranphb.js"></script>
-
     <style>
-        /* MASTER DISPLAY SETTINGS */
         :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
         body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
         
-        #sidebar { width: 400px; background: var(--white); border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; }
-        .sidebar-header { padding: 25px; border-bottom: 1px solid #f1f5f9; }
-        .sidebar-content { padding: 20px; flex-grow: 1; overflow-y: auto; }
+        #sidebar { width: 450px; background: #f8fafc; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; }
+        .sidebar-header { padding: 25px; border-bottom: 1px solid #f1f5f9; background: white; }
+        .sidebar-content { padding: 15px; flex-grow: 1; overflow-y: auto; }
         #map { flex-grow: 1; position: relative; }
 
         .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; }
         
-        .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .card { background: #ffffff; border: 1px solid #eef2f6; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         .card h3 { font-size: 11px; text-transform: uppercase; color: var(--slate); margin-bottom: 12px; font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
         
-        .method-stack { display: flex; flex-direction: column; gap: 10px; }
-        .btn-choice { 
-            display: flex; align-items: center; gap: 12px; background: #f8fafc; 
-            border: 1px solid #e2e8f0; padding: 12px 15px; border-radius: 8px; 
-            cursor: pointer; transition: 0.2s; 
-        }
+        .method-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .btn-choice { display: flex; align-items: center; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .btn-choice span { font-size: 12px; font-weight: 700; color: var(--primary); }
         .btn-choice i { color: var(--accent); width: 18px; }
         .btn-choice.active { background: var(--primary); border-color: var(--primary); }
@@ -46,23 +37,26 @@
 
         .upload-area { background: var(--primary); color: white; padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; margin-top: 15px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
-        .data-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
         .data-table th { background: #f8fafc; text-align: left; padding: 10px; color: var(--slate); border: 1px solid #e2e8f0; }
         .data-table td { padding: 10px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); }
 
         .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #e2e8f0; }
-        .stasiun-label { background: white !important; border: 1.5px solid #1c2b4a !important; font-weight: 800 !important; padding: 2px 8px !important; border-radius: 4px !important; font-size: 10px !important; color: #1c2b4a !important; }
-
-        .status-msg { padding: 10px; border-radius: 6px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-top: 10px; }
-        .status-ok { background: #dcfce7; color: #166534; }
-        .status-error { background: #fee2e2; color: #991b1b; }
+        
+        /* TOMBOL HAPUS KECIL DI POPUP */
+        .btn-delete-popup {
+            background: #ff4d4f; color: white; border: none; padding: 5px 10px; 
+            border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 800;
+            display: flex; align-items: center; gap: 4px; margin-top: 5px;
+        }
+        .btn-delete-popup:hover { background: #d9363e; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
     <div class="sidebar-header">
-        <a href="index.html" class="back-link"><i data-lucide="arrow-left" style="width:18px"></i> Kembali ke Menu Utama</a>
+        <a href="index.html" class="back-link"><i data-lucide="arrow-left"></i> Kembali ke Menu Utama</a>
         <h1 style="font-size: 24px; font-weight: 800; color: var(--primary); line-height: 1.1;">VERIFICATION SYSTEM</h1>
         <p style="font-size: 12px; color: var(--slate); margin-top: 4px;">Suku Dinas SDA Jakarta Selatan</p>
     </div>
@@ -87,24 +81,16 @@
                 </div>
                 <input type="file" id="fKML" style="display:none" accept=".kml">
             </div>
-            
-            <div id="draw-section" style="display:none; margin-top:15px; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
-                <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
+        </div>
+
+        <div id="resAnalysis" class="card" style="display:none">
+            <h3>2. Analisa Stasiun Pengaruh</h3>
+            <div style="max-height: 150px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead><tr><th>Stasiun</th><th>Luas (Ha)</th></tr></thead>
+                    <tbody id="tBody"></tbody>
+                </table>
             </div>
-        </div>
-
-        <div id="resThiessen" class="card" style="display:none">
-            <h3>2. Analisa Stasiun Terdeteksi</h3>
-            <div id="status-display"></div>
-            <table class="data-table">
-                <thead><tr><th>Stasiun</th><th>Luas (Ha)</th><th>W</th></tr></thead>
-                <tbody id="tBody"></tbody>
-            </table>
-        </div>
-
-        <div id="resYearly" class="card" style="display:none">
-            <h3>3. Tren Hujan Rerata</h3>
-            <canvas id="rainChart" height="240"></canvas>
         </div>
     </div>
 </div>
@@ -120,168 +106,69 @@
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
 <script>
-    // --- 1. SETUP MAP & LAYERS (MASTER) ---
-    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-    var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
-
-    var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    var map = L.map('map', { zoomControl: false }).setView([-6.2845, 106.8124], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
     var drawnItems = new L.FeatureGroup().addTo(map);
-    var stationLayer = L.layerGroup().addTo(map);
-    var layerMikro = L.layerGroup().addTo(map);
-    var layerPHB = L.layerGroup().addTo(map);
-    var thiessenLayer = L.layerGroup().addTo(map); // Layer khusus warna wilayah
-
-    L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, { 
-        "Saluran Mikro": layerMikro, "Saluran PHB": layerPHB, 
-        "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems 
-    }, { collapsed: false, position: 'topright' }).addTo(map);
+    var thiessenLayer = L.layerGroup().addTo(map);
 
     var drawControl = new L.Control.Draw({
-        draw: { polygon: { shapeOptions: { color: '#2f80ed' } }, polyline:false, circle:false, rectangle:false, marker:false, circlemarker:false }
+        draw: {
+            polygon: { shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } },
+            polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
+        }
     });
 
-    // --- 2. DATA STASIUN ---
-    const STATIONS_LIST = [
-        {n:"KEMAYORAN", lat:-6.1556, lng:106.8400}, {n:"HALIM", lat:-6.2704, lng:106.8893},
-        {n:"KLIMAT JATENG", lat:-6.5000, lng:106.7500}, {n:"KLIMAT BANTEN", lat:-6.2615, lng:106.7508},
-        {n:"KATULAMPA", lat:-6.6332, lng:106.8371}, {n:"DEPOK", lat:-6.4006, lng:106.8319},
-        {n:"MANGGARAI", lat:-6.2074, lng:106.8486}, {n:"KARET", lat:-6.1981, lng:106.8101},
-        {n:"SETIABUDI TIMUR", lat:-6.2046, lng:106.8294}, {n:"MELATI", lat:-6.2008, lng:106.8180},
-        {n:"ISTANA", lat:-6.1716, lng:106.8270}, {n:"KRUKUT HULU", lat:-6.3443, lng:106.7991},
-        {n:"SUNTER HULU", lat:-6.3178, lng:106.9211}, {n:"PESANGGRAHAN", lat:-6.3971, lng:106.7718},
-        {n:"ANGKE HULU", lat:-6.2183, lng:106.6945}, {n:"TANJUNGAN", lat:-6.1067, lng:106.7259},
-        {n:"TOMANG BARAT", lat:-6.1671, lng:106.7800}, {n:"TELUK GONG", lat:-6.1335, lng:106.7776},
-        {n:"PULO GADUNG", lat:-6.1910, lng:106.9042}, {n:"SUNTER KODAMAR", lat:-6.1551, lng:106.8869},
-        {n:"RAWA BADAK", lat:-6.1211, lng:106.8967}, {n:"POMPA CIDENG", lat:-6.1736, lng:106.8063}
-    ];
+    function resetSemua() {
+        drawnItems.clearLayers();
+        thiessenLayer.clearLayers();
+        document.getElementById('area-val').innerText = "0.00";
+        document.getElementById('resAnalysis').style.display = 'none';
+        map.closePopup();
+    }
 
-    function initSystem() {
-        if (typeof dataMikro !== 'undefined') {
-            L.geoJSON(dataMikro, { style: { color: '#06b6d4', weight: 2.5, opacity: 0.8 } }).addTo(layerMikro);
-        }
-        if (typeof dataPHB !== 'undefined') {
-            L.geoJSON(dataPHB, { style: { color: '#1d4ed8', weight: 4.5, opacity: 1 } }).addTo(layerPHB);
-        }
-        STATIONS_LIST.forEach(st => {
-            L.circleMarker([st.lat, st.lng], {
-                radius: 7, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
-            }).addTo(stationLayer)
-            .bindTooltip(st.n, { permanent: true, direction: 'top', className: 'stasiun-label', offset: [0,-10] });
+    // FUNGSI INI AKAN MENEMPELKAN TOMBOL HAPUS KECIL PADA SETIAP AREA
+    function addDeleteAction(layer) {
+        layer.on('click', function(e) {
+            var container = L.DomUtil.create('div');
+            var delBtn = L.DomUtil.create('button', 'btn-delete-popup', container);
+            delBtn.innerHTML = '🗑️ Hapus Area';
+            
+            delBtn.onclick = function() {
+                resetSemua();
+            };
+
+            L.popup()
+                .setLatLng(e.latlng)
+                .setContent(container)
+                .openOn(map);
         });
     }
 
     function setMode(mode) {
-        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
-        document.getElementById('upload-section').style.display = 'none';
-        document.getElementById('draw-section').style.display = 'none';
-        map.removeControl(drawControl);
-
-        if(mode === 'upload') {
-            document.getElementById('btn-upload').classList.add('active');
+        resetSemua();
+        if(mode === 'draw') { 
+            map.addControl(drawControl); 
+        } else { 
+            map.removeControl(drawControl); 
             document.getElementById('upload-section').style.display = 'block';
-        } else {
-            document.getElementById('btn-draw').classList.add('active');
-            document.getElementById('draw-section').style.display = 'block';
-            map.addControl(drawControl);
         }
     }
 
-    document.getElementById('fKML').onchange = (e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const parser = new DOMParser();
-            const kml = parser.parseFromString(ev.target.result, 'text/xml');
-            const converted = toGeoJSON.kml(kml);
-            drawnItems.clearLayers();
-            const gLayer = L.geoJSON(converted, { style: { color: '#1c2b4a', weight: 2 } }).addTo(drawnItems);
-            map.fitBounds(gLayer.getBounds());
-            processHydrology(converted.features[0]);
-        };
-        reader.readAsText(file);
-    };
+    map.on(L.Draw.Event.CREATED, function (e) {
+        resetSemua();
+        var layer = e.layer;
+        drawnItems.addLayer(layer);
+        
+        // Pasang aksi hapus
+        addDeleteAction(layer);
 
-    // --- 3. LOGIKA ANALISIS (DENGAN MASTER PALETTE) ---
-    let rainChart = null;
-
-    function processHydrology(geojson) {
-        thiessenLayer.clearLayers();
-        const areaHa = turf.area(geojson) / 10000;
-        document.getElementById('area-val').innerText = areaHa.toFixed(2);
-
-        const pts = turf.featureCollection(STATIONS_LIST.map(s => turf.point([s.lng, s.lat], { n: s.n })));
-        const bbox = turf.bbox(geojson);
-        const options = { bbox: [bbox[0]-0.1, bbox[1]-0.1, bbox[2]+0.1, bbox[3]+0.1] };
-        const voronoiPolygons = turf.voronoi(pts, options);
-
-        let found = [];
-        const tBody = document.getElementById('tBody');
-        tBody.innerHTML = "";
-
-        const palette = ["#f2994a", "#27ae60", "#2f80ed", "#eb5757", "#9b51e0", "#f2c94c"];
-
-        voronoiPolygons.features.forEach((cell, i) => {
-            const intersect = turf.intersect(cell, geojson);
-            if (intersect) {
-                const subAreaHa = turf.area(intersect) / 10000;
-                if (subAreaHa > 0.001) {
-                    const stName = cell.properties.site.n; 
-                    const weight = subAreaHa / areaHa;
-                    found.push({ name: stName, data: [120, 145, 110, 160, 130] });
-
-                    L.geoJSON(intersect, {
-                        style: {
-                            fillColor: palette[i % palette.length],
-                            fillOpacity: 0.5,
-                            color: "white",
-                            weight: 1.5
-                        }
-                    }).addTo(thiessenLayer);
-
-                    tBody.innerHTML += `<tr><td>${stName}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
-                }
-            }
-        });
-
-        const statusBox = document.getElementById('status-display');
-        if (found.length > 0) {
-            statusBox.innerHTML = `<div class="status-msg status-ok"><i data-lucide="check-circle"></i> Terdeteksi ${found.length} Wilayah Stasiun Berpengaruh</div>`;
-            const avgWeight = 1 / found.length;
-            let combined = [0,0,0,0,0];
-            found.forEach(st => st.data.forEach((v, i) => combined[i] += v * avgWeight));
-            renderChart([2020, 2021, 2022, 2023, 2024], combined);
-            document.getElementById('resThiessen').style.display = 'block';
-            document.getElementById('resYearly').style.display = 'block';
-        } else {
-            statusBox.innerHTML = `<div class="status-msg status-error"><i data-lucide="alert-triangle"></i> Stasiun tidak ditemukan!</div>`;
-            document.getElementById('resThiessen').style.display = 'block';
-            document.getElementById('resYearly').style.display = 'none';
-        }
-        lucide.createIcons();
-    }
-
-    function renderChart(labels, data) {
-        const ctx = document.getElementById('rainChart').getContext('2d');
-        if (rainChart) rainChart.destroy();
-        rainChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{ label: 'Hujan (mm)', data: data, borderColor: '#2f80ed', backgroundColor: 'rgba(47,128,237,0.1)', fill: true, tension: 0.4 }]
-            },
-            options: { plugins: { legend: { display: false } } }
-        });
-    }
-
-    map.on(L.Draw.Event.CREATED, (e) => {
-        drawnItems.clearLayers();
-        drawnItems.addLayer(e.layer);
-        processHydrology(e.layer.toGeoJSON());
+        var area = turf.area(layer.toGeoJSON()) / 10000;
+        document.getElementById('area-val').innerText = area.toFixed(2);
+        document.getElementById('resAnalysis').style.display = 'block';
     });
 
-    window.onload = () => { initSystem(); lucide.createIcons(); };
+    lucide.createIcons();
 </script>
 </body>
 </html>
