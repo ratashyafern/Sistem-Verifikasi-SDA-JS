@@ -44,6 +44,10 @@
         .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
         .data-table th { background: #f8fafc; text-align: left; padding: 6px 10px; color: var(--slate); border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1; }
 .data-table td { padding: 6px 10px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); }
+#tBody td:nth-child(2), #tBody td:nth-child(3),
+#tBodyRain td:nth-child(1), #tBodyRain td:nth-child(2),
+#tBodyFreq td { text-align: center; }
+.highlight-method { color: #2f80ed; font-weight: 800; background: #f1f7ff; }
 
         .color-legend { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
         .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #e2e8f0; }
@@ -119,14 +123,23 @@
     <h3>3. Curah Hujan Wilayah</h3>
     <div class="table-container">
         <table class="data-table">
-            <thead>
-                <tr><th>Tahun</th><th>Hujan (mm)</th></tr>
-            </thead>
+            <thead><tr><th>Tahun</th><th>Hujan (mm)</th></tr></thead>
             <tbody id="tBodyRain"></tbody>
         </table>
     </div>
-    <div class="chart-wrapper">
-        <canvas id="rainChart"></canvas>
+    <div class="chart-wrapper"><canvas id="rainChart"></canvas></div>
+</div>
+
+<div id="resFrequency" class="card" style="display:none">
+    <h3>4. Analisis Frekuensi (Hujan Rencana)</h3>
+    <div class="table-container" style="max-height: 280px;">
+        <table class="data-table">
+            <thead>
+                <tr><th rowspan="2">T</th><th colspan="4" style="text-align:center">Metode (mm)</th></tr>
+                <tr><th>Norm</th><th>LogN</th><th>Gum</th><th>LP3</th></tr>
+            </thead>
+            <tbody id="tBodyFreq"></tbody>
+        </table>
     </div>
 </div>
     </div>
@@ -191,6 +204,7 @@
         if(document.getElementById('totalWeightFooter')) document.getElementById('totalWeightFooter').innerText = "1.0000";
         document.getElementById('resThiessen').style.display = 'none';
         document.getElementById('resYearly').style.display = 'none';
+    document.getElementById('resFrequency').style.display = 'none';
         if (myChart) { myChart.destroy(); myChart = null; }
     }
 
@@ -304,8 +318,10 @@
             labels.push(year); dataValues.push(parseFloat(val));
             tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
         });
-        renderChart(labels, dataValues);
-    }
+       renderChart(labels, dataValues);
+    // Panggil analisis frekuensi otomatis setelah hujan wilayah dihitung
+    performFrequencyAnalysis(dataValues);
+}
 
     function renderChart(labels, data) {
     const ctx = document.getElementById('rainChart').getContext('2d');
@@ -360,6 +376,99 @@
             reader.readAsText(file);
         });
     };
+    // ==========================================
+// DATABASE REFERENSI (FULL PRECISION)
+// ==========================================
+const LOOKUP_GUMBEL = {
+    10: { yn: 0.4952, sn: 0.9496 }, 11: { yn: 0.4996, sn: 0.9676 }, 12: { yn: 0.5035, sn: 0.9833 },
+    13: { yn: 0.5070, sn: 0.9971 }, 14: { yn: 0.5100, sn: 1.0095 }, 15: { yn: 0.5128, sn: 1.0206 },
+    16: { yn: 0.5154, sn: 1.0316 }, 17: { yn: 0.5177, sn: 1.0411 }, 18: { yn: 0.5199, sn: 1.0493 },
+    19: { yn: 0.5220, sn: 1.0565 }, 20: { yn: 0.5236, sn: 1.0628 }, 21: { yn: 0.5252, sn: 1.0696 },
+    22: { yn: 0.5268, sn: 1.0754 }, 23: { yn: 0.5283, sn: 1.0811 }, 24: { yn: 0.5296, sn: 1.0864 },
+    25: { yn: 0.5309, sn: 1.0915 }, 26: { yn: 0.5320, sn: 1.0961 }, 27: { yn: 0.5332, sn: 1.1004 },
+    28: { yn: 0.5343, sn: 1.1047 }, 29: { yn: 0.5353, sn: 1.1086 }, 30: { yn: 0.5362, sn: 1.1124 }
+};
+
+const LOOKUP_LOG_NORMAL = [
+    { cv: 0.05, k: { 2: -0.0250, 5: 0.8213, 10: 1.3005, 25: 1.8385, 50: 2.2045, 100: 2.5447 } },
+    { cv: 0.10, k: { 2: -0.0498, 5: 0.8013, 10: 1.3113, 25: 1.8845, 50: 2.2858, 100: 2.6685 } },
+    { cv: 0.15, k: { 2: -0.0741, 5: 0.7816, 10: 1.3197, 25: 1.9213, 50: 2.3610, 100: 2.7885 } },
+    { cv: 0.20, k: { 2: -0.0978, 5: 0.7628, 10: 1.3255, 25: 1.9547, 50: 2.4330, 100: 2.9065 } },
+    { cv: 0.25, k: { 2: -0.1205, 5: 0.7445, 10: 1.3288, 25: 1.9813, 50: 2.4975, 100: 3.0185 } },
+    { cv: 0.30, k: { 2: -0.1418, 5: 0.7275, 10: 1.3280, 25: 1.9965, 50: 2.5520, 100: 3.1205 } },
+    { cv: 0.35, k: { 2: -0.1613, 5: 0.7123, 10: 1.3200, 25: 2.0010, 50: 2.5955, 100: 3.2045 } },
+    { cv: 0.40, k: { 2: -0.1788, 5: 0.7100, 10: 1.3037, 25: 1.9990, 50: 2.6212, 100: 3.1870 } },
+    { cv: 0.45, k: { 2: -0.1957, 5: 0.6870, 10: 1.2920, 25: 2.0162, 50: 2.6731, 100: 3.2799 } },
+    { cv: 0.50, k: { 2: -0.2093, 5: 0.6728, 10: 1.2828, 25: 2.0255, 50: 2.7155, 100: 3.3645 } }
+];
+
+const LOOKUP_LP3 = {
+    "0.1": { 2: -0.017, 5: 0.836, 10: 1.292, 25: 1.785, 50: 2.107, 100: 2.400 },
+    "0.2": { 2: -0.033, 5: 0.830, 10: 1.301, 25: 1.818, 50: 2.159, 100: 2.472 },
+    "0.3": { 2: -0.050, 5: 0.824, 10: 1.309, 25: 1.849, 50: 2.211, 100: 2.544 },
+    "0.4": { 2: -0.066, 5: 0.816, 10: 1.317, 25: 1.880, 50: 2.261, 100: 2.615 },
+    "0.5": { 2: -0.083, 5: 0.808, 10: 1.323, 25: 1.910, 50: 2.311, 100: 2.686 }
+};
+
+function performFrequencyAnalysis(data) {
+    const n = data.length;
+    if (n < 3) return;
+
+    const avgX = data.reduce((a, b) => a + b, 0) / n;
+    const stdDevX = Math.sqrt(data.reduce((a, b) => a + Math.pow(b - avgX, 2), 0) / (n - 1));
+    const cvX = stdDevX / avgX;
+
+    const logX = data.map(x => Math.log10(x));
+    const meanLog = logX.reduce((a, b) => a + b, 0) / n;
+    
+    let sumSqLog = 0;
+    let sumCuLog = 0;
+    for (let i = 0; i < n; i++) {
+        let diff = logX[i] - meanLog;
+        sumSqLog += Math.pow(diff, 2);
+        sumCuLog += Math.pow(diff, 3);
+    }
+    const sLog = Math.sqrt(sumSqLog / (n - 1));
+    const factorCs = n / ((n - 1) * (n - 2));
+    const csMurni = factorCs * (sumCuLog / Math.pow(sLog, 3));
+    const csKey = (Math.round(csMurni * 10) / 10).toFixed(1);
+
+    const tBodyFreq = document.getElementById('tBodyFreq');
+    tBodyFreq.innerHTML = "";
+    const periods = [2, 5, 10, 25, 50, 100];
+
+    periods.forEach(T => {
+        const ktNormal = {2: 0.00, 5: 0.84, 10: 1.28, 25: 1.64, 50: 2.05, 100: 2.33}[T];
+        const resNormal = avgX + (ktNormal * stdDevX);
+
+        let lowL = LOOKUP_LOG_NORMAL[0], highL = LOOKUP_LOG_NORMAL[LOOKUP_LOG_NORMAL.length - 1];
+        for (let i = 0; i < LOOKUP_LOG_NORMAL.length - 1; i++) {
+            if (cvX >= LOOKUP_LOG_NORMAL[i].cv && cvX <= LOOKUP_LOG_NORMAL[i+1].cv) {
+                lowL = LOOKUP_LOG_NORMAL[i]; highL = LOOKUP_LOG_NORMAL[i+1]; break;
+            }
+        }
+        const ktLogN = lowL.k[T] + (highL.k[T] - lowL.k[T]) * (cvX - lowL.cv) / (highL.cv - lowL.cv);
+        const resLogN = avgX + (ktLogN * stdDevX);
+
+        const gumbel = LOOKUP_GUMBEL[n] || LOOKUP_GUMBEL[20];
+        const yt = -Math.log(-Math.log((T - 1) / T));
+        const ktGumbel = (yt - gumbel.yn) / gumbel.sn;
+        const resGumbel = avgX + (ktGumbel * stdDevX);
+
+        const ktLP3 = (LOOKUP_LP3[csKey] || LOOKUP_LP3["0.4"])[T];
+        const resLP3 = Math.pow(10, meanLog + (ktLP3 * sLog));
+
+        tBodyFreq.innerHTML += `
+            <tr>
+                <td style="font-weight:800">${T}</td>
+                <td>${resNormal.toFixed(1)}</td>
+                <td>${resLogN.toFixed(1)}</td>
+                <td>${resGumbel.toFixed(1)}</td>
+                <td class="highlight-method">${resLP3.toFixed(1)}</td>
+            </tr>`;
+    });
+    document.getElementById('resFrequency').style.display = 'block';
+}
 </script>
 </body>
 </html>
