@@ -370,51 +370,54 @@
     ];
 
     function performFrequencyAnalysis(rawData) {
-    const n = rawData.length;
-    if (n < 2) return;
+        const n = rawData.length;
+        if (n < 2) return;
 
-    // 1. STATISTIK DATA ASLI
-    const meanX = rawData.reduce((a, b) => a + b, 0) / n;
-    const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
-    const cv = stdevX / meanX;
+        // 1. STATISTIK DATA ASLI
+        const meanX = rawData.reduce((a, b) => a + b, 0) / n;
+        const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
+        
+        // SINKRONISASI DENGAN EXCEL: Bulatkan Cv ke 3 desimal sebelum interpolasi
+        const rawCv = stdevX / meanX;
+        const cv = parseFloat(rawCv.toFixed(3)); 
 
-    // 2. STATISTIK DATA LOG
-    const logData = rawData.map(x => Math.log10(x));
-    const meanLog = logData.reduce((a, b) => a + b, 0) / n;
-    const stdevLog = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / (n - 1));
-    const csLog = (n * logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0)) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
+        // 2. STATISTIK DATA LOG (Untuk Log Pearson III)
+        const logData = rawData.map(x => Math.log10(x));
+        const meanLog = logData.reduce((a, b) => a + b, 0) / n;
+        const stdevLog = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / (n - 1));
+        const csLogRaw = (n * logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0)) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
+        const csLog = parseFloat(csLogRaw.toFixed(3)); // Samakan juga pembulatan Cs-nya
 
-    // 3. PARAMETER GUMBEL (YN & SN berdasarkan n=11)
-    // Mencari yn dan sn dari TABLE_GUMBEL_REF yang sudah Anda buat di atas
-    const gumbelParam = TABLE_GUMBEL_REF.find(i => i.n === n) || TABLE_GUMBEL_REF[TABLE_GUMBEL_REF.length-1];
-    const yn = gumbelParam.yn;
-    const sn = gumbelParam.sn;
+        // 3. PARAMETER GUMBEL (Yn & Sn)
+        const gumbelParam = TABLE_GUMBEL_REF.find(i => i.n === n) || TABLE_GUMBEL_REF[TABLE_GUMBEL_REF.length-1];
+        const yn = gumbelParam.yn;
+        const sn = gumbelParam.sn;
 
-    const periods = [2, 5, 10, 25, 50, 100];
-    const results = periods.map(T => {
-        // A. NORMAL
-        const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
-        const resNormal = meanX + (ktNormal * stdevX);
+        const periods = [2, 5, 10, 25, 50, 100];
+        const results = periods.map(T => {
+            // A. NORMAL
+            const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
+            const resNormal = meanX + (ktNormal * stdevX);
 
-        // B. LOG NORMAL 2 PAR (Interpolasi Cv)
-        const ktLogN = getInterpolatedK(cv, TABLE_LOG_NORMAL_CV, 'cv', T);
-        const resLogN = meanX + (ktLogN * stdevX);
+            // B. LOG NORMAL 2 PAR (Dinamis via Interpolasi)
+            const ktLogN = getInterpolatedK(cv, TABLE_LOG_NORMAL_CV, 'cv', T);
+            const resLogN = meanX + (ktLogN * stdevX);
 
-        // C. GUMBEL
-        const yt = -Math.log(-Math.log((T - 1) / T));
-        const ktGumbel = (yt - yn) / sn;
-        const resGumbel = meanX + (ktGumbel * stdevX);
+            // C. GUMBEL
+            const yt = -Math.log(-Math.log((T - 1) / T));
+            const ktGumbel = (yt - yn) / sn;
+            const resGumbel = meanX + (ktGumbel * stdevX);
 
-        // D. LOG PEARSON III (Interpolasi Cs)
-        const ktLP3 = getInterpolatedK(csLog, TABLE_LP3_CS, 'cs', T);
-        const logXT = meanLog + (ktLP3 * stdevLog);
-        const resLP3 = Math.pow(10, logXT);
+            // D. LOG PEARSON III (Dinamis via Interpolasi)
+            const ktLP3 = getInterpolatedK(csLog, TABLE_LP3_CS, 'cs', T);
+            const logXT = meanLog + (ktLP3 * stdevLog);
+            const resLP3 = Math.pow(10, logXT);
 
-        return { T, resNormal, resLogN, resGumbel, resLP3 };
-    });
+            return { T, resNormal, resLogN, resGumbel, resLP3 };
+        });
 
-    displayResults(results);
-}
+        displayResults(results);
+    }
 
 function displayResults(results) {
     const tBody = document.getElementById('tBodyFreq');
@@ -432,14 +435,11 @@ function displayResults(results) {
 }
 
     function getInterpolatedK(targetVal, table, key, T) {
-    // 1. Urutkan tabel berdasarkan kunci (cv atau cs)
     const sortedTable = [...table].sort((a, b) => a[key] - b[key]);
     
-    // 2. Jika nilai target di luar range tabel, gunakan nilai ujung
     if (targetVal <= sortedTable[0][key]) return sortedTable[0].k[T];
     if (targetVal >= sortedTable[sortedTable.length - 1][key]) return sortedTable[sortedTable.length - 1].k[T];
 
-    // 3. Cari batas bawah (low) dan atas (high)
     let low, high;
     for (let i = 0; i < sortedTable.length - 1; i++) {
         if (targetVal >= sortedTable[i][key] && targetVal <= sortedTable[i+1][key]) {
@@ -449,12 +449,12 @@ function displayResults(results) {
         }
     }
 
-    // 4. Rumus Interpolasi Linear: Y = Y1 + (X - X1) / (X2 - X1) * (Y2 - Y1)
-    const y1 = low.k[T];
-    const y2 = high.k[T];
     const x1 = low[key];
     const x2 = high[key];
+    const y1 = low.k[T];
+    const y2 = high.k[T];
 
+    // Rumus Interpolasi Linier (Sama dengan manual Excel)
     return y1 + ((targetVal - x1) / (x2 - x1)) * (y2 - y1);
 }
 
