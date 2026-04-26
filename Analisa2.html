@@ -370,57 +370,41 @@
     ];
 
     function performFrequencyAnalysis(rawData) {
-    const n = rawData.length;
-    if (n < 2) return;
+        const n = rawData.length;
+        if (n < 2) return;
 
-    // --- 1. STATISTIK DASAR (X) ---
-    const sumX = rawData.reduce((a, b) => a + b, 0);
-    const meanX = sumX / n;
-    const sumSquareDiffX = rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0);
-    const stdevX = Math.sqrt(sumSquareDiffX / (n - 1));
+        const sumX = rawData.reduce((a, b) => a + b, 0);
+        const meanX = sumX / n;
+        const sumSquareDiffX = rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0);
+        const stdevX = Math.sqrt(sumSquareDiffX / (n - 1));
 
-    // --- 2. STATISTIK LOG (Log X) ---
-    const logData = rawData.map(x => Math.log10(x));
-    const meanLog = logData.reduce((a, b) => a + b, 0) / n;
-    const sumSquareDiffLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0);
-    const stdevLog = Math.sqrt(sumSquareDiffLog / (n - 1));
-    
-    // Skewness Log (Cs) untuk Log Pearson III
-    const sumCubeDiffLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0);
-    const csLog = (n * sumCubeDiffLog) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
+        const logData = rawData.map(x => Math.log10(x));
+        const meanLog = logData.reduce((a, b) => a + b, 0) / n;
+        const stdevLog = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / (n - 1));
+        const csLog = (n * logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0)) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
 
-    // --- 3. PERHITUNGAN TIAP METODE ---
-    const periods = [2, 5, 10, 25, 50, 100];
-    const results = periods.map(T => {
-        
-        // A. METODE NORMAL
-        // KT untuk Normal diambil dari tabel Z distribusi normal standar
-        const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
-        const resNormal = meanX + (ktNormal * stdevX);
+        const periods = [2, 5, 10, 25, 50, 100];
+        const results = periods.map(T => {
+            const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
+            const resNormal = meanX + (ktNormal * stdevX);
 
-        // B. METODE LOG NORMAL (2 Parameter)
-        const cv = stdevX / meanX;
-        const ktLogN = getInterpolatedK(cv, TABLE_LOG_NORMAL, 'cv', T);
-        const resLogN = meanX + (ktLogN * stdevX);
+            const cv = stdevX / meanX;
+            const ktLogN = getInterpolatedK(cv, TABLE_LOG_NORMAL, 'cv', T);
+            const resLogN = meanX + (ktLogN * stdevX);
 
-        // C. METODE GUMBEL
-        // Mencari Yn dan Sn berdasarkan jumlah data (n)
-        const gumbelRef = TABLE_GUMBEL_REF.find(r => r.n === n) || TABLE_GUMBEL_REF[TABLE_GUMBEL_REF.length-1];
-        const yt = -Math.log(-Math.log((T - 1) / T));
-        const ktGumbel = (yt - gumbelRef.yn) / gumbelRef.sn;
-        const resGumbel = meanX + (ktGumbel * stdevX);
+            const gumbelRef = TABLE_GUMBEL_REF.find(r => r.n === n) || TABLE_GUMBEL_REF[TABLE_GUMBEL_REF.length-1];
+            const yt = -Math.log(-Math.log((T - 1) / T));
+            const ktGumbel = (yt - gumbelRef.yn) / gumbelRef.sn;
+            const resGumbel = meanX + (ktGumbel * stdevX);
 
-        // D. METODE LOG PEARSON III
-        const ktLP3 = getInterpolatedK(csLog, TABLE_LP3, 'cs', T);
-        const logXT = meanLog + (ktLP3 * stdevLog);
-        const resLP3 = Math.pow(10, logXT);
+            const ktLP3 = getInterpolatedK(csLog, TABLE_LP3, 'cs', T);
+            const resLP3 = Math.pow(10, meanLog + (ktLP3 * stdevLog));
 
-        return { T, resNormal, resLogN, resGumbel, resLP3 };
-    });
+            return { T, resNormal, resLogN, resGumbel, resLP3 };
+        });
 
-    displayResults(results);
-}
-2. Update
+        displayResults(results);
+    }
 
     function getInterpolatedK(targetVal, table, key, T) {
         const sortedTable = [...table].sort((a, b) => a[key] - b[key]);
@@ -437,23 +421,20 @@
     }
 
     function displayResults(results) {
-    const tBody = document.getElementById('tBodyFreq');
-    tBody.innerHTML = "";
-    results.forEach(r => {
-        tBody.innerHTML += `
-            <tr>
+        const tBody = document.getElementById('tBodyFreq');
+        tBody.innerHTML = "";
+        results.forEach(r => {
+            tBody.innerHTML += `<tr>
                 <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
                 <td>${r.resNormal.toFixed(2)}</td>
                 <td>${r.resLogN.toFixed(2)}</td>
                 <td>${r.resGumbel.toFixed(2)}</td>
                 <td class="highlight-method">${r.resLP3.toFixed(2)}</td>
             </tr>`;
-    });
-    document.getElementById('resFrequency').style.display = 'block';
-}
-3. Penje
+        });
+        document.getElementById('resFrequency').style.display = 'block';
+    }
 
-    // --- EVENT LISTENERS ---
     window.onload = async () => { 
         await loadStationData();
         initSystem();
