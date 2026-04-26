@@ -381,7 +381,7 @@
 // ==========================================
 
 // 1. DATABASE GUMBEL (Yn & Sn) - Sesuai gambar tabel n=10 s/d 30
-const TABLE_GUMBEL = [
+const TABLE_GUMBEL_REF = [
     { n: 10, yn: 0.4952, sn: 0.9496 }, { n: 11, yn: 0.4996, sn: 0.9676 },
     { n: 12, yn: 0.5035, sn: 0.9833 }, { n: 13, yn: 0.5070, sn: 0.9971 },
     { n: 14, yn: 0.5100, sn: 1.0095 }, { n: 15, yn: 0.5128, sn: 1.0206 },
@@ -417,7 +417,10 @@ const TABLE_LP3 = [
 
 function performFrequencyAnalysis(rawData) {
     const n = rawData.length;
-    if (n < 3) return;
+    if (n < 3) return{
+        console.warn("Data tidak cukup untuk analisis frekuensi");
+        return;
+    }
 
     // --- A. PARAMETER STATISTIK (FULL PRECISION) ---
     // 1. Data Asli (X)
