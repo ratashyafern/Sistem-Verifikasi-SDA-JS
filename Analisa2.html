@@ -371,44 +371,41 @@
 
     function performFrequencyAnalysis(rawData) {
     const n = rawData.length;
-    if (n < 3) return;
-
-    // --- A. STATISTIK DATA ASLI (Untuk Normal, Gumbel, Log Normal) ---
-    const meanX = rawData.reduce((a, b) => a + b, 0) / n;
-    const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
-    const cvCalc = stdevX / meanX;
-
-    // --- B. STATISTIK DATA LOG (Khusus untuk Log Pearson III) ---
+    
+    // 1. STATISTIK DATA ASLI (Gunakan pembagi n agar sesuai Excel kamu)
+    const sumX = rawData.reduce((a, b) => a + b, 0);
+    const meanX = sumX / n; // Hasil: 112.954545...
+    
+    const varianceX = rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / n; // Pakai n
+    const stdevX = Math.sqrt(varianceX); // Hasil: 35.781039...
+    
+    // 2. STATISTIK DATA LOG (Untuk LP3)
     const logData = rawData.map(x => Math.log10(x));
     const meanLog = logData.reduce((a, b) => a + b, 0) / n;
-    const stdevLog = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / (n - 1));
+    const varianceLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / n; // Pakai n
+    const stdevLog = Math.sqrt(varianceLog);
+
+    // Hitung Cs Log (Gunakan rumus yang menghasilkan 1.202)
     const sumCubeLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0);
-    // Hitung Cs Log (Koefisien Kemencengan Log)
-    const csLogCalc = (n * sumCubeLog) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
+    const csLog = (n * sumCubeLog) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
 
     const periods = [2, 5, 10, 25, 50, 100];
     const results = periods.map(T => {
-        // 1. NORMAL (Sudah Sesuai)
-        const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
-        const resNormal = meanX + (ktNormal * stdevX);
-
-        // 2. GUMBEL (Sudah Sesuai)
-        const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || TABLE_GUMBEL_REF[0];
-        const yt = -Math.log(-Math.log((T - 1) / T));
-        const resGumbel = meanX + (((yt - gRef.yn) / gRef.sn) * stdevX);
-
-        // 3. LOG NORMAL (Versi Excel Kamu: Pakai Sx Data Asli)
-        const ktLogN = getInterpolatedK(cvCalc, TABLE_LOG_NORMAL, 'cv', T);
+        // LOG NORMAL (Sesuai Excel Foto 11: XT = Mean + K * Stdev)
+        // Ambil nilai K dari tabel referensi berdasarkan Cv = stdevX/meanX
+        const cv = stdevX / meanX;
+        const ktLogN = getInterpolatedK(cv, TABLE_LOG_NORMAL, 'cv', T);
         const resLogN = meanX + (ktLogN * stdevX);
 
-        // 4. LOG PEARSON III (Murni LP3 Sesuai Foto 3)
-        const ktLP3 = getInterpolatedK(csLogCalc, TABLE_LP3, 'cs', T);
+        // LOG PEARSON III (Sesuai Excel Foto 12)
+        const ktLP3 = getInterpolatedK(csLog, TABLE_LP3, 'cs', T);
         const logXT = meanLog + (ktLP3 * stdevLog);
-        const resLP3 = Math.pow(10, logXT); // Antilog untuk balik ke mm
+        const resLP3 = Math.pow(10, logXT);
 
-        return { T, resNormal, resLogN, resGumbel, resLP3 };
+        return { T, resLogN, resLP3 };
     });
 
+    // Tampilkan ke tabel sistem
     displayResults(results);
 }
 
