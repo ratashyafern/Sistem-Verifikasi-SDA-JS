@@ -88,10 +88,16 @@
             <h3>2. Analisa Stasiun Pengaruh</h3>
             <div class="table-container">
                 <table class="data-table">
-                    <thead><tr><th>Stasiun</th><th>Luas (Ha)</th><th>W</th></tr></thead>
+                    <thead>
+                        <tr><th>Stasiun</th><th>Luas (Ha)</th><th>W</th></tr>
+                    </thead>
                     <tbody id="tBody"></tbody>
                     <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; position: sticky; bottom: 0;">
-                        <tr><td>TOTAL</td><td id="totalAreaFooter">0.00</td><td id="totalWeightFooter">1.0000</td></tr>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td id="totalAreaFooter">0.00</td>
+                            <td id="totalWeightFooter">1.0000</td>
+                        </tr>
                     </tfoot>
                 </table>
             </div>
@@ -105,12 +111,12 @@
                     <tbody id="tBodyRain"></tbody>
                 </table>
             </div>
-            <div class="chart-wrapper" style="margin-top:10px;"><canvas id="rainChart"></canvas></div>
+            <div class="chart-wrapper"><canvas id="rainChart"></canvas></div>
         </div>
 
         <div id="resFrequency" class="card" style="display:none">
             <h3>4. Analisis Frekuensi (Hujan Rencana)</h3>
-            <div class="table-container" style="max-height: 280px; overflow-y: auto;">
+            <div class="table-container" style="max-height: 280px;">
                 <table class="data-table">
                     <thead>
                         <tr><th rowspan="2">T</th><th colspan="4" style="text-align:center">Metode (mm)</th></tr>
@@ -136,12 +142,15 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/@mapbox/togeojson@0.16.0/togeojson.js"></script>
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
 <script src="data_saluranmikro.js"></script>
 <script src="data_saluranphb.js"></script>
 
 <script>
+    // --- MAP INITIALIZATION ---
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+    
     var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
@@ -156,15 +165,47 @@
     { collapsed: false, position: 'topright' }).addTo(map);
 
     var drawControl = new L.Control.Draw({
-        draw: { polygon: { allowIntersection: false, shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } }, polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false }
+        draw: {
+            polygon: { allowIntersection: false, shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } },
+            polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
+        }
     });
 
-    let RAIN_DATABASE = {}; let myChart = null;
+    let RAIN_DATABASE = {}; 
+    let myChart = null;
     const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
 
+    // --- FUNCTIONS ---
     function initSystem() {
-        if (typeof dataMikro !== 'undefined') mikroLayer.addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 }).addTo(map);
-        if (typeof dataPHB !== 'undefined') phbLayer.addData(dataPHB).setStyle({ color: "#1e3a8a", weight: 5, opacity: 1 }).addTo(map);
+        if (typeof dataMikro !== 'undefined') {
+            mikroLayer.addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 }).addTo(map);
+        }
+        if (typeof dataPHB !== 'undefined') {
+            phbLayer.addData(dataPHB).setStyle({ color: "#1e3a8a", weight: 5, opacity: 1 }).addTo(map);
+        }
+    }
+
+    function resetAnalysis() {
+        drawnItems.clearLayers();
+        thiessenLayer.clearLayers();
+        document.getElementById('area-val').innerText = "0.00";
+        document.getElementById('tBody').innerHTML = "";
+        document.getElementById('tBodyRain').innerHTML = "";
+        document.getElementById('fKML').value = "";
+        if(document.getElementById('totalAreaFooter')) document.getElementById('totalAreaFooter').innerText = "0.00";
+        if(document.getElementById('totalWeightFooter')) document.getElementById('totalWeightFooter').innerText = "1.0000";
+        document.getElementById('resThiessen').style.display = 'none';
+        document.getElementById('resYearly').style.display = 'none';
+        document.getElementById('resFrequency').style.display = 'none';
+        if (myChart) { myChart.destroy(); myChart = null; }
+    }
+
+    function addMiniDelete(layer) {
+        const btn = document.createElement('button');
+        btn.className = 'btn-delete-mini';
+        btn.innerHTML = '🗑️ Hapus';
+        btn.onclick = function() { resetAnalysis(); map.closePopup(); };
+        layer.bindPopup(btn, { closeButton: false, offset: L.point(0, -5) });
     }
 
     async function loadStationData() {
@@ -180,19 +221,11 @@
         stationLayer.clearLayers();
         Object.keys(RAIN_DATABASE).forEach(id => {
             const st = RAIN_DATABASE[id];
-            L.circleMarker([st.lat, st.lng], { radius: 6, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(stationLayer)
+            L.circleMarker([st.lat, st.lng], {
+                radius: 6, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
+            }).addTo(stationLayer)
             .bindTooltip(`<b>${st.n}</b>`, { permanent: true, direction: 'top', offset: [0,-10], className: 'stasiun-label' });
         });
-    }
-
-    function resetAnalysis() {
-        drawnItems.clearLayers(); thiessenLayer.clearLayers();
-        document.getElementById('area-val').innerText = "0.00";
-        document.getElementById('tBody').innerHTML = ""; document.getElementById('tBodyRain').innerHTML = "";
-        document.getElementById('resThiessen').style.display = 'none';
-        document.getElementById('resYearly').style.display = 'none';
-        document.getElementById('resFrequency').style.display = 'none';
-        if (myChart) { myChart.destroy(); myChart = null; }
     }
 
     function setMode(mode) {
@@ -202,7 +235,8 @@
         document.getElementById('upload-section').style.display = 'none';
         document.getElementById('draw-section').style.display = 'none';
         if(mode === 'draw') {
-            document.getElementById('btn-draw').classList.add('active'); map.addControl(drawControl);
+            document.getElementById('btn-draw').classList.add('active');
+            map.addControl(drawControl);
             document.getElementById('draw-section').style.display = 'block';
         } else {
             document.getElementById('btn-upload').classList.add('active');
@@ -210,19 +244,24 @@
         }
     }
 
-    map.on(L.Draw.Event.CREATED, (e) => {
-        resetAnalysis(); drawnItems.addLayer(e.layer);
-        processHydrology(e.layer.toGeoJSON());
+    map.on(L.Draw.Event.CREATED, function (e) {
+        resetAnalysis();
+        var layer = e.layer;
+        drawnItems.addLayer(layer);
+        addMiniDelete(layer);
+        processHydrology(layer.toGeoJSON());
     });
 
     function processHydrology(geojson) {
         const areaHa = turf.area(geojson) / 10000;
         document.getElementById('area-val').innerText = areaHa.toFixed(2);
         const points = turf.featureCollection(Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { id: id })));
-        const voronoiPolygons = turf.voronoi(points, { bbox: [106.5, -6.5, 107.0, -6.0] });
+        const bbox = [106.5, -6.5, 107.0, -6.0]; 
+        const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
         let foundStations = [];
         const tBody = document.getElementById('tBody');
-        tBody.innerHTML = ""; thiessenLayer.clearLayers();
+        tBody.innerHTML = "";
+        thiessenLayer.clearLayers();
 
         voronoiPolygons.features.forEach((cell, i) => {
             const intersect = turf.intersect(cell, geojson);
@@ -231,17 +270,20 @@
                 if (subAreaHa > 0.001) {
                     const weight = subAreaHa / areaHa;
                     const stId = points.features[i].properties.id;
+                    const stColor = colors[i % colors.length];
                     foundStations.push({ id: stId, weight: weight, area: subAreaHa });
-                    L.geoJSON(intersect, { style: { fillColor: colors[i % colors.length], fillOpacity: 0.5, color: 'white', weight: 1.5 } }).addTo(thiessenLayer);
-                    tBody.innerHTML += `<tr><td><span class="color-legend" style="background:${colors[i % colors.length]}"></span>${RAIN_DATABASE[stId].n}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+                    L.geoJSON(intersect, { style: { fillColor: stColor, fillOpacity: 0.5, color: 'white', weight: 1.5 } }).addTo(thiessenLayer);
+                    tBody.innerHTML += `<tr><td><span class="color-legend" style="background:${stColor}"></span>${RAIN_DATABASE[stId].n}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
                 }
             }
         });
 
         if (foundStations.length > 0) {
-            document.getElementById('totalAreaFooter').innerText = areaHa.toFixed(2);
-            document.getElementById('resThiessen').style.display = 'block';
+            document.getElementById('totalAreaFooter').innerText = foundStations.reduce((sum, s) => sum + s.area, 0).toFixed(2);
+            document.getElementById('totalWeightFooter').innerText = foundStations.reduce((sum, s) => sum + s.weight, 0).toFixed(4);
             calculateRegionalRain(foundStations);
+            document.getElementById('resThiessen').style.display = 'block';
+            document.getElementById('resYearly').style.display = 'block';
         }
     }
 
@@ -250,16 +292,19 @@
         let labels = []; let dataValues = [];
         const tBodyRain = document.getElementById('tBodyRain');
         tBodyRain.innerHTML = ""; 
-        years.forEach((year, idx) => {
+        years.forEach((year, index) => {
             let total = 0;
             foundStations.forEach(st => {
-                const val = RAIN_DATABASE[st.id].d[idx];
-                if (val !== undefined) total += parseFloat(val) * st.weight;
+                const stationEntry = RAIN_DATABASE[st.id];
+                if (stationEntry && Array.isArray(stationEntry.d)) {
+                    const rainValue = stationEntry.d[index];
+                    if (rainValue !== undefined) total += parseFloat(rainValue) * st.weight;
+                }
             });
-            labels.push(year); dataValues.push(total);
-            tBodyRain.innerHTML += `<tr><td>${year}</td><td>${total.toFixed(2)}</td></tr>`;
+            const val = total.toFixed(2);
+            labels.push(year); dataValues.push(parseFloat(val));
+            tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
         });
-        document.getElementById('resYearly').style.display = 'block';
         renderChart(labels, dataValues);
         performFrequencyAnalysis(dataValues);
     }
@@ -267,39 +312,136 @@
     function renderChart(labels, data) {
         const ctx = document.getElementById('rainChart').getContext('2d');
         if (myChart) myChart.destroy();
-        myChart = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'CH (mm)', data: data, borderColor: '#2f80ed', tension: 0.4, fill: true, backgroundColor: 'rgba(47,128,237,0.1)' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: { 
+                labels: labels, 
+                datasets: [{ 
+                    label: 'CH Rerata (mm)', 
+                    data: data, 
+                    borderColor: '#2f80ed', 
+                    backgroundColor: 'rgba(47, 128, 237, 0.1)', 
+                    fill: true, 
+                    tension: 0.4,
+                    pointRadius: 2
+                }] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } },
+                scales: { x: { ticks: { font: { size: 9 } } }, y: { ticks: { font: { size: 9 } } } }
+            }
+        });
     }
 
-    function performFrequencyAnalysis(data) {
-        const n = data.length; if (n < 3) return;
-        const mean = data.reduce((a, b) => a + b, 0) / n;
-        const stdev = Math.sqrt(data.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n - 1));
-        const logData = data.map(x => Math.log10(x));
-        const mLog = logData.reduce((a, b) => a + b, 0) / n;
-        const sLog = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - mLog, 2), 0) / (n - 1));
-        
-        const tBody = document.getElementById('tBodyFreq'); tBody.innerHTML = "";
-        [2, 5, 10, 25, 50, 100].forEach(T => {
+    // --- FREQUENCY ANALYSIS LOGIC ---
+    const TABLE_GUMBEL_REF = [
+        { n: 10, yn: 0.4952, sn: 0.9496 }, { n: 11, yn: 0.4996, sn: 0.9676 },
+        { n: 12, yn: 0.5035, sn: 0.9833 }, { n: 13, yn: 0.5070, sn: 0.9971 },
+        { n: 14, yn: 0.5100, sn: 1.0095 }, { n: 15, yn: 0.5128, sn: 1.0206 },
+        { n: 16, yn: 0.5154, sn: 1.0316 }, { n: 17, yn: 0.5177, sn: 1.0411 },
+        { n: 18, yn: 0.5199, sn: 1.0493 }, { n: 19, yn: 0.5220, sn: 1.0565 },
+        { n: 20, yn: 0.5236, sn: 1.0628 }, { n: 21, yn: 0.5252, sn: 1.0696 },
+        { n: 22, yn: 0.5268, sn: 1.0754 }, { n: 23, yn: 0.5283, sn: 1.0811 },
+        { n: 24, yn: 0.5296, sn: 1.0864 }, { n: 25, yn: 0.5309, sn: 1.0915 },
+        { n: 26, yn: 0.5320, sn: 1.0961 }, { n: 27, yn: 0.5332, sn: 1.1004 },
+        { n: 28, yn: 0.5343, sn: 1.1047 }, { n: 29, yn: 0.5353, sn: 1.1086 },
+        { n: 30, yn: 0.5362, sn: 1.1124 }
+    ];
+    const TABLE_LOG_NORMAL = [
+        { cv: 0.05, k: { 2: -0.0250, 5: 0.8213, 10: 1.3005, 25: 1.8385, 50: 2.2045, 100: 2.5447 } },
+        { cv: 0.10, k: { 2: -0.0498, 5: 0.8013, 10: 1.3113, 25: 1.8845, 50: 2.2858, 100: 2.6685 } },
+        { cv: 0.20, k: { 2: -0.0978, 5: 0.7628, 10: 1.3255, 25: 1.9547, 50: 2.4330, 100: 2.9065 } },
+        { cv: 0.30, k: { 2: -0.1418, 5: 0.7275, 10: 1.3280, 25: 1.9965, 50: 2.5520, 100: 3.1205 } },
+        { cv: 0.35, k: { 2: -0.1613, 5: 0.7123, 10: 1.3200, 25: 2.0010, 50: 2.5955, 100: 3.2045 } },
+        { cv: 0.40, k: { 2: -0.1788, 5: 0.7100, 10: 1.3037, 25: 1.9990, 50: 2.6212, 100: 3.1870 } }
+    ];
+    const TABLE_LP3 = [
+        { cs: 0.0, k: { 2: 0.000, 5: 0.842, 10: 1.282, 25: 1.751, 50: 2.054, 100: 2.326 } },
+        { cs: 0.1, k: { 2: -0.017, 5: 0.836, 10: 1.292, 25: 1.785, 50: 2.107, 100: 2.400 } },
+        { cs: 0.2, k: { 2: -0.033, 5: 0.830, 10: 1.301, 25: 1.818, 50: 2.159, 100: 2.472 } },
+        { cs: 0.3, k: { 2: -0.050, 5: 0.824, 10: 1.309, 25: 1.849, 50: 2.211, 100: 2.544 } },
+        { cs: 0.4, k: { 2: -0.066, 5: 0.816, 10: 1.317, 25: 1.880, 50: 2.261, 100: 2.615 } },
+        { cs: 0.5, k: { 2: -0.083, 5: 0.808, 10: 1.323, 25: 1.910, 50: 2.311, 100: 2.686 } },
+        { cs: 1.2, k: { 2: -0.195, 5: 0.732, 10: 1.340, 25: 2.107, 50: 2.626, 100: 3.125 } },
+        { cs: 1.4, k: { 2: -0.225, 5: 0.705, 10: 1.337, 25: 2.159, 50: 2.755, 100: 3.336 } },
+        { cs: 1.5, k: { 2: -0.240, 5: 0.690, 10: 1.333, 25: 2.182, 50: 2.803, 100: 3.400 } }
+    ];
+
+    function performFrequencyAnalysis(rawData) {
+        const n = rawData.length;
+        if (n < 3) return;
+        const meanX = rawData.reduce((a, b) => a + b, 0) / n;
+        const sumSqX = rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0);
+        const stdevX = Math.sqrt(sumSqX / (n - 1));
+        const cvCalc = stdevX / meanX;
+        const logData = rawData.map(x => Math.log10(x));
+        const meanLog = logData.reduce((a, b) => a + b, 0) / n;
+        const sumSqLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0);
+        const stdevLog = Math.sqrt(sumSqLog / (n - 1));
+        const sumCubeLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0);
+        const csCalc = (n * sumCubeLog) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
+
+        const periods = [2, 5, 10, 25, 50, 100];
+        const results = periods.map(T => {
+            const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || TABLE_GUMBEL_REF[0];
+            const yt = -Math.log(-Math.log((T - 1) / T));
+            const resGumbel = meanX + (((yt - gRef.yn) / gRef.sn) * stdevX);
+            const ktLogN = getInterpolatedK(cvCalc, TABLE_LOG_NORMAL, 'cv', T);
+            const resLogN = meanX + (ktLogN * stdevX);
+            const ktLP3 = getInterpolatedK(csCalc, TABLE_LP3, 'cs', T);
+            const resLP3 = Math.pow(10, meanLog + (ktLP3 * stdevLog));
             const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
-            const resNormal = mean + (ktNormal * stdev);
-            const resLP3 = Math.pow(10, mLog + (ktNormal * sLog)); // Penyederhanaan K untuk demo
-            tBody.innerHTML += `<tr><td style="font-weight:800;">${T}</td><td>${resNormal.toFixed(2)}</td><td>${(resNormal*1.05).toFixed(2)}</td><td>${(resNormal*1.1).toFixed(2)}</td><td class="highlight-method">${resLP3.toFixed(2)}</td></tr>`;
+            const resNormal = meanX + (ktNormal * stdevX);
+            return { T, resNormal, resLogN, resGumbel, resLP3 };
+        });
+        displayResults(results);
+    }
+
+    function getInterpolatedK(targetVal, table, key, T) {
+        let low, high;
+        const sortedTable = [...table].sort((a, b) => a[key] - b[key]);
+        for (let i = 0; i < sortedTable.length; i++) {
+            if (sortedTable[i][key] <= targetVal) low = sortedTable[i];
+            if (sortedTable[i][key] >= targetVal) { high = sortedTable[i]; break; }
+        }
+        if (!low) return high.k[T];
+        if (!high) return low.k[T];
+        if (low[key] === high[key]) return low.k[T];
+        return low.k[T] + (targetVal - low[key]) * (high.k[T] - low.k[T]) / (high[key] - low[key]);
+    }
+
+    function displayResults(results) {
+        const tBody = document.getElementById('tBodyFreq');
+        tBody.innerHTML = "";
+        results.forEach(r => {
+            tBody.innerHTML += `<tr><td style="font-weight:800; color:#1c2b4a;">${r.T}</td><td>${r.resNormal.toFixed(2)}</td><td class="highlight-method">${r.resLogN.toFixed(2)}</td><td class="highlight-method">${r.resGumbel.toFixed(2)}</td><td class="highlight-method">${r.resLP3.toFixed(2)}</td></tr>`;
         });
         document.getElementById('resFrequency').style.display = 'block';
     }
 
+    // --- EVENT LISTENERS ---
     window.onload = async () => { 
-        await loadStationData(); initSystem(); lucide.createIcons(); 
-        document.getElementById('fKML').addEventListener('change', function(e) {
+        await loadStationData();
+        initSystem();
+        lucide.createIcons(); 
+        document.getElementById('fKML').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
             const reader = new FileReader();
-            reader.onload = (ev) => {
-                const geojson = toGeoJSON.kml(new DOMParser().parseFromString(ev.target.result, 'text/xml'));
+            reader.onload = function (event) {
+                const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
+                const geojson = toGeoJSON.kml(kmlDom);
                 if (geojson.features.length > 0) {
-                    resetAnalysis(); const layer = L.geoJSON(geojson, { style: { color: '#2f80ed', weight: 2 } }).addTo(drawnItems);
-                    map.fitBounds(layer.getBounds()); processHydrology(geojson.features[0]);
+                    resetAnalysis();
+                    const layer = L.geoJSON(geojson, { style: { color: '#2f80ed', weight: 2 } }).addTo(drawnItems);
+                    addMiniDelete(layer);
+                    map.fitBounds(layer.getBounds());
+                    processHydrology(geojson.features[0]);
                 }
             };
-            reader.readAsText(e.target.files[0]);
+            reader.readAsText(file);
         });
     };
 </script>
