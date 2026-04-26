@@ -349,7 +349,7 @@
         { n: 28, yn: 0.5343, sn: 1.1047 }, { n: 29, yn: 0.5353, sn: 1.1086 },
         { n: 30, yn: 0.5362, sn: 1.1124 }
     ];
-    const TABLE_LOG_NORMAL = [
+    const TABLE_LOG_NORMAL_CV = [
         { cv: 0.05, k: { 2: -0.0250, 5: 0.8213, 10: 1.3005, 25: 1.8385, 50: 2.2045, 100: 2.5447 } },
         { cv: 0.10, k: { 2: -0.0498, 5: 0.8013, 10: 1.3113, 25: 1.8845, 50: 2.2858, 100: 2.6685 } },
         { cv: 0.20, k: { 2: -0.0978, 5: 0.7628, 10: 1.3255, 25: 1.9547, 50: 2.4330, 100: 2.9065 } },
@@ -357,7 +357,7 @@
         { cv: 0.35, k: { 2: -0.1613, 5: 0.7123, 10: 1.3200, 25: 2.0010, 50: 2.5955, 100: 3.2045 } },
         { cv: 0.40, k: { 2: -0.1788, 5: 0.7100, 10: 1.3037, 25: 1.9990, 50: 2.6212, 100: 3.1870 } }
     ];
-    const TABLE_LP3 = [
+    const TABLE_LP3_CS = [
         { cs: 0.0, k: { 2: 0.000, 5: 0.842, 10: 1.282, 25: 1.751, 50: 2.054, 100: 2.326 } },
         { cs: 0.1, k: { 2: -0.017, 5: 0.836, 10: 1.292, 25: 1.785, 50: 2.107, 100: 2.400 } },
         { cs: 0.2, k: { 2: -0.033, 5: 0.830, 10: 1.301, 25: 1.818, 50: 2.159, 100: 2.472 } },
@@ -373,36 +373,62 @@
     const n = rawData.length;
     if (n < 2) return;
 
-    // --- 1. STATISTIK DATA ASLI (Untuk Log Normal 2 Par) ---
+    // 1. STATISTIK DATA ASLI
     const meanX = rawData.reduce((a, b) => a + b, 0) / n;
     const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
     const cv = stdevX / meanX;
 
-    // --- 2. STATISTIK DATA LOG (Untuk Log Pearson III) ---
+    // 2. STATISTIK DATA LOG
     const logData = rawData.map(x => Math.log10(x));
     const meanLog = logData.reduce((a, b) => a + b, 0) / n;
     const stdevLog = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / (n - 1));
     const csLog = (n * logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0)) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
 
+    // 3. PARAMETER GUMBEL (YN & SN berdasarkan n=11)
+    // Mencari yn dan sn dari TABLE_GUMBEL_REF yang sudah Anda buat di atas
+    const gumbelParam = TABLE_GUMBEL_REF.find(i => i.n === n) || TABLE_GUMBEL_REF[TABLE_GUMBEL_REF.length-1];
+    const yn = gumbelParam.yn;
+    const sn = gumbelParam.sn;
+
     const periods = [2, 5, 10, 25, 50, 100];
     const results = periods.map(T => {
-        // A. LOG NORMAL 2 PAR (Interpolasi Cv)
+        // A. NORMAL
+        const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
+        const resNormal = meanX + (ktNormal * stdevX);
+
+        // B. LOG NORMAL 2 PAR (Interpolasi Cv)
         const ktLogN = getInterpolatedK(cv, TABLE_LOG_NORMAL_CV, 'cv', T);
         const resLogN = meanX + (ktLogN * stdevX);
 
-        // B. LOG PEARSON III (Interpolasi Cs)
+        // C. GUMBEL
+        const yt = -Math.log(-Math.log((T - 1) / T));
+        const ktGumbel = (yt - yn) / sn;
+        const resGumbel = meanX + (ktGumbel * stdevX);
+
+        // D. LOG PEARSON III (Interpolasi Cs)
         const ktLP3 = getInterpolatedK(csLog, TABLE_LP3_CS, 'cs', T);
         const logXT = meanLog + (ktLP3 * stdevLog);
         const resLP3 = Math.pow(10, logXT);
 
-        // C. NORMAL & GUMBEL (Tetap seperti sebelumnya jika sudah benar)
-        const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
-        const resNormal = meanX + (ktNormal * stdevX);
-
-        return { T, resNormal, resLogN, resLP3 };
+        return { T, resNormal, resLogN, resGumbel, resLP3 };
     });
 
     displayResults(results);
+}
+
+function displayResults(results) {
+    const tBody = document.getElementById('tBodyFreq');
+    tBody.innerHTML = "";
+    results.forEach(r => {
+        tBody.innerHTML += `<tr>
+            <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
+            <td>${r.resNormal.toFixed(2)}</td>
+            <td>${r.resLogN.toFixed(2)}</td>
+            <td>${r.resGumbel.toFixed(2)}</td>
+            <td class="highlight-method">${r.resLP3.toFixed(2)}</td>
+        </tr>`;
+    });
+    document.getElementById('resFrequency').style.display = 'block';
 }
 
     function getInterpolatedK(targetVal, table, key, T) {
@@ -432,20 +458,6 @@
     return y1 + ((targetVal - x1) / (x2 - x1)) * (y2 - y1);
 }
 
-    function displayResults(results) {
-        const tBody = document.getElementById('tBodyFreq');
-        tBody.innerHTML = "";
-        results.forEach(r => {
-            tBody.innerHTML += `<tr>
-                <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
-                <td>${r.resNormal.toFixed(2)}</td>
-                <td>${r.resLogN.toFixed(2)}</td>
-                <td>${r.resGumbel.toFixed(2)}</td>
-                <td class="highlight-method">${r.resLP3.toFixed(2)}</td>
-            </tr>`;
-        });
-        document.getElementById('resFrequency').style.display = 'block';
-    }
 
     window.onload = async () => { 
         await loadStationData();
