@@ -370,34 +370,47 @@
     ];
 
     function performFrequencyAnalysis(rawData) {
-        const n = rawData.length;
-        if (n < 3) return;
-        const meanX = rawData.reduce((a, b) => a + b, 0) / n;
-        const sumSqX = rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0);
-        const stdevX = Math.sqrt(sumSqX / (n - 1));
-        const cvCalc = stdevX / meanX;
-        const logData = rawData.map(x => Math.log10(x));
-        const meanLog = logData.reduce((a, b) => a + b, 0) / n;
-        const sumSqLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0);
-        const stdevLog = Math.sqrt(sumSqLog / (n - 1));
-        const sumCubeLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0);
-        const csCalc = (n * sumCubeLog) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
+    const n = rawData.length;
+    if (n < 3) return;
 
-        const periods = [2, 5, 10, 25, 50, 100];
-        const results = periods.map(T => {
-            const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || TABLE_GUMBEL_REF[0];
-            const yt = -Math.log(-Math.log((T - 1) / T));
-            const resGumbel = meanX + (((yt - gRef.yn) / gRef.sn) * stdevX);
-            const ktLogN = getInterpolatedK(cvCalc, TABLE_LOG_NORMAL, 'cv', T);
-            const resLogN = meanX + (ktLogN * stdevX);
-            const ktLP3 = getInterpolatedK(csCalc, TABLE_LP3, 'cs', T);
-            const resLP3 = Math.pow(10, meanLog + (ktLP3 * stdevLog));
-            const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
-            const resNormal = meanX + (ktNormal * stdevX);
-            return { T, resNormal, resLogN, resGumbel, resLP3 };
-        });
-        displayResults(results);
-    }
+    // --- A. STATISTIK DATA ASLI (Untuk Normal, Gumbel, Log Normal) ---
+    const meanX = rawData.reduce((a, b) => a + b, 0) / n;
+    const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
+    const cvCalc = stdevX / meanX;
+
+    // --- B. STATISTIK DATA LOG (Khusus untuk Log Pearson III) ---
+    const logData = rawData.map(x => Math.log10(x));
+    const meanLog = logData.reduce((a, b) => a + b, 0) / n;
+    const stdevLog = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / (n - 1));
+    const sumCubeLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0);
+    // Hitung Cs Log (Koefisien Kemencengan Log)
+    const csLogCalc = (n * sumCubeLog) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
+
+    const periods = [2, 5, 10, 25, 50, 100];
+    const results = periods.map(T => {
+        // 1. NORMAL (Sudah Sesuai)
+        const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
+        const resNormal = meanX + (ktNormal * stdevX);
+
+        // 2. GUMBEL (Sudah Sesuai)
+        const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || TABLE_GUMBEL_REF[0];
+        const yt = -Math.log(-Math.log((T - 1) / T));
+        const resGumbel = meanX + (((yt - gRef.yn) / gRef.sn) * stdevX);
+
+        // 3. LOG NORMAL (Versi Excel Kamu: Pakai Sx Data Asli)
+        const ktLogN = getInterpolatedK(cvCalc, TABLE_LOG_NORMAL, 'cv', T);
+        const resLogN = meanX + (ktLogN * stdevX);
+
+        // 4. LOG PEARSON III (Murni LP3 Sesuai Foto 3)
+        const ktLP3 = getInterpolatedK(csLogCalc, TABLE_LP3, 'cs', T);
+        const logXT = meanLog + (ktLP3 * stdevLog);
+        const resLP3 = Math.pow(10, logXT); // Antilog untuk balik ke mm
+
+        return { T, resNormal, resLogN, resGumbel, resLP3 };
+    });
+
+    displayResults(results);
+}
 
     function getInterpolatedK(targetVal, table, key, T) {
         let low, high;
