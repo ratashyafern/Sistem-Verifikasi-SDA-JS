@@ -370,54 +370,53 @@
     ];
 
     function performFrequencyAnalysis(rawData) {
-    const n = rawData.length;
-    
-    // 1. STATISTIK DATA ASLI (Gunakan pembagi n agar sesuai Excel kamu)
-    const sumX = rawData.reduce((a, b) => a + b, 0);
-    const meanX = sumX / n; // Hasil: 112.954545...
-    
-    const varianceX = rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / n; // Pakai n
-    const stdevX = Math.sqrt(varianceX); // Hasil: 35.781039...
-    
-    // 2. STATISTIK DATA LOG (Untuk LP3)
-    const logData = rawData.map(x => Math.log10(x));
-    const meanLog = logData.reduce((a, b) => a + b, 0) / n;
-    const varianceLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / n; // Pakai n
-    const stdevLog = Math.sqrt(varianceLog);
+        const n = rawData.length;
+        if (n === 0) return;
 
-    // Hitung Cs Log (Gunakan rumus yang menghasilkan 1.202)
-    const sumCubeLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0);
-    const csLog = (n * sumCubeLog) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
+        // 1. STATISTIK DATA ASLI (Pembagi n sesuai Excel STDEV.P)
+        const sumX = rawData.reduce((a, b) => a + b, 0);
+        const meanX = sumX / n;
+        const varianceX = rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / n;
+        const stdevX = Math.sqrt(varianceX);
 
-    const periods = [2, 5, 10, 25, 50, 100];
-    const results = periods.map(T => {
-        // LOG NORMAL (Sesuai Excel Foto 11: XT = Mean + K * Stdev)
-        // Ambil nilai K dari tabel referensi berdasarkan Cv = stdevX/meanX
-        const cv = stdevX / meanX;
-        const ktLogN = getInterpolatedK(cv, TABLE_LOG_NORMAL, 'cv', T);
-        const resLogN = meanX + (ktLogN * stdevX);
+        // 2. STATISTIK DATA LOG
+        const logData = rawData.map(x => Math.log10(x));
+        const meanLog = logData.reduce((a, b) => a + b, 0) / n;
+        const varianceLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / n;
+        const stdevLog = Math.sqrt(varianceLog);
 
-        // LOG PEARSON III (Sesuai Excel Foto 12)
-        const ktLP3 = getInterpolatedK(csLog, TABLE_LP3, 'cs', T);
-        const logXT = meanLog + (ktLP3 * stdevLog);
-        const resLP3 = Math.pow(10, logXT);
+        // Cs Log (Rumus Excel: n / ((n-1)(n-2)) * sum(diff^3) / stdev^3)
+        const sumCubeLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0);
+        const csLog = (n * sumCubeLog) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
 
-        return { T, resLogN, resLP3 };
-    });
+        const periods = [2, 5, 10, 25, 50, 100];
+        const results = periods.map(T => {
+            // Log Normal (XT = Mean + K * Stdev)
+            const cv = stdevX / meanX;
+            const ktLogN = getInterpolatedK(cv, TABLE_LOG_NORMAL, 'cv', T);
+            const resLogN = meanX + (ktLogN * stdevX);
 
-    // Tampilkan ke tabel sistem
-    displayResults(results);
-}
+            // LP3 (logXT = meanLog + K * stdevLog)
+            const ktLP3 = getInterpolatedK(csLog, TABLE_LP3, 'cs', T);
+            const logXT = meanLog + (ktLP3 * stdevLog);
+            const resLP3 = Math.pow(10, logXT);
+
+            return { T, resLogN, resLP3 };
+        });
+
+        displayResults(results);
+    }
 
     function getInterpolatedK(targetVal, table, key, T) {
-        let low, high;
         const sortedTable = [...table].sort((a, b) => a[key] - b[key]);
+        let low = sortedTable[0];
+        let high = sortedTable[sortedTable.length - 1];
+
         for (let i = 0; i < sortedTable.length; i++) {
             if (sortedTable[i][key] <= targetVal) low = sortedTable[i];
             if (sortedTable[i][key] >= targetVal) { high = sortedTable[i]; break; }
         }
-        if (!low) return high.k[T];
-        if (!high) return low.k[T];
+
         if (low[key] === high[key]) return low.k[T];
         return low.k[T] + (targetVal - low[key]) * (high.k[T] - low.k[T]) / (high[key] - low[key]);
     }
@@ -426,7 +425,15 @@
         const tBody = document.getElementById('tBodyFreq');
         tBody.innerHTML = "";
         results.forEach(r => {
-            tBody.innerHTML += `<tr><td style="font-weight:800; color:#1c2b4a;">${r.T}</td><td>${r.resNormal.toFixed(2)}</td><td class="highlight-method">${r.resLogN.toFixed(2)}</td><td class="highlight-method">${r.resGumbel.toFixed(2)}</td><td class="highlight-method">${r.resLP3.toFixed(2)}</td></tr>`;
+            // Kita kosongkan Norm dan Gum dulu agar tidak error karena datanya tidak dihitung
+            tBody.innerHTML += `
+                <tr>
+                    <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
+                    <td>-</td>
+                    <td class="highlight-method">${r.resLogN.toFixed(2)}</td>
+                    <td>-</td>
+                    <td class="highlight-method">${r.resLP3.toFixed(2)}</td>
+                </tr>`;
         });
         document.getElementById('resFrequency').style.display = 'block';
     }
