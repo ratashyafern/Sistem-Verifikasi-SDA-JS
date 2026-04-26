@@ -370,55 +370,67 @@
     ];
 
     function performFrequencyAnalysis(rawData) {
-        const n = rawData.length;
-        if (n < 2) return;
+    const n = rawData.length;
+    if (n < 2) return;
 
-        const sumX = rawData.reduce((a, b) => a + b, 0);
-        const meanX = sumX / n;
-        const sumSquareDiffX = rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0);
-        const stdevX = Math.sqrt(sumSquareDiffX / (n - 1));
+    // --- 1. STATISTIK DATA ASLI (Untuk Log Normal 2 Par) ---
+    const meanX = rawData.reduce((a, b) => a + b, 0) / n;
+    const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
+    const cv = stdevX / meanX;
 
-        const logData = rawData.map(x => Math.log10(x));
-        const meanLog = logData.reduce((a, b) => a + b, 0) / n;
-        const stdevLog = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / (n - 1));
-        const csLog = (n * logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0)) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
+    // --- 2. STATISTIK DATA LOG (Untuk Log Pearson III) ---
+    const logData = rawData.map(x => Math.log10(x));
+    const meanLog = logData.reduce((a, b) => a + b, 0) / n;
+    const stdevLog = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / (n - 1));
+    const csLog = (n * logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0)) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
 
-        const periods = [2, 5, 10, 25, 50, 100];
-        const results = periods.map(T => {
-            const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
-            const resNormal = meanX + (ktNormal * stdevX);
+    const periods = [2, 5, 10, 25, 50, 100];
+    const results = periods.map(T => {
+        // A. LOG NORMAL 2 PAR (Interpolasi Cv)
+        const ktLogN = getInterpolatedK(cv, TABLE_LOG_NORMAL_CV, 'cv', T);
+        const resLogN = meanX + (ktLogN * stdevX);
 
-            const cv = stdevX / meanX;
-            const ktLogN = getInterpolatedK(cv, TABLE_LOG_NORMAL, 'cv', T);
-            const resLogN = meanX + (ktLogN * stdevX);
+        // B. LOG PEARSON III (Interpolasi Cs)
+        const ktLP3 = getInterpolatedK(csLog, TABLE_LP3_CS, 'cs', T);
+        const logXT = meanLog + (ktLP3 * stdevLog);
+        const resLP3 = Math.pow(10, logXT);
 
-            const gumbelRef = TABLE_GUMBEL_REF.find(r => r.n === n) || TABLE_GUMBEL_REF[TABLE_GUMBEL_REF.length-1];
-            const yt = -Math.log(-Math.log((T - 1) / T));
-            const ktGumbel = (yt - gumbelRef.yn) / gumbelRef.sn;
-            const resGumbel = meanX + (ktGumbel * stdevX);
+        // C. NORMAL & GUMBEL (Tetap seperti sebelumnya jika sudah benar)
+        const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
+        const resNormal = meanX + (ktNormal * stdevX);
 
-            const ktLP3 = getInterpolatedK(csLog, TABLE_LP3, 'cs', T);
-            const resLP3 = Math.pow(10, meanLog + (ktLP3 * stdevLog));
+        return { T, resNormal, resLogN, resLP3 };
+    });
 
-            return { T, resNormal, resLogN, resGumbel, resLP3 };
-        });
-
-        displayResults(results);
-    }
+    displayResults(results);
+}
 
     function getInterpolatedK(targetVal, table, key, T) {
-        const sortedTable = [...table].sort((a, b) => a[key] - b[key]);
-        let low = sortedTable[0];
-        let high = sortedTable[sortedTable.length - 1];
+    // 1. Urutkan tabel berdasarkan kunci (cv atau cs)
+    const sortedTable = [...table].sort((a, b) => a[key] - b[key]);
+    
+    // 2. Jika nilai target di luar range tabel, gunakan nilai ujung
+    if (targetVal <= sortedTable[0][key]) return sortedTable[0].k[T];
+    if (targetVal >= sortedTable[sortedTable.length - 1][key]) return sortedTable[sortedTable.length - 1].k[T];
 
-        for (let i = 0; i < sortedTable.length; i++) {
-            if (sortedTable[i][key] <= targetVal) low = sortedTable[i];
-            if (sortedTable[i][key] >= targetVal) { high = sortedTable[i]; break; }
+    // 3. Cari batas bawah (low) dan atas (high)
+    let low, high;
+    for (let i = 0; i < sortedTable.length - 1; i++) {
+        if (targetVal >= sortedTable[i][key] && targetVal <= sortedTable[i+1][key]) {
+            low = sortedTable[i];
+            high = sortedTable[i+1];
+            break;
         }
-
-        if (low[key] === high[key]) return low.k[T];
-        return low.k[T] + (targetVal - low[key]) * (high.k[T] - low.k[T]) / (high[key] - low[key]);
     }
+
+    // 4. Rumus Interpolasi Linear: Y = Y1 + (X - X1) / (X2 - X1) * (Y2 - Y1)
+    const y1 = low.k[T];
+    const y2 = high.k[T];
+    const x1 = low[key];
+    const x2 = high[key];
+
+    return y1 + ((targetVal - x1) / (x2 - x1)) * (y2 - y1);
+}
 
     function displayResults(results) {
         const tBody = document.getElementById('tBodyFreq');
