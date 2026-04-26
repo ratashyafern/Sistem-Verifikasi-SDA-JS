@@ -419,16 +419,20 @@ function performFrequencyAnalysis(rawData) {
     const n = rawData.length;
     if (n < 3) return;
 
-    // --- A. HITUNG STATISTIK (SINKRON DENGAN EXCEL) ---
+    // --- A. PARAMETER STATISTIK (FULL PRECISION) ---
+    // 1. Data Asli (X)
     const meanX = rawData.reduce((a, b) => a + b, 0) / n;
-    const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
-    const cvCalc = stdevX / meanX; // Sesuai permintaan: Cv dari data asli
+    const sumSqX = rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0);
+    const stdevX = Math.sqrt(sumSqX / (n - 1));
+    const cvCalc = stdevX / meanX;
 
+    // 2. Data Logaritma (Y)
     const logData = rawData.map(x => Math.log10(x));
     const meanLog = logData.reduce((a, b) => a + b, 0) / n;
-    const stdevLog = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / (n - 1));
+    const sumSqLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0);
+    const stdevLog = Math.sqrt(sumSqLog / (n - 1));
     
-    // Skewness (Cs) - Rumus Excel SKEW
+    // skewness Log (Cs) - Rumus Excel SKEW
     const sumCubeLog = logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0);
     const csCalc = (n * sumCubeLog) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
 
@@ -436,21 +440,24 @@ function performFrequencyAnalysis(rawData) {
     const periods = [2, 5, 10, 25, 50, 100];
     const results = periods.map(T => {
         
-        // 1. Gumbel (Lookup n dinamis)
-        const gRef = TABLE_GUMBEL[n] || TABLE_GUMBEL[20];
+        // 1. GUMBEL (Murni Matematis)
+        // Kunci: Ytr dihitung dinamis, Yn & Sn dari tabel n=11
+        const gRef = TABLE_GUMBEL_REF[n] || { yn: 0.4996, sn: 0.9676 };
         const yt = -Math.log(-Math.log((T - 1) / T));
         const resGumbel = meanX + (((yt - gRef.yn) / gRef.sn) * stdevX);
 
-        // 2. Log Normal (Interpolasi Cv)
+        // 2. LOG NORMAL 2P (Interpolasi Cv)
+        // Kunci: Interpolasi linear antara CV 0.30 dan 0.35
         const ktLogN = getInterpolatedK(cvCalc, TABLE_LOG_NORMAL, 'cv', T);
         const resLogN = meanX + (ktLogN * stdevX);
 
-        // 3. Log Pearson III (Interpolasi Cs)
+        // 3. LOG PEARSON III (Interpolasi Cs)
+        // Kunci: Interpolasi linear antara Cs 1.2 dan 1.5
         const ktLP3 = getInterpolatedK(csCalc, TABLE_LP3, 'cs', T);
         const resLP3 = Math.pow(10, meanLog + (ktLP3 * stdevLog));
 
-        // 4. Normal (Ktr Statis)
-        const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.64, 50: 2.05, 100: 2.33 }[T];
+        // 4. NORMAL (Faktor K standar)
+        const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
         const resNormal = meanX + (ktNormal * stdevX);
 
         return { T, resNormal, resLogN, resGumbel, resLP3 };
@@ -459,19 +466,34 @@ function performFrequencyAnalysis(rawData) {
     displayResults(results);
 }
 
-// ==========================================
-// 3. HELPER: INTERPOLASI OTOMATIS
-// ==========================================
-
+// --- HELPER INTERPOLASI (MENGGUNAKAN LOGIKA DINAMIS TANPA PEMBULATAN) ---
 function getInterpolatedK(targetVal, table, key, T) {
-    // Cari baris bawah dan atas
-    let low = table.filter(r => r[key] <= targetVal).pop() || table[0];
-    let high = table.find(r => r[key] >= targetVal) || table[table.length - 1];
+    // 1. Cari baris batas (Low & High)
+    let low, high;
+    
+    // Sort table berdasarkan key (cv atau cs) untuk memastikan urutan
+    const sortedTable = [...table].sort((a, b) => a[key] - b[key]);
+    
+    for (let i = 0; i < sortedTable.length; i++) {
+        if (sortedTable[i][key] <= targetVal) low = sortedTable[i];
+        if (sortedTable[i][key] >= targetVal) {
+            high = sortedTable[i];
+            break;
+        }
+    }
 
+    // Jika target diluar range tabel, gunakan nilai terdekat
+    if (!low) return high.k[T];
+    if (!high) return low.k[T];
     if (low[key] === high[key]) return low.k[T];
 
-    // Rumus Interpolasi Linier: y = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
-    return low.k[T] + (targetVal - low[key]) * (high.k[T] - low.k[T]) / (high[key] - low[key]);
+    // 2. Rumus Interpolasi Linear: y = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+    const x1 = low[key];
+    const x2 = high[key];
+    const y1 = low.k[T];
+    const y2 = high.k[T];
+
+    return y1 + (targetVal - x1) * (y2 - y1) / (x2 - x1);
 }
 
 function displayResults(results) {
@@ -480,14 +502,13 @@ function displayResults(results) {
     results.forEach(r => {
         tBody.innerHTML += `
             <tr>
-                <td>${r.T}</td>
+                <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
                 <td>${r.resNormal.toFixed(2)}</td>
-                <td>${r.resLogN.toFixed(2)}</td>
-                <td>${r.resGumbel.toFixed(2)}</td>
-                <td>${r.resLP3.toFixed(2)}</td>
+                <td class="highlight-method">${r.resLogN.toFixed(2)}</td>
+                <td class="highlight-method">${r.resGumbel.toFixed(2)}</td>
+                <td class="highlight-method">${r.resLP3.toFixed(2)}</td>
             </tr>`;
     });
-
     document.getElementById('resFrequency').style.display = 'block';
 }
 </script>
