@@ -448,7 +448,6 @@
 
         // D. Log Pearson III (Gunakan SlogX, K dibulatkan 3 desimal untuk antilog)
         let ktLP3 = getInterpolatedK(csLog, TABLE_LP3_CS, 'cs', T);
-        ktLP3 = parseFloat(ktLP3.toFixed(3)); // SINKRONISASI EXCEL: Bulatkan K sebelum log
         const logXT = meanLog + (ktLP3 * stdevLog);
         const resLP3 = Math.pow(10, logXT);
 
