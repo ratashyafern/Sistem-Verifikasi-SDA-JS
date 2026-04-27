@@ -35,7 +35,19 @@
         .table-container { max-height: 135px; overflow-y: auto; border: 1px solid #f1f5f9; margin-top: 10px; border-radius: 6px; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .data-table th { background: #f8fafc; text-align: center; padding: 6px 10px; color: var(--slate); border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1; }
-.data-table td { padding: 6px 10px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); text-align: center; }
+.data-table td { 
+    padding: 6px 10px; 
+    border: 1px solid #e2e8f0; 
+    font-weight: 600; 
+    color: var(--primary); 
+    text-align: center; /* Default semua center */
+}
+
+/* Khusus Isi Tabel Stasiun & Baris Total di Stasiun */
+#tBody td:first-child, 
+#resThiessen tfoot td:first-child { 
+    text-align: left !important; 
+    padding-left: 15px;
         
         .highlight-method { color: #2f80ed; font-weight: 800; background: #f1f7ff; }
         .color-legend { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
@@ -277,7 +289,7 @@
                     const stColor = colors[i % colors.length];
                     foundStations.push({ id: stId, weight: weight, area: subAreaHa });
                     L.geoJSON(intersect, { style: { fillColor: stColor, fillOpacity: 0.5, color: 'white', weight: 1.5 } }).addTo(thiessenLayer);
-                    tBody.innerHTML += `<tr><td class="text-left"><span class="color-legend" style="background:${stColor}"></span>${RAIN_DATABASE[stId].n}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+                    tBody.innerHTML += `<tr><td><span class="color-legend" style="background:${stColor}"></span>${RAIN_DATABASE[stId].n}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
                 }
             }
         });
@@ -466,12 +478,12 @@ function displayResults(results) {
     tBody.innerHTML = "";
     results.forEach(r => {
         tBody.innerHTML += `<tr>
-            <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
-            <td>${r.resNormal.toFixed(2)}</td>
-            <td>${r.resLogN.toFixed(2)}</td>
-            <td>${r.resGumbel.toFixed(2)}</td>
-            <td class="highlight-method">${r.resLP3.toFixed(2)}</td>
-        </tr>`;
+    <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
+    <td>${r.resNormal.toFixed(2)}</td>
+    <td>${r.resLogN.toFixed(2)}</td>
+    <td>${r.resGumbel.toFixed(2)}</td>
+    <td class="highlight-method">${r.resLP3.toFixed(2)}</td>
+</tr>`;
     });
     document.getElementById('resFrequency').style.display = 'block';
 }
