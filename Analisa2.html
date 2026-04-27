@@ -33,9 +33,9 @@
         .upload-area { background: var(--primary); color: white; padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; margin-top: 15px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
         .table-container { max-height: 135px; overflow-y: auto; border: 1px solid #f1f5f9; margin-top: 10px; border-radius: 6px; }
-        .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .data-table th { background: #f8fafc; text-align: left; padding: 6px 10px; color: var(--slate); border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1; }
-        .data-table td { padding: 6px 10px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.data-table th { background: #f8fafc; text-align: center; padding: 6px 10px; color: var(--slate); border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1; }
+.data-table td { padding: 6px 10px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); text-align: center; }
         
         .highlight-method { color: #2f80ed; font-weight: 800; background: #f1f7ff; }
         .color-legend { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
@@ -89,8 +89,8 @@
             <div class="table-container">
                 <table class="data-table">
                     <thead>
-                        <tr><th>Stasiun</th><th>Luas (Ha)</th><th>W</th></tr>
-                    </thead>
+    <tr><th>Stasiun</th><th>Luas (Ha)</th><th>Bobot (W)</th></tr>
+</thead>
                     <tbody id="tBody"></tbody>
                     <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; position: sticky; bottom: 0;">
                         <tr>
@@ -119,9 +119,9 @@
             <div class="table-container" style="max-height: 280px;">
                 <table class="data-table">
                     <thead>
-                        <tr><th rowspan="2">T</th><th colspan="4" style="text-align:center">Metode (mm)</th></tr>
-                        <tr><th>Norm</th><th>LogN</th><th>Gum</th><th>LP3</th></tr>
-                    </thead>
+    <tr><th rowspan="2">Tr</th><th colspan="4" style="text-align:center">Metode (mm)</th></tr>
+    <tr><th>Normal</th><th>Log Normal 2P</th><th>Gumbel</th><th>Log Pearson III</th></tr>
+</thead>
                     <tbody id="tBodyFreq"></tbody>
                 </table>
             </div>
@@ -273,7 +273,7 @@
                     const stColor = colors[i % colors.length];
                     foundStations.push({ id: stId, weight: weight, area: subAreaHa });
                     L.geoJSON(intersect, { style: { fillColor: stColor, fillOpacity: 0.5, color: 'white', weight: 1.5 } }).addTo(thiessenLayer);
-                    tBody.innerHTML += `<tr><td><span class="color-legend" style="background:${stColor}"></span>${RAIN_DATABASE[stId].n}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+                    tBody.innerHTML += `<tr><td class="text-left"><span class="color-legend" style="background:${stColor}"></span>${RAIN_DATABASE[stId].n}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
                 }
             }
         });
