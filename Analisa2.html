@@ -72,6 +72,24 @@
 }
 .status-lulus { color: #2ecc71; font-weight: 800; }
 .status-gagal { color: #e74c3c; font-weight: 800; }
+    /* Gaya untuk status di Box 5 */
+.status-diterima { 
+    background-color: #dcfce7 !important; color: #166534 !important; font-weight: bold; 
+}
+.status-ditolak { 
+    background-color: #fee2e2 !important; color: #991b1b !important; 
+}
+
+/* Gaya untuk highlight kolom yang terpilih di Box 4 */
+.metode-terpilih-bg {
+    background-color: #eff6ff !important; /* Biru muda */
+    border-left: 2px solid #2563eb !important;
+    border-right: 2px solid #2563eb !important;
+}
+.header-terpilih {
+    background-color: #2563eb !important;
+    color: white !important;
+}
     </style>
 </head>
 <body>
@@ -622,34 +640,55 @@ function displayGoF(results, skCrit, chiCrit) {
     const tBody = document.getElementById('tBodyGoF');
     tBody.innerHTML = "";
     
-    // Reset highlight di Box 4
-    const ids = ['Normal', 'LogNormal', 'Gumbel', 'LP3'];
-    ids.forEach(id => {
-        document.getElementById(`h-${id}`)?.classList.remove('selected-method');
-        document.querySelectorAll(`.cell-${id}`).forEach(td => td.classList.remove('selected-method'));
+    // 1. Bersihkan dulu semua highlight warna di Box 4
+    const allIds = ['Normal', 'LogNormal', 'Gumbel', 'LP3'];
+    allIds.forEach(id => {
+        const head = document.getElementById(`h-${id}`);
+        if(head) head.className = ""; 
+        document.querySelectorAll(`.cell-${id}`).forEach(td => td.className = `cell-${id}`);
     });
 
-    let terpilih = null;
+    let metodeFinal = null;
 
+    // 2. Loop hasil uji untuk isi Box 5
     results.forEach(m => {
-        const rowLulus = m.lulus;
+        const isLulus = m.dm < skCrit && m.chi < chiCrit;
+        const rowClass = isLulus ? 'status-diterima' : 'status-ditolak';
+        
         tBody.innerHTML += `
-            <tr>
+            <tr class="${rowClass}">
                 <td><b>${m.name}</b></td>
-                <td>${m.dm.toFixed(4)} < <span style="color:blue">${skCrit}</span></td>
-                <td>${m.chi.toFixed(2)} < <span style="color:blue">${chiCrit}</span></td>
-                <td class="${rowLulus ? 'status-lulus' : 'status-gagal'}">${rowLulus ? 'DITERIMA' : 'DITOLAK'}</td>
+                <td>${m.dm.toFixed(4)}</td>
+                <td>${m.chi.toFixed(2)}</td>
+                <td>${isLulus ? '✅ DITERIMA' : '❌ DITOLAK'}</td>
             </tr>
         `;
-        if (rowLulus && (!terpilih || m.dm < terpilih.dm)) terpilih = m;
+
+        // Logika pemilihan: Ambil yang lulus dan punya Delta Max terkecil
+        if (isLulus) {
+            if (!metodeFinal || m.dm < metodeFinal.dm) {
+                metodeFinal = m;
+            }
+        }
     });
 
-    if (terpilih) {
-        // Highlight kolom di Box 4
-        document.getElementById(`h-${terpilih.id}`)?.classList.add('selected-method');
-        document.querySelectorAll(`.cell-${terpilih.id}`).forEach(td => td.classList.add('selected-method'));
-        document.getElementById('gofConclusion').innerHTML = `* Metode <b>${terpilih.name}</b> terpilih sebagai metode yang paling fit.`;
+    // 3. Highlight Kolom di Box 4 untuk metode yang terpilih
+    if (metodeFinal) {
+        const id = metodeFinal.id;
+        const headerCell = document.getElementById(`h-${id}`);
+        if(headerCell) headerCell.className = "header-terpilih";
+        
+        document.querySelectorAll(`.cell-${id}`).forEach(td => {
+            td.classList.add('metode-terpilih-bg');
+        });
+
+        document.getElementById('gofConclusion').innerHTML = 
+            `💡 Metode <b>${metodeFinal.name}</b> memenuhi kriteria teknis dan akan digunakan untuk perhitungan debit banjir.`;
+    } else {
+        document.getElementById('gofConclusion').innerHTML = 
+            `<span style="color:red;">⚠️ Tidak ada metode yang memenuhi syarat. Cek kembali konsistensi data hujan.</span>`;
     }
+
     document.getElementById('resGoF').style.display = 'block';
 }
 
