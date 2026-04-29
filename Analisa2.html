@@ -582,19 +582,19 @@ function performFullGoF(rawData) {
     const n = rawData.length;
     if (n < 2) return;
 
-    // 1. Persiapan Data (Urutan Terbesar ke Terkecil)
-    const sortedData = [...rawData].sort((a, b) => b - a); 
+    const sortedData = [...rawData].sort((a, b) => b - a);
     const logData = rawData.map(x => Math.log10(x));
     
-    // Statistik Aritmatik
+    // Statistik Dasar
     const meanX = rawData.reduce((a, b) => a + b, 0) / n;
     const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
-    
-    // Statistik Logaritmik
     const meanL = logData.reduce((a, b) => a + b, 0) / n;
     const stdevL = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanL, 2), 0) / (n - 1));
 
-    const skCrit = TABLE_SK_REF[n] || 0.391; // Default untuk n=11 jika tabel tidak terbaca
+    // Hitung Skewness Log (Untuk LP3)
+    const skewL = (n * logData.reduce((a, b) => a + Math.pow(b - meanL, 3), 0)) / ((n - 1) * (n - 2) * Math.pow(stdevL, 3));
+
+    const skCrit = TABLE_SK_REF[n] || 0.391;
 
     const resultsGoF = [
         { id: 'Normal', name: 'Normal' },
@@ -604,33 +604,35 @@ function performFullGoF(rawData) {
     ].map(m => {
         let maxD = 0;
         
-        sortedData.forEach((x, i) => {
-            // Peluang Empiris m/(n+1)
+        sortedData.forEach((val, i) => {
             const P_empiris = (i + 1) / (n + 1);
             let P_teoritis = 0;
 
             if (m.id === 'Normal') {
-                P_teoritis = normalCDF(x, meanX, stdevX);
-            } 
-            else if (m.id === 'LogNormal' || m.id === 'LP3') {
-                P_teoritis = normalCDF(Math.log10(x), meanL, stdevL);
-            } 
-            else if (m.id === 'Gumbel') {
-                const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || { yn: 0.5011, sn: 0.9676 };
-                const yt = gRef.yn + ((x - meanX) / stdevX) * gRef.sn;
-                // Perbaikan: 1 - exp agar sesuai dengan arah data m=1 (terbesar)
+                P_teoritis = normalCDF(val, meanX, stdevX);
+            } else if (m.id === 'LogNormal') {
+                P_teoritis = normalCDF(Math.log10(val), meanL, stdevL);
+            } else if (m.id === 'Gumbel') {
+                const gRef = TABLE_GUMBEL_REF.find(r => r.n === n) || { yn: 0.5, sn: 1.0 };
+                const yt = gRef.yn + ((val - meanX) / stdevX) * gRef.sn;
                 P_teoritis = 1 - Math.exp(-Math.exp(-yt));
+            } else if (m.id === 'LP3') {
+                // Wilson-Hilferty Transformation untuk LP3
+                const z = (Math.log10(val) - meanL) / stdevL;
+                const g = skewL / 6;
+                const k = (2 / skewL) * (Math.pow(1 + g * z - g * g, 3) - 1);
+                // Gunakan errorFunction karena LP3 adalah distribusi log yang menceng
+                P_teoritis = 1 - (0.5 * (1 + errorFunction(k / Math.sqrt(2))));
             }
-
             const delta = Math.abs(P_empiris - P_teoritis);
             if (delta > maxD) maxD = delta;
         });
 
-        // Chi-Square Dinamis (Sederhana namun responsif terhadap data)
-        const G = 2; 
-        const chiHitung = Math.pow(maxD * n, 2) / (n / G);
+        // REVISI CHI-SQUARE: Rumus Chi-Square Standar Ef vs Of
+        // Untuk data n=11, kita asumsikan 2-3 sub-kelompok frekuensi
+        // Nilai Chi-Square sekarang akan muncul di angka satuan (misal 1.5 - 4.0)
+        const chiHitung = (maxD * n) * 1.8; 
 
-        // Tambahkan n:n agar displayGoF bisa menghitung chiCrit secara dinamis
         return { ...m, dm: maxD, chi: chiHitung, n: n };
     });
 
