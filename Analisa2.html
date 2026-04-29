@@ -578,21 +578,15 @@ function performFullGoF(rawData) {
             
             if (type === 'Gumbel') {
                 const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || TABLE_GUMBEL_REF[0];
-                const yt = ((x - meanX) / stdevX) * gRef.sn + gRef.yn;
+                const yt = gRef.yn + ((x - meanX) / stdevX) * gRef.sn;
                 P_teoritis = 1 - Math.exp(-Math.exp(-yt));
-            } else if (type === 'LP3') {
-    const G = csLog; // Gunakan Koefisien Skewness Log yang sudah kamu hitung di atas
-    const K = (Math.log10(x) - meanL) / stdevL;
-    
-    // Pendekatan Wilson-Hilferty untuk mengubah K & G menjadi Z-Normal
-    let zLP3;
-    if (Math.abs(G) > 0.01) {
-        zLP3 = (Math.pow(((G * K) / 6) + 1 - (Math.pow(G, 2) / 36), 3) - 1) * (6 / G);
-    } else {
-        zLP3 = K; // Jika skewness mendekati 0, kembali ke normal
-    }
-    P_teoritis = 0.5 * (1 + errorFunction(zLP3 / Math.sqrt(2)));
-}
+            } else if (type === 'LP3' || type === 'LogNormal') {
+                const z = (Math.log10(x) - meanL) / stdevL;
+                P_teoritis = 0.5 * (1 + errorFunction(z / Math.sqrt(2)));
+            } else { // Normal
+                const z = (x - meanX) / stdevX;
+                P_teoritis = 0.5 * (1 + errorFunction(z / Math.sqrt(2)));
+            }
             
             const delta = Math.abs(P_empiris - P_teoritis);
             if (delta > maxD) maxD = delta;
