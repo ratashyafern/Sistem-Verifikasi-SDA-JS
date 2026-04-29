@@ -556,9 +556,10 @@ function displayResults(results) {
     return y1 + ((targetVal - x1) / (x2 - x1)) * (y2 - y1);
 }
 // --- GOODNESS OF FIT (GOF) LOGIC ---
+// --- GOODNESS OF FIT (GOF) LOGIC ---
 function performFullGoF(rawData) {
-const n = rawData.length;
-    if (n < 5) return; // Minimal data untuk uji statistik
+    const n = rawData.length; // Deklarasi cukup satu kali di sini
+    if (n < 5) return; 
 
     const sortedData = [...rawData].sort((a, b) => b - a);
     const meanX = sortedData.reduce((a, b) => a + b, 0) / n;
@@ -568,16 +569,15 @@ const n = rawData.length;
     const meanL = logData.reduce((a, b) => a + b, 0) / n;
     const stdevL = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanL, 2), 0) / (n - 1));
 
-    // Nilai Kritis Smirnov-Kolmogorov (n=11 -> 0.391)
-    const n = rawData.length;
+    // --- PENENTUAN SK CRIT DINAMIS ---
     let skCrit;
-if (TABLE_SK_REF[n]) {
-    skCrit = TABLE_SK_REF[n];
-} else if (n > 30) {
-    skCrit = 0.242; 
-} else {
-    skCrit = 0.409; 
-}
+    if (TABLE_SK_REF[n]) {
+        skCrit = TABLE_SK_REF[n];
+    } else if (n > 30) {
+        skCrit = 0.242; 
+    } else {
+        skCrit = 0.409; 
+    }
 
     // --- HITUNG SMIRNOV-KOLMOGOROV (Δmax) ---
     const calcDeltaMax = (type) => {
@@ -604,7 +604,7 @@ if (TABLE_SK_REF[n]) {
         return maxD;
     };
 
-    // --- HITUNG CHI-SQUARE (PERHITUNGAN RIIL) ---
+    // --- HITUNG CHI-SQUARE ---
     const calcChiSquare = (type) => {
         const k = 1 + Math.floor(3.322 * Math.log10(n));
         const Ef = n / k; 
@@ -612,6 +612,7 @@ if (TABLE_SK_REF[n]) {
         const min = Math.min(...sortedData);
         const max = Math.max(...sortedData);
         const range = (max - min) / k;
+        
         for (let i = 0; i < k; i++) {
             const limitLow = min + (i * range);
             const limitHigh = (i === k - 1) ? max + 1 : min + ((i + 1) * range);
@@ -621,18 +622,16 @@ if (TABLE_SK_REF[n]) {
         return chiTotal;
     };
 
-const n = rawData.length;
-const skCrit = TABLE_SK_REF[n] || 0.242; // Default ke nilai terkecil jika n > 30
-const resultsGoF = [
-    { id: 'Normal', name: 'Normal', dm: calcDeltaMax('Normal'), chi: calcChiSquare('Normal') },
-    { id: 'LogNormal', name: 'Log Normal', dm: calcDeltaMax('LogNormal'), chi: calcChiSquare('LogNormal') },
-    { id: 'Gumbel', name: 'Gumbel', dm: calcDeltaMax('Gumbel'), chi: calcChiSquare('Gumbel') },
-    { id: 'LP3', name: 'Log Pearson III', dm: calcDeltaMax('LP3'), chi: calcChiSquare('LP3') }
-];
+    // --- HASIL AKHIR ---
+    const resultsGoF = [
+        { id: 'Normal', name: 'Normal', dm: calcDeltaMax('Normal'), chi: calcChiSquare('Normal') },
+        { id: 'LogNormal', name: 'Log Normal', dm: calcDeltaMax('LogNormal'), chi: calcChiSquare('LogNormal') },
+        { id: 'Gumbel', name: 'Gumbel', dm: calcDeltaMax('Gumbel'), chi: calcChiSquare('Gumbel') },
+        { id: 'LP3', name: 'Log Pearson III', dm: calcDeltaMax('LP3'), chi: calcChiSquare('LP3') }
+    ];
 
-displayGoF(resultsGoF, skCrit);
+    displayGoF(resultsGoF, skCrit);
 }
-
 function displayGoF(results, skCrit) {
     const tBody = document.getElementById('tBodyGoF');
     const chiCrit = 7.81; // Nilai kritis Chi-Square (DK=3, alpha=5%)
