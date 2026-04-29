@@ -216,57 +216,52 @@
 <script>
     // --- MAP INITIALIZATION ---
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-    var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
-    
-    var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    var drawnItems = new L.FeatureGroup().addTo(map);
-    var thiessenLayer = L.layerGroup().addTo(map);
-    var stationLayer = L.layerGroup().addTo(map);
-    var mikroLayer = L.geoJSON(null);
-    var phbLayer = L.geoJSON(null);
+var drawnItems = new L.FeatureGroup().addTo(map);
+var thiessenLayer = L.layerGroup().addTo(map);
+var stationLayer = L.layerGroup().addTo(map);
+var mikroLayer = L.geoJSON(null);
+var phbLayer = L.geoJSON(null);
 
-    L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, 
-    { "Saluran Mikro": mikroLayer, "Saluran PHB": phbLayer, "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems }, 
-    { collapsed: false, position: 'topright' }).addTo(map);
+L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, 
+{ "Saluran Mikro": mikroLayer, "Saluran PHB": phbLayer, "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems }, 
+{ collapsed: false, position: 'topright' }).addTo(map);
 
-    var drawControl = new L.Control.Draw({
-        draw: {
-            polygon: { allowIntersection: false, shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } },
-            polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
-        }
-    });
+var drawControl = new L.Control.Draw({
+    draw: {
+        polygon: { allowIntersection: false, shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } },
+        polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
+    }
+});
 
     let RAIN_DATABASE = {}; 
-    let myChart = null;
-    const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
+let myChart = null;
+const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
 
-    // --- FUNCTIONS ---
-    function initSystem() {
-        if (typeof dataMikro !== 'undefined') {
-            mikroLayer.addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 }).addTo(map);
-        }
-        if (typeof dataPHB !== 'undefined') {
-            phbLayer.addData(dataPHB).setStyle({ color: "#1e3a8a", weight: 5, opacity: 1 }).addTo(map);
-        }
-    }
+// --- CORE FUNCTIONS ---
+function initSystem() {
+    if (typeof dataMikro !== 'undefined') mikroLayer.addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 }).addTo(map);
+    if (typeof dataPHB !== 'undefined') phbLayer.addData(dataPHB).setStyle({ color: "#1e3a8a", weight: 5, opacity: 1 }).addTo(map);
+}
 
     function resetAnalysis() {
-        drawnItems.clearLayers();
-        thiessenLayer.clearLayers();
-        document.getElementById('area-val').innerText = "0.00";
-        document.getElementById('tBody').innerHTML = "";
-        document.getElementById('tBodyRain').innerHTML = "";
-        document.getElementById('fKML').value = "";
-        if(document.getElementById('totalAreaFooter')) document.getElementById('totalAreaFooter').innerText = "0.00";
-        if(document.getElementById('totalWeightFooter')) document.getElementById('totalWeightFooter').innerText = "1.0000";
-        document.getElementById('resThiessen').style.display = 'none';
-        document.getElementById('resYearly').style.display = 'none';
-        document.getElementById('resFrequency').style.display = 'none';
-        if (myChart) { myChart.destroy(); myChart = null; }
-        document.getElementById('resGoF').style.display = 'none';
-    }
+    drawnItems.clearLayers();
+    thiessenLayer.clearLayers();
+    document.getElementById('area-val').innerText = "0.00";
+    document.getElementById('tBody').innerHTML = "";
+    document.getElementById('tBodyRain').innerHTML = "";
+    document.getElementById('fKML').value = "";
+    document.getElementById('resThiessen').style.display = 'none';
+    document.getElementById('resYearly').style.display = 'none';
+    document.getElementById('resFrequency').style.display = 'none';
+    document.getElementById('resGoF').style.display = 'none';
+    if (myChart) { myChart.destroy(); myChart = null; }
+    // Clear highlights
+    document.querySelectorAll('.data-table th, .data-table td').forEach(el => el.classList.remove('selected-method-col', 'selected-method-col-header'));
+}
 
     function addMiniDelete(layer) {
         const btn = document.createElement('button');
@@ -277,24 +272,22 @@
     }
 
     async function loadStationData() {
-        const url = `https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/hujan.json?t=${Date.now()}`;
-        try {
-            const response = await fetch(url);
-            RAIN_DATABASE = await response.json();
-            updateStationMarkers();
-        } catch (err) { console.error("Gagal sinkron data:", err); }
-    }
+    const url = `https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/hujan.json?t=${Date.now()}`;
+    try {
+        const response = await fetch(url);
+        RAIN_DATABASE = await response.json();
+        updateStationMarkers();
+    } catch (err) { console.error("Gagal sinkron data:", err); }
+}
 
     function updateStationMarkers() {
-        stationLayer.clearLayers();
-        Object.keys(RAIN_DATABASE).forEach(id => {
-            const st = RAIN_DATABASE[id];
-            L.circleMarker([st.lat, st.lng], {
-                radius: 6, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
-            }).addTo(stationLayer)
-            .bindTooltip(`<b>${st.n}</b>`, { permanent: true, direction: 'top', offset: [0,-10], className: 'stasiun-label' });
-        });
-    }
+    stationLayer.clearLayers();
+    Object.keys(RAIN_DATABASE).forEach(id => {
+        const st = RAIN_DATABASE[id];
+        L.circleMarker([st.lat, st.lng], { radius: 6, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1 }).addTo(stationLayer)
+        .bindTooltip(`<b>${st.n}</b>`, { permanent: true, direction: 'top', offset: [0,-10], className: 'stasiun-label' });
+    });
+}
 
     function setMode(mode) {
         resetAnalysis();
