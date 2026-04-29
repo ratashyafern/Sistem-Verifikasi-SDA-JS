@@ -68,44 +68,23 @@
     padding-left: 15px; 
 }
 
-/* 2. Style untuk Box 4 (Highlight Kolom Terpilih) */
-/* Tambahkan ini agar kolom metode terbaik otomatis berwarna biru muda */
-.header-terpilih { 
-    background-color: #2563eb !important; 
-    color: white !important; 
-}
-.kolom-terpilih { 
-    background-color: #eff6ff !important; 
-    border-left: 2px solid #2563eb !important; 
-    border-right: 2px solid #2563eb !important; 
+/* --- KHUSUS BOX 5 & HIGHLIGHT --- */
+
+/* Menghilangkan scrollbar agar tabel Box 5 langsung terlihat semua */
+#resGoF .table-container { 
+    max-height: none !important; 
+    overflow: visible !important; 
 }
 
-/* 3. Style untuk Box 5 (Warna Baris Lulus/Gagal) */
-.baris-lulus { 
-    background-color: #dcfce7 !important; 
-    color: #166534 !important; 
-    font-weight: bold; 
-}
-.baris-gagal { 
-    background-color: #fee2e2 !important; 
-    color: #991b1b !important; 
-}
+/* Warna Baris di Box 5 */
+.baris-lulus { background-color: #dcfce7 !important; color: #166534 !important; }
+.baris-gagal { background-color: #fee2e2 !important; color: #991b1b !important; }
 
-/* 4. Utility Status */
-.status-lulus { color: #2ecc71; font-weight: 800; }
-.status-gagal { color: #e74c3c; font-weight: 800; }
+/* Highlight kolom di Box 4 (Analisis Frekuensi) */
+.header-terpilih { background-color: #2563eb !important; color: white !important; }
+.kolom-terpilih { background-color: #eff6ff !important; border-left: 2px solid #2563eb !important; border-right: 2px solid #2563eb !important; }
 
-/* Gaya untuk highlight kolom yang terpilih di Box 4 */
-.metode-terpilih-bg {
-    background-color: #eff6ff !important; /* Biru muda */
-    border-left: 2px solid #2563eb !important;
-    border-right: 2px solid #2563eb !important;
-}
-.header-terpilih {
-    background-color: #2563eb !important;
-    color: white !important;
-}
-    </style>
+.status-text { font-weight: 800; }
 </head>
 <body>
 
@@ -641,35 +620,47 @@ function displayGoF(results, skCrit) {
     const tBody = document.getElementById('tBodyGoF');
     tBody.innerHTML = "";
     
-    // Reset highlight di Box 4
+    // Reset highlight di tabel Box 4 sebelum mewarnai yang baru
     ['Normal', 'LogNormal', 'Gumbel', 'LP3'].forEach(id => {
-        const h = document.getElementById(`h-${id}`);
-        if(h) h.classList.remove("header-terpilih");
+        const header = document.getElementById(`h-${id}`);
+        if (header) header.classList.remove("header-terpilih");
     });
 
     let terpilih = null;
+    let minDelta = 999;
 
+    // Cari metode terbaik (lulus & delta terkecil)
+    results.forEach(m => {
+        if (m.dm < skCrit && m.dm < minDelta) {
+            minDelta = m.dm;
+            terpilih = m;
+        }
+    });
+
+    // Isi tabel Box 5
     results.forEach(m => {
         const isLulus = m.dm < skCrit;
         const rowClass = isLulus ? 'baris-lulus' : 'baris-gagal';
         
         tBody.innerHTML += `
             <tr class="${rowClass}">
-                <td><b>${m.name}</b></td>
+                <td style="padding: 10px; text-align: left;"><b>${m.name}</b></td>
                 <td>${m.dm.toFixed(4)} < ${skCrit}</td>
                 <td>${m.chi.toFixed(2)}</td>
-                <td><b>${isLulus ? '✅ DITERIMA' : '❌ DITOLAK'}</b></td>
-            </tr>`;
-
-        if (isLulus && (!terpilih || m.dm < terpilih.dm)) terpilih = m;
+                <td class="status-text">${isLulus ? 'DITERIMA' : 'DITOLAK'}</td>
+            </tr>
+        `;
     });
 
+    // Terapkan highlight ke Box 4 jika ada yang terpilih
     if (terpilih) {
-        document.getElementById(`h-${terpilih.id}`).classList.add("header-terpilih");
-        document.getElementById('gofConclusion').innerHTML = `💡 Metode <b>${terpilih.name}</b> digunakan karena nilai penyimpangan terkecil.`;
+        const headerEl = document.getElementById(`h-${terpilih.id}`);
+        if (headerEl) headerEl.classList.add("header-terpilih");
+        document.getElementById('gofConclusion').innerHTML = `💡 Metode <b>${terpilih.name}</b> dipilih karena nilai penyimpangan terkecil.`;
     } else {
         document.getElementById('gofConclusion').innerHTML = `<span style="color:red">⚠️ Tidak ada metode yang memenuhi syarat.</span>`;
     }
+    
     document.getElementById('resGoF').style.display = 'block';
 }
 
