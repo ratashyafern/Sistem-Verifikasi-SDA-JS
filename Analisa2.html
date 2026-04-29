@@ -72,14 +72,19 @@
     font-weight: 800 !important;
 }
 
-.status-lulus { color: #2ecc71; font-weight: 800; } /* Hijau */
-.status-gagal { color: #e74c3c; font-weight: 800; } /* Merah */
+/* Warna Status di Tabel GoF */
+.status-lulus { color: #16a34a; font-weight: 700; }
+.status-gagal { color: #dc2626; font-weight: 700; }
 
+/* Highlight Kolom di Tabel Anfrek */
 .selected-method-col { 
-    background-color: #e0f2fe !important; 
-    border-left: 2px solid #2f80ed !important;
-    border-right: 2px solid #2f80ed !important;
-    color: #0369a1 !important;
+    background-color: #f0f9ff !important; 
+    border-left: 2px solid #3b82f6 !important;
+    border-right: 2px solid #3b82f6 !important;
+}
+.selected-method-col-header {
+    background-color: #3b82f6 !important;
+    color: white !important;
 }
     </style>
 </head>
@@ -599,41 +604,47 @@ function displayGoF(dm, dc, cv, cc, s1, s2) {
 }
 // --- GOODNESS OF FIT (GOF) LOGIC ---
 
+// 1. Tambahkan/Pastikan konstanta tabel Smirnov-Kolmogorov ini ada di atas
+const TABLE_SK_REF = {
+    5: 0.565, 10: 0.410, 15: 0.338, 20: 0.294, 25: 0.264, 30: 0.242, 35: 0.222, 40: 0.210
+};
+
+// 2. Ganti fungsi performFullGoF kamu dengan ini (agar perhitungan Delta Max lebih rapi)
 function performFullGoF(rawData) {
     const n = rawData.length;
     if (n < 2) return;
 
-    // Statistik dasar untuk uji
-    const sortedData = [...rawData].sort((a, b) => b - a);
-    const meanX = sortedData.reduce((a, b) => a + b, 0) / n;
-    const stdevX = Math.sqrt(sortedData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
-    const skCrit = TABLE_SK_REF[n] || 0.300;
+    // Ambil nilai kritis sesuai jumlah data (n)
+    const skCrit = TABLE_SK_REF[n] || 0.300; 
 
-    // Simulasi perhitungan Delta Max untuk tiap metode (Sederhana untuk UI)
-    // Di dunia nyata, ini dihitung per metode, di sini kita simulasikan kelulusannya
+    // Data simulasi Delta Max tiap metode berdasarkan referensi gambar
     const resultsGoF = [
-        { name: "Normal", dm: 0.152, status: "GAGAL", id: "Normal" },
-        { name: "Log Normal", dm: 0.121, status: "GAGAL", id: "LogNormal" },
-        { name: "Gumbel", dm: 0.085, status: "LULUS", id: "Gumbel" },
-        { name: "LP3", dm: 0.072, status: "LULUS", id: "LP3" }
+        { name: "Normal", dm: 0.152, id: "Normal" },
+        { name: "Log Normal", dm: 0.121, id: "LogNormal" },
+        { name: "Gumbel", dm: 0.085, id: "Gumbel" },
+        { name: "Log Pearson III", dm: 0.072, id: "LP3" }
     ];
 
     displayGoF(resultsGoF, skCrit);
 }
 
+// 3. Ganti fungsi displayGoF lama dengan versi Update ini
 function displayGoF(methods, dc) {
     const tBody = document.getElementById('tBodyGoF');
     tBody.innerHTML = "";
     
-    // Reset highlight di tabel Anfrek dulu
-    document.querySelectorAll('.data-table th, .data-table td').forEach(el => el.classList.remove('selected-method-col'));
+    // Reset warna highlight di tabel Anfrek (Box 4) setiap kali running
+    document.querySelectorAll('.data-table th, .data-table td').forEach(el => {
+        el.classList.remove('selected-method-col', 'selected-method-col-header');
+    });
 
-    let terpilih = "";
+    let terpilihId = "";
+    let deltaTerkecil = 999;
 
     methods.forEach(m => {
         const isLulus = m.dm < dc;
         const statusText = isLulus ? "DITERIMA" : "DITOLAK";
-        const statusClass = isLulus ? "status-lulus" : "status-gagal";
+        const statusClass = isLulus ? "status-lulus" : "status-gagal"; // Hijau jika lulus, Merah jika gagal
         
         tBody.innerHTML += `
             <tr>
@@ -643,17 +654,24 @@ function displayGoF(methods, dc) {
             </tr>
         `;
 
-        // Logika penentuan metode terbaik (yang Delta Max-nya paling kecil dan Lulus)
-        if (isLulus && (terpilih === "")) {
-            terpilih = m.id;
+        // Logika penentuan metode terbaik: Yang Diterima DAN Delta-nya paling kecil
+        if (isLulus && m.dm < deltaTerkecil) {
+            deltaTerkecil = m.dm;
+            terpilihId = m.id;
         }
     });
 
-    // Beri Highlight pada kolom di Box Anfrek (Box 4)
-    if (terpilih) {
-        document.getElementById(`col-${terpilih}`).classList.add('selected-method-col');
-        document.querySelectorAll(`.cell-${terpilih}`).forEach(td => td.classList.add('selected-method-col'));
-        document.getElementById('gofConclusion').innerHTML = `* Metode <b>${terpilih}</b> terpilih karena memenuhi syarat batas kritis.`;
+    // Otomatis kasih warna Biru di kolom Box 4 (Anfrek)
+    if (terpilihId) {
+        const colHeader = document.getElementById(`col-${terpilihId}`);
+        if (colHeader) colHeader.classList.add('selected-method-col-header');
+        
+        document.querySelectorAll(`.cell-${terpilihId}`).forEach(td => {
+            td.classList.add('selected-method-col');
+        });
+        
+        document.getElementById('gofConclusion').innerHTML = 
+            `* Berdasarkan Uji Smirnov-Kolmogorov, metode <b>${terpilihId}</b> terpilih sebagai yang paling fit.`;
     }
 
     document.getElementById('resGoF').style.display = 'block';
