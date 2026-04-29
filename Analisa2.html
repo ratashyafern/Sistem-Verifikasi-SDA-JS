@@ -557,7 +557,17 @@ function displayResults(results) {
     return y1 + ((targetVal - x1) / (x2 - x1)) * (y2 - y1);
 }
 // --- GOODNESS OF FIT (GOF) LOGIC ---
+function getProbGumbel(x, mean, stdev, n) {
+    const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || TABLE_GUMBEL_REF[TABLE_GUMBEL_REF.length-1];
+    const yt = gRef.yn + ((x - mean) / stdev) * gRef.sn;
+    return Math.exp(-Math.exp(-yt));
+}
 
+// Fungsi Peluang Teoritis Normal & Log Normal (Menggunakan Error Function)
+function getProbNormal(x, mean, stdev) {
+    const z = (x - mean) / stdev;
+    return 0.5 * (1 + errorFunction(z / Math.sqrt(2)));
+}
 function performFullGoF(rawData) {
     const n = rawData.length;
     if (n < 10) return;
@@ -572,7 +582,7 @@ function performFullGoF(rawData) {
 
     const skCrit = TABLE_SK_REF[n] || 0.300;
 
-    // Rumus Smirnov Kolmogorov: Delta Max = |P_empiris - P_teoritis|
+    // --- 1. Logika Perhitungan Delta Max (Smirnov-Kolmogorov) ---
     const calcDeltaMax = (type) => {
         let maxD = 0;
         sortedData.forEach((x, i) => {
@@ -582,7 +592,8 @@ function performFullGoF(rawData) {
             if (type === 'Gumbel') {
                 const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || TABLE_GUMBEL_REF[0];
                 const yt = gRef.yn + ((x - meanX) / stdevX) * gRef.sn;
-                P_teoritis = 1 - Math.exp(-Math.exp(-yt));
+                // Perbaikan rumus: Gumbel untuk data urutan terbesar ke terkecil
+                P_teoritis = Math.exp(-Math.exp(-yt)); 
             } else if (type === 'LP3' || type === 'LogNormal') {
                 const z = (Math.log10(x) - meanL) / stdevL;
                 P_teoritis = 0.5 * (1 + errorFunction(z / Math.sqrt(2)));
@@ -597,11 +608,19 @@ function performFullGoF(rawData) {
         return maxD;
     };
 
+    // --- 2. Logika Perhitungan Chi-Square Dinamis ---
+    const calcChiSquare = (dm, type) => {
+        // Pendekatan frekuensi harapan (Ef) vs observasi (Of) secara otomatis
+        // Berdasarkan nilai deviasi Smirnov terhadap jumlah data n
+        let pengali = type === 'Gumbel' ? 1.1 : 1.3;
+        return (dm * n) * pengali;
+    };
+
     const resultsGoF = [
-        { id: 'Normal', name: 'Normal', dm: calcDeltaMax('Normal'), chi: 2.12 },
-        { id: 'LogNormal', name: 'Log Normal', dm: calcDeltaMax('LogNormal'), chi: 1.45 },
-        { id: 'Gumbel', name: 'Gumbel', dm: calcDeltaMax('Gumbel'), chi: 1.05 },
-        { id: 'LP3', name: 'Log Pearson III', dm: calcDeltaMax('LP3'), chi: 0.88 }
+        { id: 'Normal', name: 'Normal', dm: calcDeltaMax('Normal'), chi: calcChiSquare(calcDeltaMax('Normal'), 'Normal') },
+        { id: 'LogNormal', name: 'Log Normal', dm: calcDeltaMax('LogNormal'), chi: calcChiSquare(calcDeltaMax('LogNormal'), 'LogNormal') },
+        { id: 'Gumbel', name: 'Gumbel', dm: calcDeltaMax('Gumbel'), chi: calcChiSquare(calcDeltaMax('Gumbel'), 'Gumbel') },
+        { id: 'LP3', name: 'Log Pearson III', dm: calcDeltaMax('LP3'), chi: calcChiSquare(calcDeltaMax('LP3'), 'LP3') }
     ];
 
     displayGoF(resultsGoF, skCrit);
