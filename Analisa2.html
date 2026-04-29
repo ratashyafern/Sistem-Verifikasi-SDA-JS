@@ -554,7 +554,7 @@ function displayResults(results) {
     return y1 + ((targetVal - x1) / (x2 - x1)) * (y2 - y1);
 }
 // --- GOODNESS OF FIT (GOF) LOGIC ---
-
+function performFullGoF(rawData) {
 const n = rawData.length;
     if (n < 5) return; // Minimal data untuk uji statistik
 
@@ -596,24 +596,16 @@ const n = rawData.length;
 
     // --- HITUNG CHI-SQUARE (PERHITUNGAN RIIL) ---
     const calcChiSquare = (type) => {
-        // Jumlah kelas (k) untuk data sedikit biasanya 4 atau 5
         const k = 1 + Math.floor(3.322 * Math.log10(n));
         const Ef = n / k; 
         let chiTotal = 0;
-
-        // Tentukan interval kelas berdasarkan range data
         const min = Math.min(...sortedData);
         const max = Math.max(...sortedData);
         const range = (max - min) / k;
-
         for (let i = 0; i < k; i++) {
             const limitLow = min + (i * range);
             const limitHigh = (i === k - 1) ? max + 1 : min + ((i + 1) * range);
-            
-            // Hitung Of (Observed Frequency) - berapa data masuk ke range ini
             const Of = sortedData.filter(v => v >= limitLow && v < limitHigh).length;
-            
-            // Rumus: (Of - Ef)^2 / Ef
             chiTotal += Math.pow(Of - Ef, 2) / Ef;
         }
         return chiTotal;
@@ -631,82 +623,58 @@ const n = rawData.length;
 
 function displayGoF(results, skCrit) {
     const tBody = document.getElementById('tBodyGoF');
+    const chiCrit = 7.81; 
     tBody.innerHTML = "";
     
-    // Tentukan Chi-Square Kritis (untuk dk = 2 atau 3, biasanya sekitar 5.99 - 7.81)
-    const chiCrit = 7.81; 
-
     let terpilih = null;
     let minDelta = 999;
 
     results.forEach(m => {
-        // Lulus jika Delta Max di bawah kriteria Smirnov
-        const isLulus = m.dm < skCrit; 
+        const isLulus = m.dm < skCrit;
         const rowClass = isLulus ? 'baris-lulus' : 'baris-gagal';
-        
-        if (isLulus && m.dm < minDelta) {
-            minDelta = m.dm;
-            terpilih = m;
-        }
+        if (isLulus && m.dm < minDelta) { minDelta = m.dm; terpilih = m; }
 
-        tBody.innerHTML += `
-            <tr class="${rowClass}">
-                <td style="text-align:left; padding-left:15px;"><b>${m.name}</b></td>
-                <td>${m.dm.toFixed(4)}</td>
-                <td>${m.chi.toFixed(2)}</td>
-                <td class="status-text">${isLulus ? 'DITERIMA' : 'DITOLAK'}</td>
-            </tr>
-        `;
-    });
-
-    // Reset warna kolom di tabel frekuensi
-    ['Normal', 'LogNormal', 'Gumbel', 'LP3'].forEach(id => {
-        const header = document.getElementById(`h-${id}`);
-        if (header) header.classList.remove("header-terpilih");
-        document.querySelectorAll(`.col-${id}`).forEach(td => td.classList.remove("kolom-terpilih"));
+        tBody.innerHTML += `<tr class="${rowClass}">
+            <td style="text-align:left; padding-left:15px;"><b>${m.name}</b></td>
+            <td>${m.dm.toFixed(4)}</td>
+            <td>${m.chi.toFixed(2)}</td>
+            <td class="status-text">${isLulus ? 'DITERIMA' : 'DITOLAK'}</td>
+        </tr>`;
     });
 
     if (terpilih) {
         const headerAktif = document.getElementById(`h-${terpilih.id}`);
         if (headerAktif) headerAktif.classList.add("header-terpilih");
         document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => td.classList.add("kolom-terpilih"));
-        document.getElementById('gofConclusion').innerHTML = `💡 Metode <b>${terpilih.name}</b> paling sesuai berdasarkan Delta terkecil.`;
+        document.getElementById('gofConclusion').innerHTML = `💡 Metode <b>${terpilih.name}</b> paling sesuai.`;
     }
-    
     document.getElementById('resGoF').style.display = 'block';
 }
 
+// Fungsi Matematika Tambahan (ERF) untuk Distribusi Normal
 function errorFunction(x) {
-    // Pendekatan numerik untuk erf(x)
     const t = 1.0 / (1.0 + 0.5 * Math.abs(x));
-    const tau = t * Math.exp(-x * x - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + 
-                t * (-0.18628807 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + 
-                t * (-0.82215223 + t * 0.17087277)))))))));
+    const tau = t * Math.exp(-x * x - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
     return x >= 0 ? 1 - tau : tau - 1;
 }
 
-    window.onload = async () => { 
-        await loadStationData();
-        initSystem();
-        lucide.createIcons(); 
-        document.getElementById('fKML').addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
-                const geojson = toGeoJSON.kml(kmlDom);
-                if (geojson.features.length > 0) {
-                    resetAnalysis();
-                    const layer = L.geoJSON(geojson, { style: { color: '#2f80ed', weight: 2 } }).addTo(drawnItems);
-                    addMiniDelete(layer);
-                    map.fitBounds(layer.getBounds());
-                    processHydrology(geojson.features[0]);
-                }
-            };
-            reader.readAsText(file);
-        });
+// --- FILE UPLOAD HANDLER ---
+document.getElementById('fKML').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const parser = new DOMParser();
+        const kml = parser.parseFromString(e.target.result, 'text/xml');
+        const geojson = toGeoJSON.kml(kml);
+        resetAnalysis();
+        const layer = L.geoJSON(geojson, { style: { color: '#2f80ed', fillOpacity: 0.4 } }).addTo(drawnItems);
+        map.fitBounds(layer.getBounds());
+        addMiniDelete(layer);
+        processHydrology(geojson.features[0]);
     };
+    reader.readAsText(file);
+});
 </script>
 </body>
 </html>
