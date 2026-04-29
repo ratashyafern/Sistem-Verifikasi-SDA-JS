@@ -10,69 +10,45 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
 
     <style>
-        :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
-        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
-        body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
-        
-        #sidebar { width: 450px; background: #f8fafc; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; }
-        .sidebar-header { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; background: white; }
-        .sidebar-content { padding: 8px 15px; flex-grow: 1; overflow-y: auto; }
-        #map { flex-grow: 1; position: relative; }
+    :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+    body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
+    
+    #sidebar { width: 450px; background: #f8fafc; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; }
+    .sidebar-header { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; background: white; }
+    .sidebar-content { padding: 8px 15px; flex-grow: 1; overflow-y: auto; }
+    #map { flex-grow: 1; position: relative; }
 
-        .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; }
-        .card { background: #ffffff; border: 1px solid #eef2f6; border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
-        .card h3 { font-size: 11px; text-transform: uppercase; color: var(--slate); margin-bottom: 12px; font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
-        
-        .method-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
-        .btn-choice { display: flex; align-items: center; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-        .btn-choice span { font-size: 12px; font-weight: 700; color: var(--primary); }
-        .btn-choice i { color: var(--accent); width: 18px; }
-        .btn-choice.active { background: var(--primary); border-color: var(--primary); }
-        .btn-choice.active span, .btn-choice.active i { color: white; }
+    .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; }
+    .card { background: #ffffff; border: 1px solid #eef2f6; border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    .card h3 { font-size: 11px; text-transform: uppercase; color: var(--slate); margin-bottom: 12px; font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
+    
+    .method-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+    .btn-choice { display: flex; align-items: center; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    .btn-choice span { font-size: 12px; font-weight: 700; color: var(--primary); }
+    .btn-choice i { color: var(--accent); width: 18px; }
+    .btn-choice.active { background: var(--primary); border-color: var(--primary); }
+    .btn-choice.active span, .btn-choice.active i { color: white; }
 
-        .upload-area { background: var(--primary); color: white; padding: 15px; border-radius: 8px; text-align: center; cursor: pointer; margin-top: 15px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .table-container { max-height: 280px; overflow-y: auto; border: 1px solid #f1f5f9; margin-top: 10px; border-radius: 6px; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .data-table th { background: #f8fafc; text-align: center; padding: 8px; color: var(--slate); border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1; }
+    .data-table td { padding: 8px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary); text-align: center; }
 
-        .table-container { max-height: 135px; overflow-y: auto; border: 1px solid #f1f5f9; margin-top: 10px; border-radius: 6px; }
-.data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-.data-table th { background: #f8fafc; text-align: center; padding: 6px 10px; color: var(--slate); border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1; }
-.data-table td { 
-    padding: 6px 10px; 
-    border: 1px solid #e2e8f0; 
-    font-weight: 600; 
-    color: var(--primary); 
-    text-align: center; /* Default semua center */
-}
-
-
-#tBody td:first-child, 
-#resThiessen tfoot td:first-child { 
-    text-align: left !important; 
-    padding-left: 15px;
-        
-        .highlight-method { color: #2f80ed; font-weight: 800; background: #f1f7ff; }
-        .color-legend { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
-        .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #e2e8f0; }
-        .stasiun-label { background: white !important; border: 1.5px solid #1c2b4a !important; font-weight: 800 !important; padding: 2px 8px !important; border-radius: 4px !important; font-size: 10px !important; color: #1c2b4a !important; }
-        #rainChart { height: 180px !important; width: 100% !important; }
-
-        .btn-delete-mini {
-            background: #ef4444; color: white; border: none; padding: 4px 8px; 
-            border-radius: 4px; cursor: pointer; font-family: 'Inter', sans-serif;
-            font-weight: 700; font-size: 10px; display: flex; align-items: center; gap: 4px;
-            margin-top: 5px; width: fit-content;
-        }
-        .data-table td:first-child, 
-.data-table th:first-child { 
-    text-align: left !important; 
-    padding-left: 15px; 
+    /* WARNA KOLOM TERPILIH */
     .selected-method { 
-    background-color: #e0f2fe !important; 
-    color: #0369a1 !important; 
-    border: 2px solid #2f80ed !important;
-}
-.status-lulus { color: #2ecc71; font-weight: 800; }
-.status-gagal { color: #e74c3c; font-weight: 800; }
-    </style>
+        background-color: #e0f2fe !important; 
+        color: #0369a1 !important; 
+        border-left: 2px solid #2f80ed !important;
+        border-right: 2px solid #2f80ed !important;
+    }
+    
+    .status-lulus { color: #2ecc71; font-weight: 800; }
+    .status-gagal { color: #e74c3c; font-weight: 800; }
+    
+    .area-info-box { position: absolute; bottom: 30px; left: 30px; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #e2e8f0; }
+    #rainChart { height: 180px !important; width: 100% !important; }
+</style>
 </head>
 <body>
 
@@ -509,15 +485,45 @@ function displayResults(results) {
     const tBody = document.getElementById('tBodyFreq');
     tBody.innerHTML = "";
     results.forEach(r => {
+        // Kita simpan barisnya dulu, nanti warnanya diatur setelah GoF dihitung
         tBody.innerHTML += `<tr>
-    <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
-    <td>${r.resNormal.toFixed(2)}</td>
-    <td>${r.resLogN.toFixed(2)}</td>
-    <td>${r.resGumbel.toFixed(2)}</td>
-    <td class="highlight-method">${r.resLP3.toFixed(2)}</td>
-</tr>`;
+            <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
+            <td class="col-normal">${r.resNormal.toFixed(2)}</td>
+            <td class="col-log2p">${r.resLogN.toFixed(2)}</td>
+            <td class="col-gumbel">${r.resGumbel.toFixed(2)}</td>
+            <td class="col-lp3">${r.resLP3.toFixed(2)}</td>
+        </tr>`;
     });
     document.getElementById('resFrequency').style.display = 'block';
+}
+
+function displayGoF(dm, dc, cv, cc, s1, s2) {
+    const tBody = document.getElementById('tBodyGoF');
+    const isLulus = s1 === "LULUS" && s2 === "LULUS";
+    
+    tBody.innerHTML = `
+        <tr>
+            <td><b>Gumbel</b></td>
+            <td>${dm.toFixed(4)} < <span style="color:blue">${dc}</span></td>
+            <td>${cv} < <span style="color:blue">${cc}</span></td>
+            <td class="${isLulus ? 'status-lulus' : 'status-gagal'}">${isLulus ? 'DITERIMA' : 'DITOLAK'}</td>
+        </tr>
+    `;
+    
+    // --- LOGIKA PEWARNAAN TABEL ANFREK ---
+    // Jika Gumbel lulus, warnai semua cell yang punya class 'col-gumbel'
+    if (isLulus) {
+        document.querySelectorAll('.col-gumbel').forEach(cell => {
+            cell.classList.add('selected-method');
+        });
+        // Dan pastikan header Gumbel juga diwarnai (opsional)
+        document.querySelector('th:nth-child(3)')?.classList.add('selected-method');
+    }
+
+    document.getElementById('resGoF').style.display = 'block';
+    document.getElementById('gofConclusion').innerText = isLulus ? 
+        "* Berdasarkan hasil uji Smirnov-Kolmogorov & Chi-Square, distribusi Gumbel memenuhi syarat." : 
+        "* Distribusi Gumbel ditolak. Coba gunakan metode Log Pearson III.";
 }
 
     function getInterpolatedK(targetVal, table, key, T) {
