@@ -386,7 +386,10 @@
             }
         });
     }
-
+const TABLE_CHI_SQUARE = {
+    // dk (derajat kebebasan): nilai kritis alpha 5%
+    1: 3.841, 2: 5.991, 3: 7.815, 4: 9.488, 5: 11.070
+};
     // --- FREQUENCY ANALYSIS LOGIC ---
     const TABLE_SK_REF = {
     10: 0.409, 11: 0.391, 12: 0.375, 13: 0.361, 14: 0.349, 15: 0.338,
@@ -608,7 +611,7 @@ function displayGoF(results, skCrit) {
     const tBody = document.getElementById('tBodyGoF');
     tBody.innerHTML = "";
     
-    // 1. Reset semua warna di Tabel 4
+    // Reset styling Box 4
     ['Normal', 'LogNormal', 'Gumbel', 'LP3'].forEach(id => {
         const header = document.getElementById(`h-${id}`);
         if (header) header.classList.remove("header-terpilih");
@@ -618,35 +621,48 @@ function displayGoF(results, skCrit) {
     let terpilih = null;
     let minDelta = 999;
 
-    // 2. Cari metode terbaik
-    results.forEach(m => {
-        if (m.dm < skCrit && m.dm < minDelta) {
-            minDelta = m.dm;
-            terpilih = m;
-        }
-    });
+    // Hitung Parameter Chi-Square Dinamis (Berdasarkan jumlah data n)
+    // Rumus dk = G - (P + 1), untuk hidrologi biasanya dk = G - 2 atau G - 3
+    const n = results[0] ? results[0].n : 10; // n diambil dari data yang diproses
+    const G = Math.floor(1 + 3.322 * Math.log10(n)); // Aturan Sturges
+    const dk = G - 3; 
+    const chiCrit = TABLE_CHI_SQUARE[dk] || 5.991; // Refer ke tabel chi
 
-    // 3. Isi Tabel 5 (Status Lulus/Gagal)
     results.forEach(m => {
-        const isLulus = m.dm < skCrit;
-        const rowClass = isLulus ? 'baris-lulus' : 'baris-gagal';
+        // SYARAT LULUS: Delta Max < SK Kritis DAN Chi Hitung < Chi Kritis
+        const isLulusSmirnov = m.dm < skCrit;
+        const isLulusChi = m.chi < chiCrit;
+        const totalLulus = isLulusSmirnov && isLulusChi;
+
+        const rowClass = totalLulus ? 'baris-lulus' : 'baris-gagal';
+        
         tBody.innerHTML += `
             <tr class="${rowClass}">
                 <td style="text-align:left; padding-left:15px;"><b>${m.name}</b></td>
                 <td>${m.dm.toFixed(4)}</td>
                 <td>${m.chi.toFixed(2)}</td>
-                <td class="status-text">${isLulus ? 'DITERIMA' : 'DITOLAK'}</td>
+                <td class="status-text">${totalLulus ? 'DITERIMA' : 'DITOLAK'}</td>
             </tr>
         `;
+
+        // Pilih metode terbaik (yang lulus dan punya Delta terkecil)
+        if (totalLulus && m.dm < minDelta) {
+            minDelta = m.dm;
+            terpilih = m;
+        }
     });
 
-    // 4. Warnai Kolom di Tabel 4 (Box 4)
+    // Highlight kolom di Tabel 4 (Hujan Rencana)
     if (terpilih) {
         const headerAktif = document.getElementById(`h-${terpilih.id}`);
         if (headerAktif) headerAktif.classList.add("header-terpilih");
         document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => td.classList.add("kolom-terpilih"));
         
-        document.getElementById('gofConclusion').innerHTML = `💡 Metode <b>${terpilih.name}</b> dipilih sebagai yang paling sesuai (Delta terkecil).`;
+        document.getElementById('gofConclusion').innerHTML = 
+            `💡 Metode <b>${terpilih.name}</b> terpilih karena memenuhi semua kriteria uji dengan deviasi terkecil.`;
+    } else {
+        document.getElementById('gofConclusion').innerHTML = 
+            `⚠️ Tidak ada metode yang memenuhi kriteria uji sepenuhnya. Gunakan Log Pearson III sebagai standar cadangan.`;
     }
     document.getElementById('resGoF').style.display = 'block';
 }
