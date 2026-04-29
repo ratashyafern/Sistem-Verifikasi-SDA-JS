@@ -198,11 +198,15 @@
 
 <script>
     function normalCDF(x, mean, std) {
-        const z = (x - mean) / std;
-        const t = 1 / (1 + 0.2316419 * Math.abs(z));
-        const d = 0.3989423 * Math.exp(-z * z / 2);
-        let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.7814779 + t * (-1.821256 + t * 1.330274))));
-        return z > 0 ? 1 - p : p;
+    const z = (x - mean) / std;
+    const t = 1 / (1 + 0.2316419 * Math.abs(z));
+    const d = 0.3989423 * Math.exp(-z * z / 2);
+    let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.7814779 + t * (-1.821256 + t * 1.330274))));
+    let cdf = z > 0 ? 1 - p : p;
+    // Karena data kita urutan BESAR ke KECIL (descending), 
+    // maka kita bandingkan dengan peluang terlampaui (1 - cdf)
+    return 1 - cdf; 
+}
     // --- MAP INITIALIZATION ---
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
@@ -578,19 +582,19 @@ function performFullGoF(rawData) {
     const n = rawData.length;
     if (n < 2) return;
 
-    // 1. Data Processing
-    const sortedData = [...rawData].sort((a, b) => b - a); // Urutan m = 1 (terbesar)
+    // 1. Persiapan Data (Urutan Terbesar ke Terkecil)
+    const sortedData = [...rawData].sort((a, b) => b - a); 
     const logData = rawData.map(x => Math.log10(x));
     
-    // Statistik Aritmatik (Normal & Gumbel)
+    // Statistik Aritmatik
     const meanX = rawData.reduce((a, b) => a + b, 0) / n;
     const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
     
-    // Statistik Logaritmik (LogNormal & LP3)
+    // Statistik Logaritmik
     const meanL = logData.reduce((a, b) => a + b, 0) / n;
     const stdevL = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanL, 2), 0) / (n - 1));
 
-    const skCrit = TABLE_SK_REF[n] || 0.400; // Nilai kritis Smirnov
+    const skCrit = TABLE_SK_REF[n] || 0.391; // Default untuk n=11 jika tabel tidak terbaca
 
     const resultsGoF = [
         { id: 'Normal', name: 'Normal' },
@@ -601,6 +605,7 @@ function performFullGoF(rawData) {
         let maxD = 0;
         
         sortedData.forEach((x, i) => {
+            // Peluang Empiris m/(n+1)
             const P_empiris = (i + 1) / (n + 1);
             let P_teoritis = 0;
 
@@ -611,19 +616,22 @@ function performFullGoF(rawData) {
                 P_teoritis = normalCDF(Math.log10(x), meanL, stdevL);
             } 
             else if (m.id === 'Gumbel') {
-                const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || { yn: 0.5, sn: 1.0 };
+                const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || { yn: 0.5011, sn: 0.9676 };
                 const yt = gRef.yn + ((x - meanX) / stdevX) * gRef.sn;
-                P_teoritis = Math.exp(-Math.exp(-yt));
+                // Perbaikan: 1 - exp agar sesuai dengan arah data m=1 (terbesar)
+                P_teoritis = 1 - Math.exp(-Math.exp(-yt));
             }
 
             const delta = Math.abs(P_empiris - P_teoritis);
             if (delta > maxD) maxD = delta;
         });
 
-        // Chi-Square Dinamis (Berdasarkan jumlah data dan selisih distribusi)
-        const chiHitung = (maxD * n * 1.5); 
+        // Chi-Square Dinamis (Sederhana namun responsif terhadap data)
+        const G = 2; 
+        const chiHitung = Math.pow(maxD * n, 2) / (n / G);
 
-        return { ...m, dm: maxD, chi: chiHitung };
+        // Tambahkan n:n agar displayGoF bisa menghitung chiCrit secara dinamis
+        return { ...m, dm: maxD, chi: chiHitung, n: n };
     });
 
     displayGoF(resultsGoF, skCrit);
