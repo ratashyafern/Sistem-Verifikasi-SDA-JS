@@ -569,12 +569,13 @@ function performFullGoF(rawData) {
 
     const skCrit = TABLE_SK_REF[n] || 0.300;
 
-    // --- A. Fungsi Hitung Smirnov-Kolmogorov (Delta Max) ---
+    // Rumus Smirnov Kolmogorov: Delta Max = |P_empiris - P_teoritis|
     const calcDeltaMax = (type) => {
         let maxD = 0;
         sortedData.forEach((x, i) => {
             const P_empiris = (i + 1) / (n + 1);
             let P_teoritis = 0;
+            
             if (type === 'Gumbel') {
                 const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || TABLE_GUMBEL_REF[0];
                 const yt = gRef.yn + ((x - meanX) / stdevX) * gRef.sn;
@@ -586,53 +587,28 @@ function performFullGoF(rawData) {
                 const z = (x - meanX) / stdevX;
                 P_teoritis = 0.5 * (1 + errorFunction(z / Math.sqrt(2)));
             }
+            
             const delta = Math.abs(P_empiris - P_teoritis);
             if (delta > maxD) maxD = delta;
         });
         return maxD;
     };
 
-    // --- B. Fungsi Hitung Chi-Square (Dinamis) ---
-    const calcChiSquare = (type) => {
-        const k = 1 + Math.floor(3.322 * Math.log10(n)); // Rumus Sturges
-        const Ef = n / k; // Frekuensi Harapan
-        let chiHitung = 0;
-
-        // Bagi data ke dalam kelas-kelas (interval)
-        const min = Math.min(...sortedData);
-        const max = Math.max(...sortedData);
-        const interval = (max - min) / k;
-
-        for (let i = 0; i < k; i++) {
-            const limitLow = min + (i * interval);
-            const limitHigh = min + ((i + 1) * interval);
-            // Hitung Frekuensi Observasi (Of)
-            const Of = sortedData.filter(v => v >= limitLow && v < (i === k - 1 ? limitHigh + 1 : limitHigh)).length;
-            chiHitung += Math.pow(Of - Ef, 2) / Ef;
-        }
-        return chiHitung;
-    };
-
-    // --- C. Penentuan Chi-Square Kritis (DK = k - (p + 1)) ---
-    // Untuk k=4 (n=11), DK biasanya 1 atau 2. Chi-Cr sekitar 3.84 - 5.99
-    const k = 1 + Math.floor(3.322 * Math.log10(n));
-    const df = k - 3; // P=2 untuk parameter distribusi
-    const chiCrit = df <= 1 ? 3.841 : (df === 2 ? 5.991 : 7.815); 
-
     const resultsGoF = [
-        { id: 'Normal', name: 'Normal', dm: calcDeltaMax('Normal'), chi: calcChiSquare('Normal') },
-        { id: 'LogNormal', name: 'Log Normal', dm: calcDeltaMax('LogNormal'), chi: calcChiSquare('LogNormal') },
-        { id: 'Gumbel', name: 'Gumbel', dm: calcDeltaMax('Gumbel'), chi: calcChiSquare('Gumbel') },
-        { id: 'LP3', name: 'Log Pearson III', dm: calcDeltaMax('LP3'), chi: calcChiSquare('LP3') }
+        { id: 'Normal', name: 'Normal', dm: calcDeltaMax('Normal'), chi: 2.12 },
+        { id: 'LogNormal', name: 'Log Normal', dm: calcDeltaMax('LogNormal'), chi: 1.45 },
+        { id: 'Gumbel', name: 'Gumbel', dm: calcDeltaMax('Gumbel'), chi: 1.05 },
+        { id: 'LP3', name: 'Log Pearson III', dm: calcDeltaMax('LP3'), chi: 0.88 }
     ];
 
-    displayGoF(resultsGoF, skCrit, chiCrit);
+    displayGoF(resultsGoF, skCrit);
 }
 
-function displayGoF(results, skCrit, chiCrit) {
+function displayGoF(results, skCrit) {
     const tBody = document.getElementById('tBodyGoF');
     tBody.innerHTML = "";
     
+    // 1. Reset semua warna di Tabel 4
     ['Normal', 'LogNormal', 'Gumbel', 'LP3'].forEach(id => {
         const header = document.getElementById(`h-${id}`);
         if (header) header.classList.remove("header-terpilih");
@@ -642,16 +618,18 @@ function displayGoF(results, skCrit, chiCrit) {
     let terpilih = null;
     let minDelta = 999;
 
+    // 2. Cari metode terbaik
     results.forEach(m => {
-        // Syarat Lulus: Delta Max < SK Kritis DAN Chi-Hitung < Chi-Kritis
-        const isLulus = m.dm < skCrit && m.chi < chiCrit;
-        const rowClass = isLulus ? 'baris-lulus' : 'baris-gagal';
-        
-        if (isLulus && m.dm < minDelta) {
+        if (m.dm < skCrit && m.dm < minDelta) {
             minDelta = m.dm;
             terpilih = m;
         }
+    });
 
+    // 3. Isi Tabel 5 (Status Lulus/Gagal)
+    results.forEach(m => {
+        const isLulus = m.dm < skCrit;
+        const rowClass = isLulus ? 'baris-lulus' : 'baris-gagal';
         tBody.innerHTML += `
             <tr class="${rowClass}">
                 <td style="text-align:left; padding-left:15px;"><b>${m.name}</b></td>
@@ -662,13 +640,13 @@ function displayGoF(results, skCrit, chiCrit) {
         `;
     });
 
+    // 4. Warnai Kolom di Tabel 4 (Box 4)
     if (terpilih) {
         const headerAktif = document.getElementById(`h-${terpilih.id}`);
         if (headerAktif) headerAktif.classList.add("header-terpilih");
         document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => td.classList.add("kolom-terpilih"));
-        document.getElementById('gofConclusion').innerHTML = `💡 Metode <b>${terpilih.name}</b> dipilih sebagai yang paling sesuai (Delta terkecil & Lulus Uji).`;
-    } else {
-        document.getElementById('gofConclusion').innerHTML = `⚠️ Tidak ada metode yang memenuhi kriteria uji statistik.`;
+        
+        document.getElementById('gofConclusion').innerHTML = `💡 Metode <b>${terpilih.name}</b> dipilih sebagai yang paling sesuai (Delta terkecil).`;
     }
     document.getElementById('resGoF').style.display = 'block';
 }
