@@ -249,9 +249,7 @@
         document.getElementById('resFrequency').style.display = 'none';
         if (myChart) { myChart.destroy(); myChart = null; }
         document.getElementById('resGoF').style.display = 'none';
-    document.querySelectorAll('.header-terpilih').forEach(el => el.classList.remove('header-terpilih'));
-    document.querySelectorAll('.kolom-terpilih').forEach(el => el.classList.remove('kolom-terpilih'));
-}
+    }
 
     function addMiniDelete(layer) {
         const btn = document.createElement('button');
@@ -556,10 +554,10 @@ function displayResults(results) {
     return y1 + ((targetVal - x1) / (x2 - x1)) * (y2 - y1);
 }
 // --- GOODNESS OF FIT (GOF) LOGIC ---
-// --- GOODNESS OF FIT (GOF) LOGIC ---
+
 function performFullGoF(rawData) {
-    const n = rawData.length; // Deklarasi cukup satu kali di sini
-    if (n < 5) return; 
+    const n = rawData.length;
+    if (n < 10) return;
 
     const sortedData = [...rawData].sort((a, b) => b - a);
     const meanX = sortedData.reduce((a, b) => a + b, 0) / n;
@@ -569,23 +567,14 @@ function performFullGoF(rawData) {
     const meanL = logData.reduce((a, b) => a + b, 0) / n;
     const stdevL = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanL, 2), 0) / (n - 1));
 
-    // --- PENENTUAN SK CRIT DINAMIS ---
-    let skCrit;
-    if (TABLE_SK_REF[n]) {
-        skCrit = TABLE_SK_REF[n];
-    } else if (n > 30) {
-        skCrit = 0.242; 
-    } else {
-        skCrit = 0.409; 
-    }
+    const skCrit = TABLE_SK_REF[n] || 0.300;
 
-    // --- HITUNG SMIRNOV-KOLMOGOROV (Δmax) ---
+    // --- A. Fungsi Hitung Smirnov-Kolmogorov (Delta Max) ---
     const calcDeltaMax = (type) => {
         let maxD = 0;
         sortedData.forEach((x, i) => {
             const P_empiris = (i + 1) / (n + 1);
             let P_teoritis = 0;
-            
             if (type === 'Gumbel') {
                 const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || TABLE_GUMBEL_REF[0];
                 const yt = gRef.yn + ((x - meanX) / stdevX) * gRef.sn;
@@ -597,32 +586,39 @@ function performFullGoF(rawData) {
                 const z = (x - meanX) / stdevX;
                 P_teoritis = 0.5 * (1 + errorFunction(z / Math.sqrt(2)));
             }
-            
             const delta = Math.abs(P_empiris - P_teoritis);
             if (delta > maxD) maxD = delta;
         });
         return maxD;
     };
 
-    // --- HITUNG CHI-SQUARE ---
+    // --- B. Fungsi Hitung Chi-Square (Dinamis) ---
     const calcChiSquare = (type) => {
-        const k = 1 + Math.floor(3.322 * Math.log10(n));
-        const Ef = n / k; 
-        let chiTotal = 0;
+        const k = 1 + Math.floor(3.322 * Math.log10(n)); // Rumus Sturges
+        const Ef = n / k; // Frekuensi Harapan
+        let chiHitung = 0;
+
+        // Bagi data ke dalam kelas-kelas (interval)
         const min = Math.min(...sortedData);
         const max = Math.max(...sortedData);
-        const range = (max - min) / k;
-        
+        const interval = (max - min) / k;
+
         for (let i = 0; i < k; i++) {
-            const limitLow = min + (i * range);
-            const limitHigh = (i === k - 1) ? max + 1 : min + ((i + 1) * range);
-            const Of = sortedData.filter(v => v >= limitLow && v < limitHigh).length;
-            chiTotal += Math.pow(Of - Ef, 2) / Ef;
+            const limitLow = min + (i * interval);
+            const limitHigh = min + ((i + 1) * interval);
+            // Hitung Frekuensi Observasi (Of)
+            const Of = sortedData.filter(v => v >= limitLow && v < (i === k - 1 ? limitHigh + 1 : limitHigh)).length;
+            chiHitung += Math.pow(Of - Ef, 2) / Ef;
         }
-        return chiTotal;
+        return chiHitung;
     };
 
-    // --- HASIL AKHIR ---
+    // --- C. Penentuan Chi-Square Kritis (DK = k - (p + 1)) ---
+    // Untuk k=4 (n=11), DK biasanya 1 atau 2. Chi-Cr sekitar 3.84 - 5.99
+    const k = 1 + Math.floor(3.322 * Math.log10(n));
+    const df = k - 3; // P=2 untuk parameter distribusi
+    const chiCrit = df <= 1 ? 3.841 : (df === 2 ? 5.991 : 7.815); 
+
     const resultsGoF = [
         { id: 'Normal', name: 'Normal', dm: calcDeltaMax('Normal'), chi: calcChiSquare('Normal') },
         { id: 'LogNormal', name: 'Log Normal', dm: calcDeltaMax('LogNormal'), chi: calcChiSquare('LogNormal') },
@@ -630,74 +626,84 @@ function performFullGoF(rawData) {
         { id: 'LP3', name: 'Log Pearson III', dm: calcDeltaMax('LP3'), chi: calcChiSquare('LP3') }
     ];
 
-    displayGoF(resultsGoF, skCrit);
+    displayGoF(resultsGoF, skCrit, chiCrit);
 }
-function displayGoF(results, skCrit) {
+
+function displayGoF(results, skCrit, chiCrit) {
     const tBody = document.getElementById('tBodyGoF');
-    const chiCrit = 7.81; // Nilai kritis Chi-Square (DK=3, alpha=5%)
     tBody.innerHTML = "";
     
+    ['Normal', 'LogNormal', 'Gumbel', 'LP3'].forEach(id => {
+        const header = document.getElementById(`h-${id}`);
+        if (header) header.classList.remove("header-terpilih");
+        document.querySelectorAll(`.col-${id}`).forEach(td => td.classList.remove("kolom-terpilih"));
+    });
+
     let terpilih = null;
     let minDelta = 999;
 
     results.forEach(m => {
-        // Syarat lulus: Delta Max < SK Kritis DAN Chi Square < Chi Kritis
+        // Syarat Lulus: Delta Max < SK Kritis DAN Chi-Hitung < Chi-Kritis
         const isLulus = m.dm < skCrit && m.chi < chiCrit;
         const rowClass = isLulus ? 'baris-lulus' : 'baris-gagal';
         
-        // Cari yang paling presisi (Delta terkecil) di antara yang lulus
-        if (isLulus && m.dm < minDelta) { 
-            minDelta = m.dm; 
-            terpilih = m; 
+        if (isLulus && m.dm < minDelta) {
+            minDelta = m.dm;
+            terpilih = m;
         }
 
-        tBody.innerHTML += `<tr class="${rowClass}">
-            <td style="text-align:left; padding-left:15px;"><b>${m.name}</b></td>
-            <td>${m.dm.toFixed(4)}</td>
-            <td>${m.chi.toFixed(2)}</td>
-            <td class="status-text">${isLulus ? 'DITERIMA' : 'DITOLAK'}</td>
-        </tr>`;
+        tBody.innerHTML += `
+            <tr class="${rowClass}">
+                <td style="text-align:left; padding-left:15px;"><b>${m.name}</b></td>
+                <td>${m.dm.toFixed(4)}</td>
+                <td>${m.chi.toFixed(2)}</td>
+                <td class="status-text">${isLulus ? 'DITERIMA' : 'DITOLAK'}</td>
+            </tr>
+        `;
     });
 
     if (terpilih) {
-        // Highlight header di tabel hasil frekuensi
         const headerAktif = document.getElementById(`h-${terpilih.id}`);
         if (headerAktif) headerAktif.classList.add("header-terpilih");
-        
-        // Highlight kolom di tabel hasil frekuensi
-        document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => {
-            td.classList.add("kolom-terpilih");
-        });
-        
-        document.getElementById('gofConclusion').innerHTML = `💡 Berdasarkan pengujian, metode <b>${terpilih.name}</b> memiliki tingkat kesalahan terkecil dan paling sesuai untuk digunakan.`;
+        document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => td.classList.add("kolom-terpilih"));
+        document.getElementById('gofConclusion').innerHTML = `💡 Metode <b>${terpilih.name}</b> dipilih sebagai yang paling sesuai (Delta terkecil & Lulus Uji).`;
+    } else {
+        document.getElementById('gofConclusion').innerHTML = `⚠️ Tidak ada metode yang memenuhi kriteria uji statistik.`;
     }
     document.getElementById('resGoF').style.display = 'block';
 }
 
-// Fungsi Matematika Tambahan (ERF) untuk Distribusi Normal
 function errorFunction(x) {
+    // Pendekatan numerik untuk erf(x)
     const t = 1.0 / (1.0 + 0.5 * Math.abs(x));
-    const tau = t * Math.exp(-x * x - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+    const tau = t * Math.exp(-x * x - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + 
+                t * (-0.18628807 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + 
+                t * (-0.82215223 + t * 0.17087277)))))))));
     return x >= 0 ? 1 - tau : tau - 1;
 }
 
-// --- FILE UPLOAD HANDLER ---
-document.getElementById('fKML').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const parser = new DOMParser();
-        const kml = parser.parseFromString(e.target.result, 'text/xml');
-        const geojson = toGeoJSON.kml(kml);
-        resetAnalysis();
-        const layer = L.geoJSON(geojson, { style: { color: '#2f80ed', fillOpacity: 0.4 } }).addTo(drawnItems);
-        map.fitBounds(layer.getBounds());
-        addMiniDelete(layer);
-        processHydrology(geojson.features[0]);
+    window.onload = async () => { 
+        await loadStationData();
+        initSystem();
+        lucide.createIcons(); 
+        document.getElementById('fKML').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
+                const geojson = toGeoJSON.kml(kmlDom);
+                if (geojson.features.length > 0) {
+                    resetAnalysis();
+                    const layer = L.geoJSON(geojson, { style: { color: '#2f80ed', weight: 2 } }).addTo(drawnItems);
+                    addMiniDelete(layer);
+                    map.fitBounds(layer.getBounds());
+                    processHydrology(geojson.features[0]);
+                }
+            };
+            reader.readAsText(file);
+        });
     };
-    reader.readAsText(file);
-});
 </script>
 </body>
 </html>
