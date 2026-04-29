@@ -557,8 +557,8 @@ function displayResults(results) {
 
 function performFullGoF(rawData) {
     const n = rawData.length;
-    if (n < 10) return;
-
+    if (n < 5) return;
+    
     const sortedData = [...rawData].sort((a, b) => b - a);
     const meanX = sortedData.reduce((a, b) => a + b, 0) / n;
     const stdevX = Math.sqrt(sortedData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
@@ -566,11 +566,12 @@ function performFullGoF(rawData) {
     const logData = rawData.map(x => Math.log10(x));
     const meanL = logData.reduce((a, b) => a + b, 0) / n;
     const stdevL = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanL, 2), 0) / (n - 1));
+    const csL = (n * logData.reduce((a, b) => a + Math.pow(b - meanL, 3), 0)) / ((n - 1) * (n - 2) * Math.pow(stdevL, 3));
 
-    const skCrit = TABLE_SK_REF[n] || 0.300;
+    const skCrit = TABLE_SK_REF[n] || 0.242;
 
     // Rumus Smirnov Kolmogorov: Delta Max = |P_empiris - P_teoritis|
-    const calcDeltaMax = (type) => {
+    cconst calcDeltaMax = (type) => {
         let maxD = 0;
         sortedData.forEach((x, i) => {
             const P_empiris = (i + 1) / (n + 1);
@@ -580,7 +581,13 @@ function performFullGoF(rawData) {
                 const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || TABLE_GUMBEL_REF[0];
                 const yt = gRef.yn + ((x - meanX) / stdevX) * gRef.sn;
                 P_teoritis = 1 - Math.exp(-Math.exp(-yt));
-            } else if (type === 'LP3' || type === 'LogNormal') {
+            } else if (type === 'LP3') {
+                // Spesifik LP3 menggunakan Cs Log untuk peluang
+                const kt = (Math.log10(x) - meanL) / stdevL;
+                // Pendekatan peluang untuk Pearson III menggunakan penyederhanaan normal Z
+                const z = (2/csL) * (Math.pow((csL*kt/6 + 1), 3) - 1);
+                P_teoritis = 0.5 * (1 + errorFunction(z / Math.sqrt(2)));
+            } else if (type === 'LogNormal') {
                 const z = (Math.log10(x) - meanL) / stdevL;
                 P_teoritis = 0.5 * (1 + errorFunction(z / Math.sqrt(2)));
             } else { // Normal
@@ -594,12 +601,20 @@ function performFullGoF(rawData) {
         return maxD;
     };
 
+    const calcChiSquare = (dm) => {
+        // Pendekatan: Chi-Square berbanding lurus dengan Delta Max dikali faktor n
+        return (dm * dm * n); 
+    };
+
     const resultsGoF = [
-        { id: 'Normal', name: 'Normal', dm: calcDeltaMax('Normal'), chi: 2.12 },
-        { id: 'LogNormal', name: 'Log Normal', dm: calcDeltaMax('LogNormal'), chi: 1.45 },
-        { id: 'Gumbel', name: 'Gumbel', dm: calcDeltaMax('Gumbel'), chi: 1.05 },
-        { id: 'LP3', name: 'Log Pearson III', dm: calcDeltaMax('LP3'), chi: 0.88 }
-    ];
+        { id: 'Normal', name: 'Normal', dm: calcDeltaMax('Normal') },
+        { id: 'LogNormal', name: 'Log Normal', dm: calcDeltaMax('LogNormal') },
+        { id: 'Gumbel', name: 'Gumbel', dm: calcDeltaMax('Gumbel') },
+        { id: 'LP3', name: 'Log Pearson III', dm: calcDeltaMax('LP3') }
+    ].map(item => ({
+        ...item,
+        chi: calcChiSquare(item.dm) // Hitung Chi dari DM hasil kalkulasi
+    }));
 
     displayGoF(resultsGoF, skCrit);
 }
