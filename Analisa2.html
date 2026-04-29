@@ -185,13 +185,10 @@
 </div>
     <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--slate); font-style: italic;"></p>
 </div>
-    <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--slate); font-style: italic;"></p>
-</div>
+    <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--primary); font-style: italic;"></p>
         </div>
-    </div>
-</div>
-
-<div id="map">
+    </div> 
+</div> <div id="map">
     <div class="area-info-box">
         <div style="font-size: 9px; color: var(--slate); font-weight: 800; text-transform: uppercase;">LUAS CATCHMENT</div>
         <div style="font-size: 24px; font-weight: 800; color: var(--accent);"><span id="area-val">0.00</span> Ha</div>
@@ -625,37 +622,36 @@ function displayGoF(methods, dc) {
     const tBody = document.getElementById('tBodyGoF');
     tBody.innerHTML = "";
     
-    // Reset highlight di tabel Anfrek dulu
-    document.querySelectorAll('.data-table th, .data-table td').forEach(el => el.classList.remove('selected-method-col'));
+    // Reset highlight sebelumnya
+    document.querySelectorAll('.data-table th, .data-table td').forEach(el => {
+        el.classList.remove('selected-method-col', 'selected-method-col-header');
+    });
 
-    let terpilih = "";
+    let terpilihId = "";
+    let deltaTerkecil = 999;
 
     methods.forEach(m => {
         const isLulus = m.dm < dc;
-        const statusText = isLulus ? "DITERIMA" : "DITOLAK";
-        const statusClass = isLulus ? "status-lulus" : "status-gagal";
-        
         tBody.innerHTML += `
             <tr>
                 <td><b>${m.name}</b></td>
                 <td>${m.dm.toFixed(3)} < <span style="color:blue">${dc}</span></td>
-                <td class="${statusClass}">${statusText}</td>
+                <td class="${isLulus ? 'status-lulus' : 'status-gagal'}">${isLulus ? 'DITERIMA' : 'DITOLAK'}</td>
             </tr>
         `;
-
-        // Logika penentuan metode terbaik (yang Delta Max-nya paling kecil dan Lulus)
-        if (isLulus && (terpilih === "")) {
-            terpilih = m.id;
+        if (isLulus && m.dm < deltaTerkecil) {
+            deltaTerkecil = m.dm;
+            terpilihId = m.id;
         }
     });
 
-    // Beri Highlight pada kolom di Box Anfrek (Box 4)
-    if (terpilih) {
-        document.getElementById(`col-${terpilih}`).classList.add('selected-method-col');
-        document.querySelectorAll(`.cell-${terpilih}`).forEach(td => td.classList.add('selected-method-col'));
-        document.getElementById('gofConclusion').innerHTML = `* Metode <b>${terpilih}</b> terpilih karena memenuhi syarat batas kritis.`;
+    // Jalankan highlight jika ada yang terpilih
+    if (terpilihId) {
+        const header = document.getElementById(`col-${terpilihId}`);
+        if (header) header.classList.add('selected-method-col-header');
+        document.querySelectorAll(`.cell-${terpilihId}`).forEach(td => td.classList.add('selected-method-col'));
+        document.getElementById('gofConclusion').innerHTML = `* Metode <b>${terpilihId}</b> terpilih sebagai yang paling fit.`;
     }
-
     document.getElementById('resGoF').style.display = 'block';
 }
 
