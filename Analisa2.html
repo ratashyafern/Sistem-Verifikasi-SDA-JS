@@ -603,14 +603,17 @@ const TABLE_SK_REF = {
 };
 
 // 2. Ganti fungsi performFullGoF kamu dengan ini (agar perhitungan Delta Max lebih rapi)
+// --- GOODNESS OF FIT (GOF) LOGIC ---
+
 function performFullGoF(rawData) {
     const n = rawData.length;
     if (n < 2) return;
 
-    // Ambil nilai kritis sesuai jumlah data (n)
+    // Ambil nilai kritis Smirnov-Kolmogorov (Alpha 5%)
     const skCrit = TABLE_SK_REF[n] || 0.300; 
 
-    // Data simulasi Delta Max tiap metode berdasarkan referensi gambar
+    // Data simulasi Delta Max tiap metode (Sesuaikan dengan perhitungan statistik Anda jika perlu)
+    // Di sini saya buatkan placeholder logikanya
     const resultsGoF = [
         { name: "Normal", dm: 0.152, id: "Normal" },
         { name: "Log Normal", dm: 0.121, id: "LogNormal" },
@@ -621,12 +624,11 @@ function performFullGoF(rawData) {
     displayGoF(resultsGoF, skCrit);
 }
 
-// 3. Ganti fungsi displayGoF lama dengan versi Update ini
 function displayGoF(methods, dc) {
     const tBody = document.getElementById('tBodyGoF');
     tBody.innerHTML = "";
     
-    // Reset warna highlight di tabel Anfrek (Box 4) setiap kali running
+    // 1. Reset highlight di tabel Anfrek (Box 4)
     document.querySelectorAll('.data-table th, .data-table td').forEach(el => {
         el.classList.remove('selected-method-col', 'selected-method-col-header');
     });
@@ -634,10 +636,11 @@ function displayGoF(methods, dc) {
     let terpilihId = "";
     let deltaTerkecil = 999;
 
+    // 2. Loop hasil uji
     methods.forEach(m => {
         const isLulus = m.dm < dc;
         const statusText = isLulus ? "DITERIMA" : "DITOLAK";
-        const statusClass = isLulus ? "status-lulus" : "status-gagal"; // Hijau jika lulus, Merah jika gagal
+        const statusClass = isLulus ? "status-lulus" : "status-gagal";
         
         tBody.innerHTML += `
             <tr>
@@ -647,14 +650,14 @@ function displayGoF(methods, dc) {
             </tr>
         `;
 
-        // Logika penentuan metode terbaik: Yang Diterima DAN Delta-nya paling kecil
+        // Cari yang lulus dan Delta-nya terkecil
         if (isLulus && m.dm < deltaTerkecil) {
             deltaTerkecil = m.dm;
             terpilihId = m.id;
         }
     });
 
-    // Otomatis kasih warna Biru di kolom Box 4 (Anfrek)
+    // 3. Highlight Kolom Terpilih di Box 4
     if (terpilihId) {
         const colHeader = document.getElementById(`col-${terpilihId}`);
         if (colHeader) colHeader.classList.add('selected-method-col-header');
@@ -670,28 +673,38 @@ function displayGoF(methods, dc) {
     document.getElementById('resGoF').style.display = 'block';
 }
 
-    window.onload = async () => { 
-        await loadStationData();
-        initSystem();
-        lucide.createIcons(); 
-        document.getElementById('fKML').addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function (event) {
+// --- INITIALIZATION ON LOAD ---
+window.onload = async () => { 
+    await loadStationData();
+    initSystem();
+    lucide.createIcons(); 
+
+    // Handler Upload KML
+    document.getElementById('fKML').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (event) {
+            try {
                 const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
                 const geojson = toGeoJSON.kml(kmlDom);
                 if (geojson.features.length > 0) {
                     resetAnalysis();
-                    const layer = L.geoJSON(geojson, { style: { color: '#2f80ed', weight: 2 } }).addTo(drawnItems);
+                    const layer = L.geoJSON(geojson, { 
+                        style: { color: '#2f80ed', weight: 3, fillOpacity: 0.2 } 
+                    }).addTo(drawnItems);
                     addMiniDelete(layer);
                     map.fitBounds(layer.getBounds());
                     processHydrology(geojson.features[0]);
                 }
-            };
-            reader.readAsText(file);
-        });
-    };
+            } catch (err) {
+                alert("File KML tidak valid atau rusak.");
+                console.error(err);
+            }
+        };
+        reader.readAsText(file);
+    });
+};
 </script>
 </body>
 </html>
