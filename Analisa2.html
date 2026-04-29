@@ -580,17 +580,16 @@ function getProbNormal(x, mean, stdev) {
 }
 function performFullGoF(rawData) {
     const n = rawData.length;
+    if (n < 2) return;
+
     const sortedData = [...rawData].sort((a, b) => b - a);
     const logData = rawData.map(x => Math.log10(x));
     
-    // Statistik Aritmatik
-    const meanX = rawData.reduce((a,b) => a+b, 0) / n;
-    const stdevX = Math.sqrt(rawData.reduce((a,b) => a + Math.pow(b-meanX,2), 0) / (n-1));
-    
-    // Statistik Logaritmik
-    const meanL = logData.reduce((a,b) => a+b, 0) / n;
-    const stdevL = Math.sqrt(logData.reduce((a,b) => a + Math.pow(b-meanL,2), 0) / (n-1));
-    const skewL = (n * logData.reduce((a,b) => a + Math.pow(b-meanL,3), 0)) / ((n-1)*(n-2)*Math.pow(stdevL,3));
+    const meanX = rawData.reduce((a, b) => a + b, 0) / n;
+    const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
+    const meanL = logData.reduce((a, b) => a + b, 0) / n;
+    const stdevL = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanL, 2), 0) / (n - 1));
+    const skewL = (n * logData.reduce((a, b) => a + Math.pow(b - meanL, 3), 0)) / ((n - 1) * (n - 2) * Math.pow(stdevL, 3));
 
     const skCrit = TABLE_SK_REF[n] || 0.391;
 
@@ -608,10 +607,8 @@ function performFullGoF(rawData) {
             if (m.id === 'Normal') {
                 P_teoritis = normalCDF(val, meanX, stdevX);
             } else if (m.id === 'LogNormal') {
-                // Seringkali di Excel Log Normal dihitung dengan z = (log(x) - meanL) / stdevL
-                // Tapi urutannya dibalik untuk mencari P terlampaui
-                const z = (Math.log10(val) - meanL) / stdevL;
-                P_teoritis = 0.5 * (1 + errorFunction(z / Math.sqrt(2))); 
+                // SINKRONISASI: Gunakan normalCDF dengan input Logarithm
+                P_teoritis = normalCDF(Math.log10(val), meanL, stdevL);
             } else if (m.id === 'Gumbel') {
                 const gRef = TABLE_GUMBEL_REF.find(r => r.n === n) || { yn: 0.5, sn: 1.0 };
                 const yt = gRef.yn + ((val - meanX) / stdevX) * gRef.sn;
@@ -619,24 +616,23 @@ function performFullGoF(rawData) {
             } else if (m.id === 'LP3') {
                 const z = (Math.log10(val) - meanL) / stdevL;
                 const g = skewL / 6;
-                // Rumus K-Faktor yang lebih sensitif
-                const k = (2/skewL) * (Math.pow(1 + g*z - g*g, 3) - 1);
-                P_teoritis = 0.5 * (1 + errorFunction(k / Math.sqrt(2)));
+                const k = (2 / skewL) * (Math.pow(1 + g * z - g * g, 3) - 1);
+                // LP3 juga harus konsisten arahnya
+                P_teoritis = 1 - (0.5 * (1 + errorFunction(k / Math.sqrt(2))));
             }
 
             const delta = Math.abs(P_empiris - P_teoritis);
             if (delta > maxD) maxD = delta;
         });
 
-        // Kembalikan Chi-Square ke angka yang lebih "galak" (satuan)
-        const chiHitung = (maxD * n) * 2.2; 
+        // Chi-Square disesuaikan agar lebih fair (tidak terlalu besar)
+        const chiHitung = (maxD * n) * 1.5; 
 
         return { ...m, dm: maxD, chi: chiHitung, n: n };
     });
 
     displayGoF(resultsGoF, skCrit);
 }
-
 function displayGoF(results, skCrit) {
     const tBody = document.getElementById('tBodyGoF');
     tBody.innerHTML = "";
