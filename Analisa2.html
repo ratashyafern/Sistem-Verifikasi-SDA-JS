@@ -172,12 +172,13 @@
     <div class="table-container">
         <table class="data-table">
             <thead>
-                <tr>
-                    <th>Metode</th>
-                    <th>Δmax < Δkritis</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
+    <tr>
+        <th>Metode</th>
+        <th>Smirnov-K.</th>
+        <th>Chi-Square</th>
+        <th>Status</th>
+    </tr>
+</thead>
             <tbody id="tBodyGoF"></tbody>
         </table>
     </div>
@@ -596,61 +597,42 @@ function displayGoF(dm, dc, cv, cc, s1, s2) {
 }
 // --- GOODNESS OF FIT (GOF) LOGIC ---
 
-function performFullGoF(rawData) {
-    const n = rawData.length;
-    if (n < 2) return;
-
-    // Statistik dasar untuk uji
-    const sortedData = [...rawData].sort((a, b) => b - a);
-    const meanX = sortedData.reduce((a, b) => a + b, 0) / n;
-    const stdevX = Math.sqrt(sortedData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
-    const skCrit = TABLE_SK_REF[n] || 0.300;
-
-    // Simulasi perhitungan Delta Max untuk tiap metode (Sederhana untuk UI)
-    // Di dunia nyata, ini dihitung per metode, di sini kita simulasikan kelulusannya
-    const resultsGoF = [
-        { name: "Normal", dm: 0.152, status: "GAGAL", id: "Normal" },
-        { name: "Log Normal", dm: 0.121, status: "GAGAL", id: "LogNormal" },
-        { name: "Gumbel", dm: 0.085, status: "LULUS", id: "Gumbel" },
-        { name: "LP3", dm: 0.072, status: "LULUS", id: "LP3" }
-    ];
-
-    displayGoF(resultsGoF, skCrit);
-}
-
-function displayGoF(methods, dc) {
+function displayGoF(methods, skCrit, chiCrit) {
     const tBody = document.getElementById('tBodyGoF');
     tBody.innerHTML = "";
     
-    // Reset highlight sebelumnya
     document.querySelectorAll('.data-table th, .data-table td').forEach(el => {
         el.classList.remove('selected-method-col', 'selected-method-col-header');
     });
 
     let terpilihId = "";
-    let deltaTerkecil = 999;
+    let skorTerbaik = 999;
 
     methods.forEach(m => {
-        const isLulus = m.dm < dc;
+        const lulusSK = m.sk_dm < skCrit;
+        const lulusChi = m.chi_h < chiCrit;
+        const isLulus = lulusSK && lulusChi;
+
         tBody.innerHTML += `
             <tr>
                 <td><b>${m.name}</b></td>
-                <td>${m.dm.toFixed(3)} < <span style="color:blue">${dc}</span></td>
+                <td>${m.sk_dm.toFixed(3)} < <span style="color:blue">${skCrit}</span></td>
+                <td>${m.chi_h.toFixed(2)} < <span style="color:blue">${chiCrit}</span></td>
                 <td class="${isLulus ? 'status-lulus' : 'status-gagal'}">${isLulus ? 'DITERIMA' : 'DITOLAK'}</td>
             </tr>
         `;
-        if (isLulus && m.dm < deltaTerkecil) {
-            deltaTerkecil = m.dm;
+
+        if (isLulus && m.sk_dm < skorTerbaik) {
+            skorTerbaik = m.sk_dm;
             terpilihId = m.id;
         }
     });
 
-    // Jalankan highlight jika ada yang terpilih
     if (terpilihId) {
         const header = document.getElementById(`col-${terpilihId}`);
         if (header) header.classList.add('selected-method-col-header');
         document.querySelectorAll(`.cell-${terpilihId}`).forEach(td => td.classList.add('selected-method-col'));
-        document.getElementById('gofConclusion').innerHTML = `* Metode <b>${terpilihId}</b> terpilih sebagai yang paling fit.`;
+        document.getElementById('gofConclusion').innerHTML = `* Hasil Uji: Metode <b>${terpilihId}</b> memenuhi kriteria Smirnov-Kolmogorov & Chi-Square.`;
     }
     document.getElementById('resGoF').style.display = 'block';
 }
