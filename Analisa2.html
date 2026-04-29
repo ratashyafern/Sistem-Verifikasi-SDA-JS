@@ -249,7 +249,9 @@
         document.getElementById('resFrequency').style.display = 'none';
         if (myChart) { myChart.destroy(); myChart = null; }
         document.getElementById('resGoF').style.display = 'none';
-    }
+    document.querySelectorAll('.header-terpilih').forEach(el => el.classList.remove('header-terpilih'));
+    document.querySelectorAll('.kolom-terpilih').forEach(el => el.classList.remove('kolom-terpilih'));
+}
 
     function addMiniDelete(layer) {
         const btn = document.createElement('button');
@@ -567,7 +569,15 @@ const n = rawData.length;
     const stdevL = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanL, 2), 0) / (n - 1));
 
     // Nilai Kritis Smirnov-Kolmogorov (n=11 -> 0.391)
-    const skCrit = TABLE_SK_REF[n] || 0.390;
+    const n = rawData.length;
+    let skCrit;
+if (TABLE_SK_REF[n]) {
+    skCrit = TABLE_SK_REF[n];
+} else if (n > 30) {
+    skCrit = 0.242; 
+} else {
+    skCrit = 0.409; 
+}
 
     // --- HITUNG SMIRNOV-KOLMOGOROV (Δmax) ---
     const calcDeltaMax = (type) => {
@@ -611,28 +621,36 @@ const n = rawData.length;
         return chiTotal;
     };
 
-    const resultsGoF = [
-        { id: 'Normal', name: 'Normal', dm: calcDeltaMax('Normal'), chi: calcChiSquare('Normal') },
-        { id: 'LogNormal', name: 'Log Normal', dm: calcDeltaMax('LogNormal'), chi: calcChiSquare('LogNormal') },
-        { id: 'Gumbel', name: 'Gumbel', dm: calcDeltaMax('Gumbel'), chi: calcChiSquare('Gumbel') },
-        { id: 'LP3', name: 'Log Pearson III', dm: calcDeltaMax('LP3'), chi: calcChiSquare('LP3') }
-    ];
+const n = rawData.length;
+const skCrit = TABLE_SK_REF[n] || 0.242; // Default ke nilai terkecil jika n > 30
+const resultsGoF = [
+    { id: 'Normal', name: 'Normal', dm: calcDeltaMax('Normal'), chi: calcChiSquare('Normal') },
+    { id: 'LogNormal', name: 'Log Normal', dm: calcDeltaMax('LogNormal'), chi: calcChiSquare('LogNormal') },
+    { id: 'Gumbel', name: 'Gumbel', dm: calcDeltaMax('Gumbel'), chi: calcChiSquare('Gumbel') },
+    { id: 'LP3', name: 'Log Pearson III', dm: calcDeltaMax('LP3'), chi: calcChiSquare('LP3') }
+];
 
-    displayGoF(resultsGoF, skCrit);
+displayGoF(resultsGoF, skCrit);
 }
 
 function displayGoF(results, skCrit) {
     const tBody = document.getElementById('tBodyGoF');
-    const chiCrit = 7.81; 
+    const chiCrit = 7.81; // Nilai kritis Chi-Square (DK=3, alpha=5%)
     tBody.innerHTML = "";
     
     let terpilih = null;
     let minDelta = 999;
 
     results.forEach(m => {
-        const isLulus = m.dm < skCrit;
+        // Syarat lulus: Delta Max < SK Kritis DAN Chi Square < Chi Kritis
+        const isLulus = m.dm < skCrit && m.chi < chiCrit;
         const rowClass = isLulus ? 'baris-lulus' : 'baris-gagal';
-        if (isLulus && m.dm < minDelta) { minDelta = m.dm; terpilih = m; }
+        
+        // Cari yang paling presisi (Delta terkecil) di antara yang lulus
+        if (isLulus && m.dm < minDelta) { 
+            minDelta = m.dm; 
+            terpilih = m; 
+        }
 
         tBody.innerHTML += `<tr class="${rowClass}">
             <td style="text-align:left; padding-left:15px;"><b>${m.name}</b></td>
@@ -643,10 +661,16 @@ function displayGoF(results, skCrit) {
     });
 
     if (terpilih) {
+        // Highlight header di tabel hasil frekuensi
         const headerAktif = document.getElementById(`h-${terpilih.id}`);
         if (headerAktif) headerAktif.classList.add("header-terpilih");
-        document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => td.classList.add("kolom-terpilih"));
-        document.getElementById('gofConclusion').innerHTML = `💡 Metode <b>${terpilih.name}</b> paling sesuai.`;
+        
+        // Highlight kolom di tabel hasil frekuensi
+        document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => {
+            td.classList.add("kolom-terpilih");
+        });
+        
+        document.getElementById('gofConclusion').innerHTML = `💡 Berdasarkan pengujian, metode <b>${terpilih.name}</b> memiliki tingkat kesalahan terkecil dan paling sesuai untuk digunakan.`;
     }
     document.getElementById('resGoF').style.display = 'block';
 }
