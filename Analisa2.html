@@ -156,44 +156,36 @@
     <div class="table-container" style="max-height: 280px;">
         <table class="data-table">
             <thead>
-                <tr>
-                    <th rowspan="2">Tr</th>
-                    <th colspan="4" style="text-align:center">Metode (mm)</th>
-                </tr>
-                <tr>
-                    <th id="col-Normal">Normal</th>
-                    <th id="col-LogNormal">Log Normal 2P</th>
-                    <th id="col-Gumbel">Gumbel</th>
-                    <th id="col-LP3">Log Pearson III</th>
-                </tr>
-            </thead>
+    <tr>
+        <th>Tr</th>
+        <th id="col-Normal">Normal</th>
+        <th id="col-LogNormal">Log Normal</th>
+        <th id="col-Gumbel">Gumbel</th>
+        <th id="col-LP3">Log Pearson III</th>
+    </tr>
+</thead>
             <tbody id="tBodyFreq"></tbody>
         </table>
     </div>
 </div>
 
 <div id="resGoF" class="card" style="display:none">
-    <h3>5. Uji Kesesuaian (Goodness of Fit)</h3>
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Metode</th>
-                    <th>Δmax < Δkritis</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="tBodyGoF"></tbody>
-        </table>
-    </div>
-    <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--primary); font-style: italic;"></p>
-</div>
-    <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--slate); font-style: italic;"></p>
-</div>
-    <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--slate); font-style: italic;"></p>
-</div>
+            <h3>5. Uji Kesesuaian (Goodness of Fit)</h3>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Metode</th>
+                            <th>Δmax < Δkritis</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tBodyGoF"></tbody>
+                </table>
+            </div>
+            <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--primary); font-style: italic;"></p>
         </div>
-    </div>
+    </div> 
 </div>
 
 <div id="map">
