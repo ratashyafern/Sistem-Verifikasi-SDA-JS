@@ -66,10 +66,12 @@
     text-align: left !important; 
     padding-left: 15px; 
     .selected-method { 
-    background-color: #e0f2fe !important; 
+    background-color: #e0f2fe !important; /* Biru muda */
     color: #0369a1 !important; 
     border: 2px solid #2f80ed !important;
+    font-weight: 800 !important;
 }
+
 .status-lulus { color: #2ecc71; font-weight: 800; }
 .status-gagal { color: #e74c3c; font-weight: 800; }
     </style>
@@ -138,17 +140,27 @@
         </div>
 
         <div id="resFrequency" class="card" style="display:none">
-            <h3>4. Analisis Frekuensi (Hujan Rencana)</h3>
-            <div class="table-container" style="max-height: 280px;">
-                <table class="data-table">
-                    <thead>
-    <tr><th rowspan="2">Tr</th><th colspan="4" style="text-align:center">Metode (mm)</th></tr>
-    <tr><th>Normal</th><th>Log Normal 2P</th><th>Gumbel</th><th>Log Pearson III</th></tr>
-</thead>
-                    <tbody id="tBodyFreq"></tbody>
-                </table>
-            </div>
-            <div id="resGoF" class="card" style="display:none">
+    <h3>4. Analisis Frekuensi (Hujan Rencana)</h3>
+    <div class="table-container" style="max-height: 280px;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th rowspan="2">Tr</th>
+                    <th colspan="4" style="text-align:center">Metode (mm)</th>
+                </tr>
+                <tr>
+                    <th id="col-Normal">Normal</th>
+                    <th id="col-LogNormal">Log Normal 2P</th>
+                    <th id="col-Gumbel">Gumbel</th>
+                    <th id="col-LP3">Log Pearson III</th>
+                </tr>
+            </thead>
+            <tbody id="tBodyFreq"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="resGoF" class="card" style="display:none">
     <h3>5. Uji Kesesuaian (Goodness of Fit)</h3>
     <div class="table-container">
         <table class="data-table">
@@ -163,6 +175,8 @@
             <tbody id="tBodyGoF"></tbody>
         </table>
     </div>
+    <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--slate); font-style: italic;"></p>
+</div>
     <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--slate); font-style: italic;"></p>
 </div>
         </div>
@@ -510,14 +524,46 @@ function displayResults(results) {
     tBody.innerHTML = "";
     results.forEach(r => {
         tBody.innerHTML += `<tr>
-    <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
-    <td>${r.resNormal.toFixed(2)}</td>
-    <td>${r.resLogN.toFixed(2)}</td>
-    <td>${r.resGumbel.toFixed(2)}</td>
-    <td class="highlight-method">${r.resLP3.toFixed(2)}</td>
-</tr>`;
+            <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
+            <td class="col-val-Normal">${r.resNormal.toFixed(2)}</td>
+            <td class="col-val-LogNormal">${r.resLogN.toFixed(2)}</td>
+            <td class="col-val-Gumbel">${r.resGumbel.toFixed(2)}</td>
+            <td class="col-val-LP3">${r.resLP3.toFixed(2)}</td>
+        </tr>`;
     });
     document.getElementById('resFrequency').style.display = 'block';
+}
+
+function displayGoF(dm, dc, cv, cc, s1, s2) {
+    const tBody = document.getElementById('tBodyGoF');
+    const isLulusGumbel = s1 === "LULUS" && s2 === "LULUS";
+    
+    tBody.innerHTML = `
+        <tr>
+            <td><b>Gumbel</b></td>
+            <td>${dm.toFixed(4)} < <span style="color:blue">${dc}</span></td>
+            <td>${cv} < <span style="color:blue">${cc}</span></td>
+            <td class="${isLulusGumbel ? 'status-lulus' : 'status-gagal'}">${isLulusGumbel ? 'DITERIMA' : 'DITOLAK'}</td>
+        </tr>
+    `;
+    
+    // Logika Penandaan di Tabel Frekuensi
+    // Reset highlight sebelumnya
+    document.querySelectorAll('.data-table th, .data-table td').forEach(el => el.classList.remove('selected-method'));
+
+    if (isLulusGumbel) {
+        // Jika Gumbel Lulus, beri highlight pada kolom Gumbel
+        document.getElementById('col-Gumbel').classList.add('selected-method');
+        document.querySelectorAll('.col-val-Gumbel').forEach(td => td.classList.add('selected-method'));
+        document.getElementById('gofConclusion').innerText = "* Distribusi Gumbel memenuhi syarat dan dipilih untuk analisis.";
+    } else {
+        // Jika Gumbel Gagal, arahkan ke Log Pearson III sebagai alternatif umum di SDA
+        document.getElementById('col-LP3').classList.add('selected-method');
+        document.querySelectorAll('.col-val-LP3').forEach(td => td.classList.add('selected-method'));
+        document.getElementById('gofConclusion').innerText = "* Gumbel tidak fit. Menggunakan Log Pearson III sebagai alternatif terbaik.";
+    }
+    
+    document.getElementById('resGoF').style.display = 'block';
 }
 
     function getInterpolatedK(targetVal, table, key, T) {
