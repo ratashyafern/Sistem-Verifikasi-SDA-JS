@@ -436,6 +436,8 @@
             const intersect = turf.intersect(cell, geojson);
             if (intersect) {
                 const subAreaHa = turf.area(intersect) / 10000;
+                window.globalAreaKm2 = areaHa / 100; 
+                const stColor = colors[i % colors.length];
                 if (subAreaHa > 0.001) {
                     const weight = subAreaHa / areaHa;
                     const stId = points.features[i].properties.id;
@@ -897,11 +899,12 @@ if (headerTerpilih && selP) {
     
     // Ambil semua baris nilai dari kolom metode terpilih
     document.querySelectorAll(`.col-${metodeId}`).forEach(td => {
-        const row = td.closest('tr');
-        const tahun = row.cells[0].innerText; // Kolom T (2, 5, 10, dst)
-        const nilai = td.innerText;
-        selP.innerHTML += `<option value="${nilai}">${tahun} Tahun (${nilai} mm)</option>`;
-    });
+    const row = td.closest('tr');
+    const tahun = row.cells[0].innerText.trim(); 
+    const nilai = td.innerText.trim();
+    // Tambahkan data-t untuk menyimpan angka tahun (2, 5, 10)
+    selP.innerHTML += `<option value="${nilai}" data-t="${tahun}">${tahun} Tahun (${nilai} mm)</option>`;
+});
 }
 
     } catch (err) {
@@ -955,16 +958,18 @@ function hitungHidrolika() {
 
     // 2. Perhitungan Teknis
     // Tc dalam menit
-    const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385);
-    
-    // Intensitas (I) - Konversi Tc menit ke jam (Tc/60)
-    const I = (R24 / 24) * Math.pow(24 / (Tc / 60), 2 / 3);
-    
-    // Area dalam Hektar (Ha) dari Km2
-    const AreaHa = (window.globalAreaKm2 || 0) * 100; 
-    
-    // Debit Rencana (Q = 1/360 * C * I * A)
-    const Q_rencana = (1/360) * C * I * AreaHa;
+    // 1. Waktu Konsentrasi (Tc) dalam menit (Rumus Kirpich)
+const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385);
+
+// 2. Intensitas (I) menggunakan Mononobe (Tc diubah ke Jam)
+const tcJam = Tc / 60;
+const I = (R24 / 24) * Math.pow(24 / tcJam, 2/3);
+
+// 3. Ambil Luas dari variabel global yang tadi disimpan di awal
+const AreaHa = window.globalAreaKm2 * 100; 
+
+// 4. Debit Rencana (m3/s)
+const Q_rencana = (C * I * AreaHa) / 360;
 
     // Kapasitas Saluran (Manning)
     const A_full = B * H;
@@ -985,7 +990,13 @@ function hitungHidrolika() {
 
     const visualWater = document.getElementById('waterLevel');
     if(visualWater) {
-        visualWater.style.height = (rasio > 1 ? 100 : rasio * 100) + '%';
+        const persentaseTinggi = Math.min(rasio * 100, 100);
+visualWater.style.transition = "height 1s ease-in-out";
+visualWater.style.height = persentaseTinggi + '%';
+
+// Update label di gambar
+document.getElementById('labelB').innerText = `B: ${B}m`;
+document.getElementById('labelH').innerText = `H: ${H}m`;
     }
 
     document.getElementById('tBodyHasil').innerHTML = `
