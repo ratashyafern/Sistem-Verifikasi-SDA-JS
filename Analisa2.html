@@ -210,52 +210,56 @@
 </div>
 
 <!-- Area Hidrolika -->
-<div id="sectionHidrolika" style="display: none;">
-    <!-- Form Perhitungan Saluran ada di sini -->
-    <button onclick="switchTab('hidrologi')" class="btn-back"> Kembali ke Hidrologi </button>
+<div id="sectionHidrolika" class="card-container" style="display: none;">
+    <div class="card">
+        <h3 class="card-title">1. PARAMETER SALURAN RENCANA</h3>
+        <div class="grid-form">
+            <!-- Baris 1 -->
+            <div class="form-group">
+                <label>PANJANG (L) - M</label>
+                <input type="number" id="inpL" value="500">
+            </div>
+            <div class="form-group">
+                <label>KEMIRINGAN (S)</label>
+                <input type="number" id="inpS" value="0.001" step="0.0001">
+            </div>
+
+            <!-- Baris 2 -->
+            <div class="form-group">
+                <label>KALA ULANG (T)</label>
+                <select id="selT"></select>
+            </div>
+            <div class="form-group">
+                <label>TUTUPAN LAHAN (C)</label>
+                <select id="selC"></select>
+            </div>
+
+            <!-- Baris 3 -->
+            <div class="form-group">
+                <label>TIPE SALURAN (PRECAST)</label>
+                <select id="selPrecast" onchange="updateDimensiOtomatis()"></select>
+            </div>
+            <div class="form-row-double">
+                <div class="form-group">
+                    <label>LEBAR B (M)</label>
+                    <input type="number" id="inpB" readonly>
+                </div>
+                <div class="form-group">
+                    <label>TINGGI H (M)</label>
+                    <input type="number" id="inpH" readonly>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="hitungHidrolika()" class="btn-uji">UJI DIMENSI SEKARANG</button>
+    </div>
+    
+    <!-- Bagian Hasil (Gambar 3) -->
+    <div id="hasilAnalisis" class="card" style="display:none; margin-top:20px;">
+        <h3 class="card-title">2. HASIL ANALISIS KAPASITAS</h3>
+        <!-- Tempatkan visualisasi air dan tabel hasil di sini -->
+    </div>
 </div>
-            <h3><i data-lucide="waves"></i> Parameter Saluran Rencana</h3>
-            <div class="grid-2">
-                <div class="form-group">
-                    <label>Pilih Kala Ulang (T)</label>
-                    <select id="selPeriode" class="form-control" onchange="ambilDataHujan()"></select>
-                </div>
-                <div class="form-group">
-                    <label>Tutupan Lahan (C)</label>
-                    <select id="selC" class="form-control"></select>
-                </div>
-                <div class="form-group">
-                    <label>Panjang (L) - m</label>
-                    <input type="number" id="inpL" class="form-control" value="500">
-                </div>
-                <div class="form-group">
-                    <label>Kemiringan (S)</label>
-                    <input type="number" id="inpS" class="form-control" value="0.001" step="0.0001">
-                </div>
-                <div class="form-group">
-                    <label>Manning (n)</label>
-                    <select id="selManning" class="form-control"></select>
-                </div>
-                <div class="form-group">
-                    <label>Tipe Precast</label>
-                    <select id="selPrecast" class="form-control" onchange="updateDimensionInputs()"></select>
-                </div>
-            </div>
-
-            <div class="grid-2" style="margin-top:15px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px dashed #ccc;">
-                <div class="form-group">
-                    <label>Lebar B (m)</label>
-                    <input type="number" id="dimB" class="form-control" step="0.1">
-                </div>
-                <div class="form-group">
-                    <label>Tinggi H (m)</label>
-                    <input type="number" id="dimH" class="form-control" step="0.1">
-                </div>
-            </div>
-
-            <button onclick="hitungHidrolika()" class="btn-primary" style="width:100%; margin-top:20px; font-weight: bold;">
-                UJI DIMENSI SEKARANG
-            </button>
 
             <!-- Hasil Analisis Kapasitas -->
             <div id="resHidrolika" style="display:none; margin-top:30px;">
@@ -846,22 +850,60 @@ async function loadHidrolikaData() {
     }
 }
 
-function prepareHidrolikaDrops() {
-    // 1. Dropdown Periode Ulang (T) dari hasil Hidrologi
-    const selP = document.getElementById('selPeriode');
-    const headerTerpilih = document.querySelector('.header-terpilih');
-    
-    if (headerTerpilih) {
-        const metodeId = headerTerpilih.id.replace('h-', '');
-        selP.innerHTML = `<option value="">-- Pilih Periode --</option>`;
-        // Ambil baris data dari Tabel Hujan Rencana (T: 2, 5, 10, 25, 50)
-        document.querySelectorAll(`.col-${metodeId}`).forEach(td => {
-            const row = td.closest('tr');
-            const tahun = row.cells[0].innerText;
-            const nilai = td.innerText;
-            selP.innerHTML += `<option value="${nilai}">${tahun} (${nilai} mm)</option>`;
-        });
+async function prepareHidrolikaDrops() {
+    try {
+        // --- BAGIAN 1: AMBIL DATA DARI FILE JSON ---
+        // Mengambil data koefisien C dan Manning
+        const resKoef = await fetch('data/koefisien.json');
+        const dataKoef = await resKoef.json();
+
+        // Mengambil data dimensi precast (U-Ditch & Box Culvert)
+        const resPre = await fetch('data/precast.json');
+        const dataPre = await resPre.json();
+
+        // --- BAGIAN 2: ISI DROPDOWN C & MANNING ---
+        // Isi Dropdown C (ID: selC)
+        document.getElementById('selC').innerHTML = dataKoef.c_val.data.map(d => 
+            `<option value="${d.v}">${d.k} (${d.v.toFixed(2)})</option>`).join('');
+
+        // Isi Dropdown Manning (ID: selManning)
+        document.getElementById('selManning').innerHTML = dataKoef.n_manning.data.map(d => 
+            `<option value="${d.v}">${d.k} (n=${d.v})</option>`).join('');
+
+        // --- BAGIAN 3: ISI DROPDOWN PRECAST (U-DITCH & BOX) ---
+        let optPrecast = `<option value="">-- Pilih Tipe Saluran --</option>`;
+        
+        optPrecast += `<optgroup label="U-Ditch Precast">`;
+        optPrecast += dataPre.u_ditch.data.map(d => `<option value="u|${d.b}|${d.h}">U-Ditch ${d.k}</option>`).join('');
+        optPrecast += `</optgroup>`;
+        
+        optPrecast += `<optgroup label="Box Culvert">`;
+        optPrecast += dataPre.box_culvert.data.map(d => `<option value="bc|${d.b}|${d.h}">${d.k}</option>`).join('');
+        optPrecast += `</optgroup>`;
+        
+        document.getElementById('selPrecast').innerHTML = optPrecast;
+
+        // --- BAGIAN 4: DROP PERIODE ULANG (DARI TABEL HIDROLOGI) ---
+        const selP = document.getElementById('selT'); // ID di HTML harus selT sesuai Gambar 2
+        const headerTerpilih = document.querySelector('.header-terpilih');
+        
+        if (headerTerpilih && selP) {
+            const metodeId = headerTerpilih.id.replace('h-', '');
+            selP.innerHTML = `<option value="">-- Pilih Periode --</option>`;
+            
+            document.querySelectorAll(`.col-${metodeId}`).forEach(td => {
+                const row = td.closest('tr');
+                const tahun = row.cells[0].innerText;
+                const nilai = td.innerText;
+                selP.innerHTML += `<option value="${nilai}">${tahun} Tahun (${nilai} mm)</option>`;
+            });
+        }
+
+    } catch (err) {
+        console.error("Gagal memproses data hidrolika:", err);
+        alert("Gagal memuat data dari folder data/. Pastikan file json tersedia.");
     }
+}
 
     // 2. Dropdown C
     document.getElementById('selC').innerHTML = dataKoefisien.c_val.data.map(d => 
@@ -883,67 +925,69 @@ function prepareHidrolikaDrops() {
 function updateDimensionInputs() {
     const val = document.getElementById('selPrecast').value;
     if (!val) return;
-    const parts = val.split('|');
-    document.getElementById('dimB').value = parts[1];
-    document.getElementById('dimH').value = parts[2];
+    const parts = val.split('|'); // [tipe, lebar, tinggi]
+    
+    // Sesuaikan ID dengan HTML Gambar 2
+    document.getElementById('inpB').value = parts[1]; 
+    document.getElementById('inpH').value = parts[2];
 }
 
 function hitungHidrolika() {
-    const R24 = parseFloat(document.getElementById('selPeriode').value);
+    // 1. Ambil Input (Sesuaikan ID)
+    const R24 = parseFloat(document.getElementById('selT').value); // ID di HTML: selT
     const C = parseFloat(document.getElementById('selC').value);
     const L = parseFloat(document.getElementById('inpL').value);
     const S = parseFloat(document.getElementById('inpS').value);
     const nMan = parseFloat(document.getElementById('selManning').value);
-    const B = parseFloat(document.getElementById('dimB').value);
-    const H = parseFloat(document.getElementById('dimH').value);
-    const type = document.getElementById('selPrecast').value.split('|')[0];
+    const B = parseFloat(document.getElementById('inpB').value);
+    const H = parseFloat(document.getElementById('inpH').value);
+    const precastVal = document.getElementById('selPrecast').value;
 
-    if (!R24) { alert("Pilih Periode Ulang dulu di Tab Hidrologi!"); return; }
+    if (!R24 || !precastVal) { 
+        alert("Pastikan Periode Ulang dan Tipe Saluran sudah dipilih!"); 
+        return; 
+    }
 
-    // A. Tc Kirpich (L dalam meter, S dalam m/m)
+    const type = precastVal.split('|')[0];
+
+    // 2. Perhitungan Teknis
     const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385);
-    
-    // B. Intensitas Mononobe
     const I = (R24 / 24) * Math.pow(24 / (Tc / 60), 2 / 3);
-
-    // C. Debit Rasional (A dari GeoJSON - pastikan globalAreaKm2 ada)
-    const AreaHa = (globalAreaKm2 || 0) * 100; 
+    const AreaHa = (window.globalAreaKm2 || 0) * 100; 
     const Q_rencana = (1/360) * C * I * AreaHa;
 
-    // D. Kapasitas Manning (Full)
     const A_full = B * H;
     const P_full = B + (2 * H);
     const R_full = A_full / P_full;
     const V_full = (1 / nMan) * Math.pow(R_full, 2/3) * Math.sqrt(S);
     const Q_kapasitas = V_full * A_full;
 
-    // E. Visual & Freeboard
-    const rasio = Math.min((Q_rencana / Q_kapasitas), 1.2); // max 120% visual
-    const waterHeight = (rasio * 100);
+    const rasio = Q_rencana / Q_kapasitas;
     const isAman = Q_kapasitas > Q_rencana;
-    
-    let fbReq = type === 'u' ? Math.sqrt(0.5 * H) : 0.2 * H;
 
-    // Tampilkan Hasil
-    document.getElementById('resHidrolika').style.display = 'block';
+    // 3. Tampilkan Hasil (Sesuai Gambar 3)
+    document.getElementById('hasilAnalisis').style.display = 'block'; // Munculkan card hasil
+    
     const banner = document.getElementById('statusKapasitas');
     banner.className = isAman ? 'status-banner success' : 'status-banner danger';
     banner.innerHTML = isAman ? '✅ KAPASITAS MEMENUHI' : '❌ KAPASITAS OVERFLOW';
 
-    document.getElementById('waterLevel').style.height = (rasio > 1 ? 100 : waterHeight) + '%';
-    document.getElementById('labelB').innerText = `B: ${B}m`;
-    document.getElementById('labelH').innerText = `H: ${H}m`;
+    // Update Visual Air
+    const visualWater = document.getElementById('waterLevel');
+    if(visualWater) {
+        visualWater.style.height = (rasio > 1 ? 100 : rasio * 100) + '%';
+    }
 
-    document.getElementById('tBodyHidrolika').innerHTML = `
-        <tr><td>Hujan Rencana (R24)</td><td>${R24} mm</td></tr>
-        <tr><td>Waktu Konsentrasi (Tc)</td><td>${Tc.toFixed(2)} Menit</td></tr>
-        <tr><td>Intensitas (I)</td><td>${I.toFixed(2)} mm/jam</td></tr>
-        <tr><td><b>Debit Rencana (Q)</b></td><td style="color:blue"><b>${Q_rencana.toFixed(3)} m³/det</b></td></tr>
-        <tr><td><b>Kapasitas Saluran</b></td><td><b>${Q_kapasitas.toFixed(3)} m³/det</b></td></tr>
-        <tr><td>Tinggi Muka Air (y)</td><td>${(rasio * H).toFixed(2)} m</td></tr>
+    // Update Tabel Parameter (Gambar 3)
+    document.getElementById('tBodyHasil').innerHTML = `
+        <tr><td>Hujan Rencana (R24)</td><td class="text-right">${R24} mm</td></tr>
+        <tr><td>Waktu Konsentrasi (Tc)</td><td class="text-right">${Tc.toFixed(2)} menit</td></tr>
+        <tr><td>Intensitas (I)</td><td class="text-right">${I.toFixed(2)} mm/jam</td></tr>
+        <tr class="bg-light"><td><b>Debit Rasional (Q)</b></td><td class="text-right"><b>${Q_rencana.toFixed(3)} m³/s</b></td></tr>
+        <tr><td>Kedalaman Air (y)</td><td class="text-right">${(rasio * H).toFixed(3)} m</td></tr>
+        <tr><td>Kapasitas Terpakai</td><td class="text-right">${(rasio * 100).toFixed(1)} %</td></tr>
+        <tr><td>Tinggi Saluran (H)</td><td class="text-right">${H.toFixed(2)} m</td></tr>
     `;
-    
-    document.getElementById('freeboardNote').innerText = `*Syarat Freeboard Minimal: ${fbReq.toFixed(2)} m`;
 }
 
 // Inisialisasi saat load
