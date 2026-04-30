@@ -178,7 +178,12 @@
         </div>
     </div>
 </div>
-
+<div id="resHidrolika" class="card" style="display:none; border-top: 4px solid var(--accent);">
+    <h3>6. Analisis Hidraulika & Kapasitas</h3>
+    <div id="hydraulicResultContent">
+        <!-- Hasil perhitungan akan disuntikkan ke sini -->
+    </div>
+</div>
 <div id="map">
     <div class="area-info-box">
         <div style="font-size: 9px; color: var(--slate); font-weight: 800; text-transform: uppercase;">LUAS CATCHMENT</div>
@@ -253,6 +258,10 @@ async function loadHydraulicAssets() {
 
     // --- FUNCTIONS ---
     function initSystem() {
+        loadHydraulicAssets(); // Memastikan koefisien.json termuat otomatis
+    if (typeof dataMikro !== 'undefined') {
+        mikroLayer.addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 }).addTo(map);
+    }
         if (typeof dataMikro !== 'undefined') {
             mikroLayer.addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 }).addTo(map);
         }
@@ -330,6 +339,7 @@ async function loadHydraulicAssets() {
     });
 
     function processHydrology(geojson) {
+        currentAreaM2 = turf.area(geojson); // Simpan luas dalam meter persegi
         const areaHa = turf.area(geojson) / 10000;
         document.getElementById('area-val').innerText = areaHa.toFixed(2);
         const points = turf.featureCollection(Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { id: id })));
@@ -701,14 +711,21 @@ function displayGoF(results, skCrit) {
         document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => td.classList.add("kolom-terpilih"));
         
         document.getElementById('gofConclusion').innerHTML = 
-            `💡 Metode <b>${terpilih.name}</b> terpilih karena memenuhi semua kriteria uji dengan deviasi terkecil.`;
+            `💡 Metode <b>${terpilih.resHidrolika}</b> terpilih karena memenuhi semua kriteria uji dengan deviasi terkecil.`;
     } else {
         document.getElementById('gofConclusion').innerHTML = 
             `⚠️ Tidak ada metode yang memenuhi kriteria uji sepenuhnya. Gunakan Log Pearson III sebagai standar cadangan.`;
     }
     document.getElementById('resGoF').style.display = 'block';
 }
+function runHydraulicProcess() {
+    // Ambil Tr yang dipilih user (misal dari dropdown yang akan kita buat di Bagian 2)
+    const trIndex = document.getElementById('selectTr') ? document.getElementById('selectTr').value : 1; // Default ke Tr 5 thn
+    const rainfallDepth = selectedRainfallData[trIndex];
 
+    if (!rainfallDepth || !dataKoefisien) {
+        alert("Data hujan atau koefisien belum siap!");
+        return;
 function errorFunction(x) {
     // Pendekatan numerik untuk erf(x)
     const t = 1.0 / (1.0 + 0.5 * Math.abs(x));
@@ -757,9 +774,12 @@ function errorFunction(x) {
 
 function displayHydraulicResult(C, n, Qr, reco) {
     const resDiv = document.getElementById('resHidrolika');
-    resDiv.innerHTML = `
+    const contentDiv = document.getElementById('hydraulicResultContent'); // Gunakan ID spesifik untuk konten
+    
+    if (!contentDiv) return; 
+
+    contentDiv.innerHTML = `
         <div class="card-hasil">
-            <h4><i data-lucide="activity"></i> Analisis Kapasitas Saluran</h4>
             <div class="grid-res">
                 <div class="item"><span>Koef. Aliran (C):</span> <b>${C}</b></div>
                 <div class="item"><span>Manning (n):</span> <b>${n}</b></div>
@@ -771,8 +791,8 @@ function displayHydraulicResult(C, n, Qr, reco) {
                 ${reco ? `
                     <p>Gunakan <b>U-Ditch ${reco.k}</b></p>
                     <span>Kapasitas (Q-Kap): <b>${reco.kapasitas.toFixed(3)} m³/s</b></span>
-                    <span class="status-ok">STATUS: AMAN (Q-Kap > Q-Rec)</span>
-                ` : `<span class="status-fail">STATUS: Dimensi precast tidak cukup!</span>`}
+                    <br><span class="status-ok" style="color: #27ae60; font-weight: bold;">✔ STATUS: AMAN (Q-Kap > Q-Rec)</span>
+                ` : `<span class="status-fail" style="color: #eb5757; font-weight: bold;">✘ STATUS: Dimensi precast tidak cukup!</span>`}
             </div>
         </div>
     `;
