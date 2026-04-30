@@ -203,10 +203,17 @@
         </div> <!-- AKHIR SECTION HIDROLOGI -->
 
         <!-- SECTION HIDROLIKA (Sekarang didalam Sidebar) -->
-        <div id="sectionHidrolika" style="display: none;" class="card">
-            <button onclick="switchTab('hidrologi')" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:12px; margin-bottom:10px;">
-                <i data-lucide="arrow-left" style="width:12px"></i> Kembali ke Hidrologi
-            </button>
+        <div id="goHidrolikaContainer" style="display: none; margin-top: 20px; text-align: center;">
+    <button onclick="switchTab('hidrolika')" class="btn-utama">
+        LANJUT KE ANALISIS HIDROLIKA <i class="fas fa-arrow-right"></i>
+    </button>
+</div>
+
+<!-- Area Hidrolika -->
+<div id="sectionHidrolika" style="display: none;">
+    <!-- Form Perhitungan Saluran ada di sini -->
+    <button onclick="switchTab('hidrologi')" class="btn-back"> Kembali ke Hidrologi </button>
+</div>
             <h3><i data-lucide="waves"></i> Parameter Saluran Rencana</h3>
             <div class="grid-2">
                 <div class="form-group">
@@ -784,6 +791,7 @@ function displayGoF(results, skCrit) {
             `⚠️ Tidak ada metode yang memenuhi kriteria uji sepenuhnya. Gunakan Log Pearson III sebagai standar cadangan.`;
     }
     document.getElementById('resGoF').style.display = 'block';
+document.getElementById('btnGoHidrolika').style.display = 'block';
 }
 
 function errorFunction(x) {
