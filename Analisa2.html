@@ -210,76 +210,65 @@
 </div>
 
 <!-- Area Hidrolika -->
-<div id="sectionHidrolika" class="card-container" style="display: none;">
+<!-- Area Hidrolika -->
+<div id="sectionHidrolika" style="display: none;">
     <div class="card">
-        <h3 class="card-title">1. PARAMETER SALURAN RENCANA</h3>
-        <div class="grid-form">
-            <!-- Baris 1 -->
+        <h3>1. Parameter Saluran Rencana</h3>
+        <div class="grid-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div class="form-group">
-                <label>PANJANG (L) - M</label>
-                <input type="number" id="inpL" value="500">
+                <label style="font-size: 10px; font-weight: 800;">PANJANG (L) - M</label>
+                <input type="number" id="inpL" value="500" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;">
             </div>
             <div class="form-group">
-                <label>KEMIRINGAN (S)</label>
-                <input type="number" id="inpS" value="0.001" step="0.0001">
-            </div>
-
-            <!-- Baris 2 -->
-            <div class="form-group">
-                <label>KALA ULANG (T)</label>
-                <select id="selT"></select>
+                <label style="font-size: 10px; font-weight: 800;">KEMIRINGAN (S)</label>
+                <input type="number" id="inpS" value="0.001" step="0.0001" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;">
             </div>
             <div class="form-group">
-                <label>TUTUPAN LAHAN (C)</label>
-                <select id="selC"></select>
+                <label style="font-size: 10px; font-weight: 800;">KALA ULANG (T)</label>
+                <select id="selT" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;"></select>
             </div>
-
-            <!-- Baris 3 -->
             <div class="form-group">
-                <label>TIPE SALURAN (PRECAST)</label>
-                <select id="selPrecast" onchange="updateDimensiOtomatis()"></select>
+                <label style="font-size: 10px; font-weight: 800;">TUTUPAN LAHAN (C)</label>
+                <select id="selC" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;"></select>
             </div>
-            <div class="form-row-double">
-                <div class="form-group">
-                    <label>LEBAR B (M)</label>
-                    <input type="number" id="inpB" readonly>
-                </div>
-                <div class="form-group">
-                    <label>TINGGI H (M)</label>
-                    <input type="number" id="inpH" readonly>
-                </div>
+            <div class="form-group">
+                <label style="font-size: 10px; font-weight: 800;">MANNING (n)</label>
+                <select id="selManning" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;"></select>
+            </div>
+            <div class="form-group">
+                <label style="font-size: 10px; font-weight: 800;">TIPE PRECAST</label>
+                <select id="selPrecast" onchange="updateDimensionInputs()" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;"></select>
+            </div>
+            <div class="form-group">
+                <label style="font-size: 10px; font-weight: 800;">LEBAR B (M)</label>
+                <input type="number" id="inpB" readonly style="width: 100%; padding: 8px; background: #f8fafc; border: 1px solid #e2e8f0;">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 10px; font-weight: 800;">TINGGI H (M)</label>
+                <input type="number" id="inpH" readonly style="width: 100%; padding: 8px; background: #f8fafc; border: 1px solid #e2e8f0;">
             </div>
         </div>
 
-        <button onclick="hitungHidrolika()" class="btn-uji">UJI DIMENSI SEKARANG</button>
+        <button onclick="hitungHidrolika()" style="width:100%; margin-top:15px; padding:12px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:800; cursor:pointer;">UJI DIMENSI SEKARANG</button>
     </div>
     
-    <!-- Bagian Hasil (Gambar 3) -->
-    <div id="hasilAnalisis" class="card" style="display:none; margin-top:20px;">
-        <h3 class="card-title">2. HASIL ANALISIS KAPASITAS</h3>
-        <!-- Tempatkan visualisasi air dan tabel hasil di sini -->
-    </div>
-</div>
-
-            <!-- Hasil Analisis Kapasitas -->
-            <div id="resHidrolika" style="display:none; margin-top:30px;">
-                <div id="statusKapasitas" class="status-banner"></div>
-                <div class="visual-container">
-                    <div class="channel-view">
-                        <div id="waterLevel" class="water"></div>
-                        <div class="labels">
-                            <span id="labelB">B: 0m</span>
-                            <span id="labelH">H: 0m</span>
-                        </div>
-                    </div>
+    <div id="resHidrolika" style="display:none; margin-top:20px;">
+        <div id="statusKapasitas" class="status-banner"></div>
+        <div class="visual-container">
+            <div class="channel-view">
+                <div id="waterLevel" class="water"></div>
+                <div class="labels">
+                    <span id="labelB">B: 0m</span>
+                    <span id="labelH">H: 0m</span>
                 </div>
-                <table class="data-table" style="margin-top:15px">
-                    <thead><tr><th>Parameter</th><th>Nilai</th></tr></thead>
-                    <tbody id="tBodyHidrolika"></tbody>
-                </table>
-                <p id="freeboardNote" style="font-size: 11px; color: #666; margin-top: 10px; font-style: italic;"></p>
             </div>
         </div>
+        <table class="data-table" style="margin-top:15px">
+            <thead><tr><th>Parameter</th><th>Nilai</th></tr></thead>
+            <tbody id="tBodyHasil"></tbody>
+        </table>
+    </div>
+</div>
     </div>
 </div>
 
@@ -418,14 +407,13 @@
     });
 
     function processHydrology(geojson) {
-        const areaHa = turf.area(geojson) / 10000;
-        document.getElementById('area-val').innerText = areaHa.toFixed(2);
-        const points = turf.featureCollection(Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { id: id })));
-        const bbox = [106.5, -6.5, 107.0, -6.0]; 
-        const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
-        let foundStations = [];
-        const tBody = document.getElementById('tBody');
-        const luasKm2 = hitungLuasDalamKm2(feature); // Sesuaikan dengan cara kamu hitung luas
+    const areaHa = turf.area(geojson) / 10000;
+    window.globalAreaKm2 = areaHa / 100; // Simpan luas dalam km2 untuk Q = CIA/360
+    document.getElementById('area-val').innerText = areaHa.toFixed(2);
+    
+    const points = turf.featureCollection(Object.keys(RAIN_DATABASE).map(id => 
+        turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { id: id })
+    ));
     window.globalAreaKm2 = luasKm2; 
     
     console.log("Luas Area Tersimpan: " + window.globalAreaKm2 + " km2");
@@ -982,7 +970,8 @@ const Q_rencana = (C * I * AreaHa) / 360;
     const isAman = Q_kapasitas > Q_rencana;
 
     // 3. Update Visual & Tabel
-    document.getElementById('hasilAnalisis').style.display = 'block';
+    // 3. Update Visual & Tabel
+    document.getElementById('resHidrolika').style.display = 'block'; // Pastikan ID ini ada di HTML
     
     const banner = document.getElementById('statusKapasitas');
     banner.className = isAman ? 'status-banner success' : 'status-banner danger';
@@ -991,12 +980,9 @@ const Q_rencana = (C * I * AreaHa) / 360;
     const visualWater = document.getElementById('waterLevel');
     if(visualWater) {
         const persentaseTinggi = Math.min(rasio * 100, 100);
-visualWater.style.transition = "height 1s ease-in-out";
-visualWater.style.height = persentaseTinggi + '%';
-
-// Update label di gambar
-document.getElementById('labelB').innerText = `B: ${B}m`;
-document.getElementById('labelH').innerText = `H: ${H}m`;
+        visualWater.style.height = persentaseTinggi + '%';
+        document.getElementById('labelB').innerText = `B: ${B}m`;
+        document.getElementById('labelH').innerText = `H: ${H}m`;
     }
 
     document.getElementById('tBodyHasil').innerHTML = `
