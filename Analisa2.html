@@ -197,6 +197,22 @@
 <script src="data_saluranphb.js"></script>
 
 <script>
+    let dataKoefisien = null;
+let dataPrecast = null;
+
+async function loadHydraulicAssets() {
+    try {
+        const [resKoef, resPrecast] = await Promise.all([
+            fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/koefisien.json').then(r => r.json()),
+            fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/precast.json').then(r => r.json())
+        ]);
+        dataKoefisien = resKoef;
+        dataPrecast = resPrecast;
+        console.log("Assets Hidrolika Berhasil Dimuat");
+    } catch (e) {
+        console.error("Gagal memuat data JSON:", e);
+    }
+}
     function normalCDF(x, mean, std) {
     const z = (x - mean) / std;
     const t = 1 / (1 + 0.2316419 * Math.abs(z));
@@ -701,11 +717,74 @@ function errorFunction(x) {
                 t * (-0.82215223 + t * 0.17087277)))))))));
     return x >= 0 ? 1 - tau : tau - 1;
 }
+    function analyzeHydraulics(areaM2, rainfallDepth, landUseKey, materialKey) {
+    if (!dataKoefisien || !dataPrecast) return;
 
-    window.onload = async () => { 
-        await loadStationData();
-        initSystem();
-        lucide.createIcons(); 
+    // 1. Ambil Koefisien C dan n Manning dari JSON
+    const C = dataKoefisien.c_val.data.find(d => d.k === landUseKey)?.v || 0.70;
+    const nManning = dataKoefisien.n_manning.data.find(d => d.k === materialKey)?.v || 0.013;
+
+    // 2. Hitung Q Rencana (Metode Rasional)
+    const areaHa = areaM2 / 10000;
+    const L = Math.sqrt(areaM2); 
+    const S = 0.001; // Slope 0.1% (Asumsi kemiringan saluran)
+    const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385);
+    const I = (rainfallDepth / 24) * Math.pow(24 / (Tc / 60), 2/3);
+    const Qrencana = 0.00278 * C * I * areaHa;
+
+    // 3. Verifikasi Kapasitas Saluran (Mencari U-Ditch yang Cocok)
+    // Rumus Manning: Q = (1/n) * A * R^(2/3) * S^(1/2)
+    let rekomendasi = null;
+    const listUDitch = dataPrecast.u_ditch.data;
+
+    for (let u of listUDitch) {
+        const b = u.b; // Lebar
+        const h = u.h; // Tinggi
+        const A = b * h; // Luas Penampang
+        const P = b + (2 * h); // Keliling Basah
+        const R = A / P; // Jari-jari Hidrolis
+        
+        const Qkapasitas = (1 / nManning) * A * Math.pow(R, 2/3) * Math.sqrt(S);
+
+        if (Qkapasitas > Qrencana) {
+            rekomendasi = { ...u, kapasitas: Qkapasitas };
+            break; // Ambil dimensi terkecil yang mampu menampung Q
+        }
+    }
+
+    displayHydraulicResult(C, nManning, Qrencana, rekomendasi);
+}
+
+function displayHydraulicResult(C, n, Qr, reco) {
+    const resDiv = document.getElementById('resHidrolika');
+    resDiv.innerHTML = `
+        <div class="card-hasil">
+            <h4><i data-lucide="activity"></i> Analisis Kapasitas Saluran</h4>
+            <div class="grid-res">
+                <div class="item"><span>Koef. Aliran (C):</span> <b>${C}</b></div>
+                <div class="item"><span>Manning (n):</span> <b>${n}</b></div>
+                <div class="item-main"><span>Q Rencana:</span> <b>${Qr.toFixed(3)} m³/s</b></div>
+            </div>
+            <hr>
+            <div class="rekomendasi-box">
+                <h5>Rekomendasi Dimensi Precast:</h5>
+                ${reco ? `
+                    <p>Gunakan <b>U-Ditch ${reco.k}</b></p>
+                    <span>Kapasitas (Q-Kap): <b>${reco.kapasitas.toFixed(3)} m³/s</b></span>
+                    <span class="status-ok">STATUS: AMAN (Q-Kap > Q-Rec)</span>
+                ` : `<span class="status-fail">STATUS: Dimensi precast tidak cukup!</span>`}
+            </div>
+        </div>
+    `;
+    lucide.createIcons();
+    resDiv.style.display = 'block';
+}
+
+   window.onload = async () => { 
+    await loadStationData();
+    await loadHydraulicAssets(); // Tambahkan ini
+    initSystem();
+    lucide.createIcons();
         document.getElementById('fKML').addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (!file) return;
