@@ -97,174 +97,181 @@
     </div>
     
     <div class="sidebar-content">
-        <div class="card">
-            <h3>1. Input Area DAS (KML/Peta)</h3>
-            <div class="method-stack">
-                <div class="btn-choice" id="btn-upload" onclick="setMode('upload')">
-                    <i data-lucide="file-up"></i>
-                    <span>UPLOAD FILE KML</span>
+        <!-- WADAH KHUSUS HIDROLOGI (BOX 1-5) -->
+        <div id="sectionHidrologi">
+            <!-- Box 1 -->
+            <div class="card">
+                <h3>1. Input Area DAS (KML/Peta)</h3>
+                <div class="method-stack">
+                    <div class="btn-choice" id="btn-upload" onclick="setMode('upload')">
+                        <i data-lucide="file-up"></i>
+                        <span>UPLOAD FILE KML</span>
+                    </div>
+                    <div class="btn-choice" id="btn-draw" onclick="setMode('draw')">
+                        <i data-lucide="pencil-line"></i>
+                        <span>DIGITASI PETA LANGSUNG</span>
+                    </div>
                 </div>
-                <div class="btn-choice" id="btn-draw" onclick="setMode('draw')">
-                    <i data-lucide="pencil-line"></i>
-                    <span>DIGITASI PETA LANGSUNG</span>
+                <div id="upload-section" style="display:none">
+                    <div class="upload-area" onclick="document.getElementById('fKML').click()">
+                        <i data-lucide="folder-open"></i> PILIH FILE KML
+                    </div>
+                    <input type="file" id="fKML" style="display:none" accept=".kml">
+                </div>
+                <div id="draw-section" style="display:none; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
+                    <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
                 </div>
             </div>
-            <div id="upload-section" style="display:none">
-                <div class="upload-area" onclick="document.getElementById('fKML').click()">
-                    <i data-lucide="folder-open"></i> PILIH FILE KML
-                </div>
-                <input type="file" id="fKML" style="display:none" accept=".kml">
-            </div>
-            <div id="draw-section" style="display:none; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
-                <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
-            </div>
-        </div>
 
-        <div id="resThiessen" class="card" style="display:none">
-            <h3>2. Analisa Stasiun Pengaruh</h3>
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-    <tr><th>Stasiun</th><th>Luas (Ha)</th><th>Bobot (W)</th></tr>
-</thead>
-                    <tbody id="tBody"></tbody>
-                    <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; position: sticky; bottom: 0;">
-                        <tr>
-                            <td>TOTAL</td>
-                            <td id="totalAreaFooter">0.00</td>
-                            <td id="totalWeightFooter">1.0000</td>
-                        </tr>
-                    </tfoot>
+            <!-- Box 2 -->
+            <div id="resThiessen" class="card" style="display:none">
+                <h3>2. Analisa Stasiun Pengaruh</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Stasiun</th><th>Luas (Ha)</th><th>Bobot (W)</th></tr>
+                        </thead>
+                        <tbody id="tBody"></tbody>
+                        <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; position: sticky; bottom: 0;">
+                            <tr>
+                                <td>TOTAL</td>
+                                <td id="totalAreaFooter">0.00</td>
+                                <td id="totalWeightFooter">1.0000</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Box 3 -->
+            <div id="resYearly" class="card" style="display:none">
+                <h3>3. Curah Hujan Wilayah</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead><tr><th>Tahun</th><th>Hujan (mm)</th></tr></thead>
+                        <tbody id="tBodyRain"></tbody>
+                    </table>
+                </div>
+                <div class="chart-wrapper"><canvas id="rainChart"></canvas></div>
+            </div>
+
+            <!-- Box 4 -->
+            <div id="resFrequency" class="card" style="display:none">
+                <h3>4. Analisis Frekuensi (Hujan Rencana)</h3>
+                <div class="table-container" style="max-height: 280px;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">Tr</th>
+                                <th colspan="4" style="text-align:center">Metode (mm)</th>
+                            </tr>
+                            <tr>
+                                <th id="h-Normal">Normal</th>
+                                <th id="h-LogNormal">Log Normal</th>
+                                <th id="h-Gumbel">Gumbel</th>
+                                <th id="h-LP3">Log Pearson III</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tBodyFreq"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Box 5 -->
+            <div id="resGoF" class="card" style="display:none">
+                <h3>5. Uji Kesesuaian (Goodness of Fit)</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Metode</th>
+                                <th>Smirnov (Δmax)</th>
+                                <th>Chi-Square</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tBodyGoF"></tbody>
+                    </table>
+                </div>
+                <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--accent); font-style: italic; font-weight: 600;"></p>
+                
+                <!-- TOMBOL LANJUT KE HIDROLIKA (Akan muncul jika GoF selesai) -->
+                <button id="btnGoHidrolika" onclick="switchTab('hidrolika')" class="btn-primary" style="width:100%; margin-top:15px; background:#27ae60; display:none;">
+                    LANJUT KE ANALISIS HIDROLIKA <i data-lucide="chevron-right"></i>
+                </button>
+            </div>
+        </div> <!-- AKHIR SECTION HIDROLOGI -->
+
+        <!-- SECTION HIDROLIKA (Sekarang didalam Sidebar) -->
+        <div id="sectionHidrolika" style="display: none;" class="card">
+            <button onclick="switchTab('hidrologi')" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:12px; margin-bottom:10px;">
+                <i data-lucide="arrow-left" style="width:12px"></i> Kembali ke Hidrologi
+            </button>
+            <h3><i data-lucide="waves"></i> Parameter Saluran Rencana</h3>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Pilih Kala Ulang (T)</label>
+                    <select id="selPeriode" class="form-control" onchange="ambilDataHujan()"></select>
+                </div>
+                <div class="form-group">
+                    <label>Tutupan Lahan (C)</label>
+                    <select id="selC" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>Panjang (L) - m</label>
+                    <input type="number" id="inpL" class="form-control" value="500">
+                </div>
+                <div class="form-group">
+                    <label>Kemiringan (S)</label>
+                    <input type="number" id="inpS" class="form-control" value="0.001" step="0.0001">
+                </div>
+                <div class="form-group">
+                    <label>Manning (n)</label>
+                    <select id="selManning" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>Tipe Precast</label>
+                    <select id="selPrecast" class="form-control" onchange="updateDimensionInputs()"></select>
+                </div>
+            </div>
+
+            <div class="grid-2" style="margin-top:15px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px dashed #ccc;">
+                <div class="form-group">
+                    <label>Lebar B (m)</label>
+                    <input type="number" id="dimB" class="form-control" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Tinggi H (m)</label>
+                    <input type="number" id="dimH" class="form-control" step="0.1">
+                </div>
+            </div>
+
+            <button onclick="hitungHidrolika()" class="btn-primary" style="width:100%; margin-top:20px; font-weight: bold;">
+                UJI DIMENSI SEKARANG
+            </button>
+
+            <!-- Hasil Analisis Kapasitas -->
+            <div id="resHidrolika" style="display:none; margin-top:30px;">
+                <div id="statusKapasitas" class="status-banner"></div>
+                <div class="visual-container">
+                    <div class="channel-view">
+                        <div id="waterLevel" class="water"></div>
+                        <div class="labels">
+                            <span id="labelB">B: 0m</span>
+                            <span id="labelH">H: 0m</span>
+                        </div>
+                    </div>
+                </div>
+                <table class="data-table" style="margin-top:15px">
+                    <thead><tr><th>Parameter</th><th>Nilai</th></tr></thead>
+                    <tbody id="tBodyHidrolika"></tbody>
                 </table>
+                <p id="freeboardNote" style="font-size: 11px; color: #666; margin-top: 10px; font-style: italic;"></p>
             </div>
         </div>
-
-        <div id="resYearly" class="card" style="display:none">
-            <h3>3. Curah Hujan Wilayah</h3>
-            <div class="table-container">
-                <table class="data-table">
-                    <thead><tr><th>Tahun</th><th>Hujan (mm)</th></tr></thead>
-                    <tbody id="tBodyRain"></tbody>
-                </table>
-            </div>
-            <div class="chart-wrapper"><canvas id="rainChart"></canvas></div>
-        </div>
-
-        <div id="resFrequency" class="card" style="display:none">
-    <h3>4. Analisis Frekuensi (Hujan Rencana)</h3>
-    <div class="table-container" style="max-height: 280px;">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th rowspan="2">Tr</th>
-                    <th colspan="4" style="text-align:center">Metode (mm)</th>
-                </tr>
-                <tr>
-                    <th id="h-Normal">Normal</th>
-                    <th id="h-LogNormal">Log Normal</th>
-                    <th id="h-Gumbel">Gumbel</th>
-                    <th id="h-LP3">Log Pearson III</th>
-                </tr>
-            </thead>
-            <tbody id="tBodyFreq"></tbody>
-        </table>
     </div>
 </div>
 
-<div id="resGoF" class="card" style="display:none">
-    <h3>5. Uji Kesesuaian (Goodness of Fit)</h3>
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Metode</th>
-                    <th>Smirnov (Δmax)</th>
-                    <th>Chi-Square</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="tBodyGoF"></tbody>
-        </table>
-    </div>
-    <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--accent); font-style: italic; font-weight: 600;"></p>
-</div>
-        </div>
-    </div>
-</div>
-<!-- Navigasi Tab Modern -->
-<div class="tabs-container">
-    <button class="tab-btn active" onclick="switchTab('hidrologi')">1. Analisis Hidrologi</button>
-    <button class="tab-btn" id="btnGoHidrolika" onclick="switchTab('hidrolika')">2. Analisis Hidrolika</button>
-</div>
-
-<!-- SECTION HIDROLIKA -->
-<div id="sectionHidrolika" style="display: none;" class="card">
-    <h3><i data-lucide="waves"></i> Parameter Saluran Rencana</h3>
-    <div class="grid-2">
-        <div class="form-group">
-            <label>Pilih Kala Ulang (T)</label>
-            <select id="selPeriode" class="form-control" onchange="ambilDataHujan()"></select>
-        </div>
-        <div class="form-group">
-            <label>Tutupan Lahan (C)</label>
-            <select id="selC" class="form-control"></select>
-        </div>
-        <div class="form-group">
-            <label>Panjang Saluran (L) - m</label>
-            <input type="number" id="inpL" class="form-control" value="500">
-        </div>
-        <div class="form-group">
-            <label>Kemiringan Saluran (S)</label>
-            <input type="number" id="inpS" class="form-control" value="0.001" step="0.0001">
-        </div>
-        <div class="form-group">
-            <label>Koefisien Manning (n)</label>
-            <select id="selManning" class="form-control"></select>
-        </div>
-        <div class="form-group">
-            <label>Tipe Precast</label>
-            <select id="selPrecast" class="form-control" onchange="updateDimensionInputs()"></select>
-        </div>
-    </div>
-
-    <div class="grid-2" style="margin-top:15px; background:#f8f9fa; padding:15px; border-radius:8px; border:1px dashed #ccc;">
-        <div class="form-group">
-            <label>Lebar B (m)</label>
-            <input type="number" id="dimB" class="form-control" step="0.1">
-        </div>
-        <div class="form-group">
-            <label>Tinggi H (m)</label>
-            <input type="number" id="dimH" class="form-control" step="0.1">
-        </div>
-    </div>
-
-    <button onclick="hitungHidrolika()" class="btn-primary" style="width:100%; margin-top:20px; height: 50px; font-weight: bold;">
-        UJI DIMENSI SEKARANG
-    </button>
-
-    <!-- Hasil Analisis Kapasitas -->
-    <div id="resHidrolika" style="display:none; margin-top:30px;">
-        <div id="statusKapasitas" class="status-banner"></div>
-        
-        <div class="visual-container">
-            <div class="channel-view">
-                <div id="waterLevel" class="water"></div>
-                <div class="labels">
-                    <span id="labelB">B: 0m</span>
-                    <span id="labelH">H: 0m</span>
-                </div>
-            </div>
-        </div>
-
-        <table class="table-modern">
-            <thead>
-                <tr><th>Parameter</th><th>Nilai</th></tr>
-            </thead>
-            <tbody id="tBodyHidrolika"></tbody>
-        </table>
-        <p id="freeboardNote" style="font-size: 0.85rem; color: #666; margin-top: 10px; font-style: italic;"></p>
-    </div>
-</div>
 <div id="map">
     <div class="area-info-box">
         <div style="font-size: 9px; color: var(--slate); font-weight: 800; text-transform: uppercase;">LUAS CATCHMENT</div>
@@ -792,19 +799,30 @@ let hujanTerpilihR24 = 0;
 
 // Fungsi navigasi
 function switchTab(target) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    if (target === 'hidrologi') {
-        document.getElementById('sectionHidrologi').style.display = 'block';
-        document.getElementById('sectionHidrolika').style.display = 'none';
-        document.querySelector('[onclick="switchTab(\'hidrologi\')"]').classList.add('active');
+    const areaHidrologi = document.getElementById('sectionHidrologi'); // Pastikan Box 1-4 dibungkus ID ini
+    const areaHidrolika = document.getElementById('sectionHidrolika');
+    const tombolLanjut = document.getElementById('goHidrolikaContainer');
+
+    if (target === 'hidrolika') {
+        areaHidrologi.style.display = 'none';
+        tombolLanjut.style.display = 'none';
+        areaHidrolika.style.display = 'block';
+        prepareHidrolikaDrops(); // Menarik data dari json
     } else {
-        document.getElementById('sectionHidrologi').style.display = 'none';
-        document.getElementById('sectionHidrolika').style.display = 'block';
-        document.getElementById('btnGoHidrolika').classList.add('active');
-        prepareHidrolikaDrops();
+        areaHidrologi.style.display = 'block';
+        tombolLanjut.style.display = 'block';
+        areaHidrolika.style.display = 'none';
     }
 }
-
+// Tambahkan ini di akhir fungsi hitungGoF / tampilkanHasilGoF kamu
+function tampilkanTombolLanjut() {
+    const container = document.getElementById('goHidrolikaContainer');
+    if (container) {
+        container.style.display = 'block';
+        // Scroll otomatis ke tombol agar user tahu langkah selanjutnya
+        container.scrollIntoView({ behavior: 'smooth' });
+    }
+}
 // AMBIL DATA DARI JSON KAMU
 async function loadHidrolikaData() {
     try {
