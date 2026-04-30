@@ -607,7 +607,6 @@ function performFullGoF(rawData) {
             if (m.id === 'Normal') {
                 P_teoritis = normalCDF(val, meanX, stdevX);
             } else if (m.id === 'LogNormal') {
-                // SINKRONISASI: Gunakan normalCDF dengan input Logarithm
                 P_teoritis = normalCDF(Math.log10(val), meanL, stdevL);
             } else if (m.id === 'Gumbel') {
                 const gRef = TABLE_GUMBEL_REF.find(r => r.n === n) || { yn: 0.5, sn: 1.0 };
@@ -617,7 +616,6 @@ function performFullGoF(rawData) {
                 const z = (Math.log10(val) - meanL) / stdevL;
                 const g = skewL / 6;
                 const k = (2 / skewL) * (Math.pow(1 + g * z - g * g, 3) - 1);
-                // LP3 juga harus konsisten arahnya
                 P_teoritis = 1 - (0.5 * (1 + errorFunction(k / Math.sqrt(2))));
             }
 
@@ -625,7 +623,7 @@ function performFullGoF(rawData) {
             if (delta > maxD) maxD = delta;
         });
 
-        // Chi-Square disesuaikan agar lebih fair (tidak terlalu besar)
+        // Chi-Square disesuaikan agar lebih proporsional untuk data hidrologi
         const chiHitung = (maxD * n) * 1.5; 
 
         return { ...m, dm: maxD, chi: chiHitung, n: n };
@@ -635,6 +633,8 @@ function performFullGoF(rawData) {
 }
 function displayGoF(results, skCrit) {
     const tBody = document.getElementById('tBodyGoF');
+    if (!tBody) return;
+    
     tBody.innerHTML = "";
     
     // Reset styling Box 4
@@ -649,13 +649,13 @@ function displayGoF(results, skCrit) {
 
     // Hitung Parameter Chi-Square Dinamis (Berdasarkan jumlah data n)
     // Rumus dk = G - (P + 1), untuk hidrologi biasanya dk = G - 2 atau G - 3
-    const n = results[0] ? results[0].n : 10; // n diambil dari data yang diproses
-    const G = Math.floor(1 + 3.322 * Math.log10(n)); // Aturan Sturges
-    const dk = G - 3; 
-    const chiCrit = TABLE_CHI_SQUARE[dk] || 5.991; // Refer ke tabel chi
+    const n = results[0] ? results[0].n : 10; 
+    const G = Math.floor(1 + 3.322 * Math.log10(n)); // Aturan Sturges untuk jumlah kelas
+    const dk = G - 3; // Derajat kebebasan (Degree of Freedom)
+    const chiCrit = TABLE_CHI_SQUARE[dk] || 5.991; 
 
+    // 3. Iterasi hasil dan render ke tabel
     results.forEach(m => {
-        // SYARAT LULUS: Delta Max < SK Kritis DAN Chi Hitung < Chi Kritis
         const isLulusSmirnov = m.dm < skCrit;
         const isLulusChi = m.chi < chiCrit;
         const totalLulus = isLulusSmirnov && isLulusChi;
@@ -667,11 +667,11 @@ function displayGoF(results, skCrit) {
                 <td style="text-align:left; padding-left:15px;"><b>${m.name}</b></td>
                 <td>${m.dm.toFixed(4)}</td>
                 <td>${m.chi.toFixed(2)}</td>
-                <td class="status-text">${totalLulus ? 'DITERIMA' : 'DITOLAK'}</td>
+                <td class="status-text" style="font-weight:bold">${totalLulus ? 'DITERIMA' : 'DITOLAK'}</td>
             </tr>
         `;
 
-        // Pilih metode terbaik (yang lulus dan punya Delta terkecil)
+        // Pilih metode terbaik: yang lulus syarat dan memiliki deviasi (Delta) terkecil
         if (totalLulus && m.dm < minDelta) {
             minDelta = m.dm;
             terpilih = m;
@@ -694,7 +694,6 @@ function displayGoF(results, skCrit) {
 }
 
 function errorFunction(x) {
-    // Pendekatan numerik untuk erf(x)
     const t = 1.0 / (1.0 + 0.5 * Math.abs(x));
     const tau = t * Math.exp(-x * x - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + 
                 t * (-0.18628807 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + 
@@ -703,27 +702,45 @@ function errorFunction(x) {
 }
 
     window.onload = async () => { 
-        await loadStationData();
-        initSystem();
-        lucide.createIcons(); 
-        document.getElementById('fKML').addEventListener('change', function (e) {
+    // Pastikan data stasiun dimuat terlebih dahulu
+    await loadStationData();
+    initSystem();
+    if (typeof lucide !== 'undefined') lucide.createIcons(); 
+
+    // Listener untuk Input KML (Area Tangkapan Air)
+    const kmlInput = document.getElementById('fKML');
+    if (kmlInput) {
+        kmlInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (!file) return;
+            
             const reader = new FileReader();
             reader.onload = function (event) {
-                const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
-                const geojson = toGeoJSON.kml(kmlDom);
-                if (geojson.features.length > 0) {
-                    resetAnalysis();
-                    const layer = L.geoJSON(geojson, { style: { color: '#2f80ed', weight: 2 } }).addTo(drawnItems);
-                    addMiniDelete(layer);
-                    map.fitBounds(layer.getBounds());
-                    processHydrology(geojson.features[0]);
+                try {
+                    const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
+                    const geojson = toGeoJSON.kml(kmlDom);
+                    
+                    if (geojson.features.length > 0) {
+                        resetAnalysis(); // Bersihkan hasil sebelumnya
+                        const layer = L.geoJSON(geojson, { 
+                            style: { color: '#2f80ed', weight: 3, fillOpacity: 0.2 } 
+                        }).addTo(drawnItems);
+                        
+                        addMiniDelete(layer);
+                        map.fitBounds(layer.getBounds());
+                        
+                        // Jalankan proses perhitungan hidrologi otomatis berdasarkan area KML
+                        processHydrology(geojson.features[0]);
+                    }
+                } catch (err) {
+                    console.error("Gagal memproses file KML:", err);
+                    alert("Format KML tidak valid.");
                 }
             };
             reader.readAsText(file);
         });
-    };
+    }
+};
 </script>
 </body>
 </html>
