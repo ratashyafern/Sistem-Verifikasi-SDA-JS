@@ -726,38 +726,59 @@ async function prepareHidrolikaDrops() {
 }
 
 function hitungHidrolika() {
+    // Pastikan mengambil nilai terbaru dari Global Variable atau Input
     const R24 = parseFloat(document.getElementById('selT').value);
     const C = parseFloat(document.getElementById('selC').value);
-    const L = parseFloat(document.getElementById('inpL').value);
-    const S = parseFloat(document.getElementById('inpS').value);
+    const L = parseFloat(document.getElementById('inpL').value); // Panjang saluran (m)
+    const S_input = parseFloat(document.getElementById('inpS').value); // Kemiringan
     const nMan = parseFloat(document.getElementById('selManning').value);
-    const B = parseFloat(document.getElementById('inpB').value);
-    const H = parseFloat(document.getElementById('inpH').value);
+    const B = parseFloat(document.getElementById('inpB').value); // Lebar (m)
+    const H = parseFloat(document.getElementById('inpH').value); // Tinggi (m)
     const AreaHa = window.globalAreaHa || 0;
 
-    if (!R24 || !L || !S || !B) return alert("Lengkapi data!");
+    if (!R24 || !L || !S_input || !B || AreaHa === 0) {
+        return alert("Mohon lengkapi data: Intensitas Hujan, Panjang, Kemiringan, Dimensi, dan Luas Area (KML/Gambar).");
+    }
 
-    const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385);
+    // 1. Konversi Kemiringan (Jika user input persen, bagi 100)
+    const S = S_input > 1 ? S_input / 100 : S_input;
+
+    // 2. Waktu Konsentrasi (Tc) - Rumus Kirpich
+    const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385); // Menit
+    
+    // 3. Intensitas Hujan (I) - Rumus Mononobe
+    // I = (R24/24) * (24/Tc)^2/3
     const I = (R24 / 24) * Math.pow(24 / (Tc / 60), 2/3);
+
+    // 4. Debit Rencana (Q) - Metode Rasional: Q = (C * I * A) / 360
     const Q_rencana = (C * I * AreaHa) / 360;
 
+    // 5. Kapasitas Saluran (Q_kap) - Rumus Manning
     const A_full = B * H;
     const P_full = B + (2 * H);
-    const V_full = (1 / nMan) * Math.pow(A_full / P_full, 2/3) * Math.sqrt(S);
+    const R_hidrolis = A_full / P_full;
+    const V_full = (1 / nMan) * Math.pow(R_hidrolis, 2/3) * Math.sqrt(S);
     const Q_kap = V_full * A_full;
 
+    // 6. Output & Banner
     const rasio = Q_rencana / Q_kap;
     const isAman = Q_kap > Q_rencana;
 
-    document.getElementById('resHidrolika').style.display = 'block';
+    const resDiv = document.getElementById('resHidrolika');
+    resDiv.style.display = 'block';
+    
     const banner = document.getElementById('statusKapasitas');
     banner.className = isAman ? 'status-banner success' : 'status-banner danger';
-    banner.innerHTML = isAman ? '✅ KAPASITAS MEMENUHI' : '❌ KAPASITAS OVERFLOW';
+    banner.innerHTML = isAman 
+        ? `✅ AMAN: Kapasitas (${Q_kap.toFixed(3)}) > Debit Rencana (${Q_rencana.toFixed(3)})` 
+        : `❌ OVERFLOW: Kapasitas (${Q_kap.toFixed(3)}) < Debit Rencana (${Q_rencana.toFixed(3)})`;
 
     document.getElementById('tBodyHasil').innerHTML = `
+        <tr><td>Waktu Konsentrasi (Tc)</td><td class="text-right">${Tc.toFixed(2)} menit</td></tr>
+        <tr><td>Intensitas Hujan (I)</td><td class="text-right">${I.toFixed(2)} mm/jam</td></tr>
         <tr><td>Debit Rencana (Q)</td><td class="text-right"><b>${Q_rencana.toFixed(3)} m³/s</b></td></tr>
-        <tr><td>Kapasitas Saluran</td><td class="text-right">${Q_kap.toFixed(3)} m³/s</b></td></tr>
-        <tr><td>Kapasitas Terpakai</td><td class="text-right">${(rasio * 100).toFixed(1)} %</td></tr>
+        <tr><td>Kapasitas Saluran</td><td class="text-right">${Q_kap.toFixed(3)} m³/s</td></tr>
+        <tr><td>Kapasitas Terpakai</td><td class="text-right"><b>${(rasio * 100).toFixed(1)} %</b></td></tr>
     `;
 }
 
