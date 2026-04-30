@@ -783,18 +783,20 @@ function hitungHidrolika() {
 }
 
 /* --- INITIALIZATION --- */
+/* --- BAGIAN PERBAIKAN AKHIR --- */
+
 window.onload = async () => {
+    console.log("Sistem Verifikasi SDA Siap...");
+
+    // 1. Jalankan Inisialisasi Utama
     try {
         if (typeof initSystem === 'function') initSystem();
         if (typeof lucide !== 'undefined') lucide.createIcons();
-    } catch (err) { console.error("Init Error:", err); }
-};
+    } catch (err) { 
+        console.error("Init Error:", err); 
+    }
 
-    // 2. Inisialisasi UI
-    if (typeof initSystem === 'function') initSystem();
-    if (typeof lucide !== 'undefined') lucide.createIcons(); 
-
-    // 3. Listener KML (Tetap seperti aslinya tapi pastikan processHydrology terpanggil)
+    // 2. Listener untuk Input KML (Pastikan ID 'fKML' sesuai di HTML)
     const kmlInput = document.getElementById('fKML');
     if (kmlInput) {
         kmlInput.addEventListener('change', function (e) {
@@ -804,31 +806,38 @@ window.onload = async () => {
             const reader = new FileReader();
             reader.onload = function (event) {
                 try {
+                    // Parsing KML ke GeoJSON
                     const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
                     const geojson = toGeoJSON.kml(kmlDom);
                     
-                    if (geojson.features.length > 0) {
+                    if (geojson && geojson.features && geojson.features.length > 0) {
+                        // Reset peta jika ada analisis sebelumnya
                         if (typeof resetAnalysis === 'function') resetAnalysis(); 
                         
+                        // Menampilkan poligon ke peta Leaflet
                         const layer = L.geoJSON(geojson, { 
                             style: { color: '#2f80ed', weight: 3, fillOpacity: 0.2 } 
                         }).addTo(drawnItems);
                         
+                        // Fit view peta ke poligon baru
                         if (typeof addMiniDelete === 'function') addMiniDelete(layer);
                         map.fitBounds(layer.getBounds());
                         
-                        // INI KRITIS: Mengirim data area ke fungsi hidrologi
+                        // PROSES KRITIS: Menghitung Luas Area & Data Hidrologi
                         processHydrology(geojson.features[0]);
+                    } else {
+                        alert("File KML tidak mengandung data poligon area.");
                     }
                 } catch (err) {
                     console.error("Gagal memproses file KML:", err);
-                    alert("Format KML tidak valid.");
+                    alert("Terjadi kesalahan saat membaca KML. Pastikan file valid.");
                 }
             };
             reader.readAsText(file);
         });
     }
-};
+}; // Tutup window.onload
+
 </script>
 </body>
 </html>
