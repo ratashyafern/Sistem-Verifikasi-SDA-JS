@@ -1072,28 +1072,34 @@ function drawCrossSection(b, h) {
 }
     
    window.onload = async () => { 
-    await loadStationData();
-    await loadHydraulicAssets(); // Tambahkan ini
-    initSystem();
-    lucide.createIcons();
+        await loadStationData();
+        await loadHydraulicAssets(); 
+        initSystem();
+        lucide.createIcons();
+
         document.getElementById('fKML').addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (!file) return;
+            
             const reader = new FileReader();
             reader.onload = function (event) {
                 const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
                 const geojson = toGeoJSON.kml(kmlDom);
-                if (geojson.features.length > 0) {
+                
+                if (geojson && geojson.features && geojson.features.length > 0) {
                     resetAnalysis();
-                    const layer = L.geoJSON(geojson, { style: { color: '#2f80ed', weight: 2 } }).addTo(drawnItems);
+                    const layer = L.geoJSON(geojson, { 
+                        style: { color: '#2f80ed', weight: 2 } 
+                    }).addTo(drawnItems);
+                    
                     addMiniDelete(layer);
                     map.fitBounds(layer.getBounds());
                     processHydrology(geojson.features[0]);
                 }
-            };
+            }; // Tutup reader.onload
             reader.readAsText(file);
-        });
-    };
+        }); // Tutup addEventListener
+    }; // Tutup window.onload
 </script>
 </body>
 </html>
