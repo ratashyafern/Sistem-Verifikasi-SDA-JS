@@ -307,27 +307,52 @@
     let selectedRainfall = 0;
     const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
 
+    // --- 1. INITIALIZATION & ASSETS ---
     window.onload = () => {
-        initSystem();
-        loadHydraulicAssets();
+        initMap();          // Inisialisasi Peta
+        initSystem();       // Inisialisasi Data Saluran
+        loadHydraulicAssets(); // Fetch JSON dari GitHub
         lucide.createIcons();
-    document.getElementById('fKML').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const kml = new DOMParser().parseFromString(event.target.result, 'text/xml');
-                const geojson = toGeoJSON.kml(kml);
-                resetAnalysis();
-                const layer = L.geoJSON(geojson).addTo(drawnItems);
-                map.fitBounds(layer.getBounds());
-                processHydrology(geojson.features[0]);
-            };
-            reader.readAsText(file);
-        });
+        setupEventListeners();
     };
-    
-function switchTab(tab) {
+
+    function setupEventListeners() {
+        // Listener untuk KML Upload
+        const fileInput = document.getElementById('fKML');
+        if (fileInput) {
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const kml = new DOMParser().parseFromString(event.target.result, 'text/xml');
+                    const geojson = toGeoJSON.kml(kml);
+                    resetAnalysis();
+                    const layer = L.geoJSON(geojson).addTo(drawnItems);
+                    map.fitBounds(layer.getBounds());
+                    processHydrology(geojson.features[0]);
+                };
+                reader.readAsText(file);
+            });
+        }
+    }
+
+    async function loadHydraulicAssets() {
+        try {
+            const [resKoef, resPrecast] = await Promise.all([
+                fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/koefisien.json').then(r => r.json()),
+                fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/precast.json').then(r => r.json())
+            ]);
+            dataKoefisien = resKoef;
+            dataPrecast = resPrecast;
+            console.log("✅ Assets Hidrolika Berhasil Dimuat");
+        } catch (e) {
+            console.error("❌ Gagal memuat data JSON:", e);
+        }
+    }
+
+    // --- 2. UI NAVIGATION & CONTROL ---
+    function switchTab(tab) {
         const groupHidro = document.getElementById('group-hidrologi');
         const groupHidra = document.getElementById('group-hidraulika');
         const btnHidro = document.getElementById('tab-hidrologi');
@@ -346,7 +371,6 @@ function switchTab(tab) {
         }
     }
 
-    // 3. Fungsi Handle Tampilan Dimensi (TARUH DI SINI)
     function handleDimensiChange() {
         const jenis = document.getElementById('jenis-precast').value;
         const sectionOtomatis = document.getElementById('section-dimensi-otomatis');
@@ -359,31 +383,139 @@ function switchTab(tab) {
             sectionOtomatis.style.display = 'block';
             sectionCustom.style.display = 'none';
         }
-    drawCrossSection(0, 0); 
-}
-async function loadHydraulicAssets() {
-    try {
-        const [resKoef, resPrecast] = await Promise.all([
-            fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/koefisien.json').then(r => r.json()),
-            fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/precast.json').then(r => r.json())
-        ]);
-        dataKoefisien = resKoef;
-        dataPrecast = resPrecast;
-        console.log("Assets Hidrolika Berhasil Dimuat");
-    } catch (e) {
-        console.error("Gagal memuat data JSON:", e);
+        // Update visualisasi potongan melintang jika ada nilainya
+        if (typeof drawCrossSection === "function") drawCrossSection(0, 0); 
     }
-}
+
+    function setMode(mode) {
+        resetAnalysis();
+        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
+        map.removeControl(drawControl);
+        document.getElementById('upload-section').style.display = 'none';
+        document.getElementById('draw-section').style.display = 'none';
+
+        if(mode === 'draw') {
+            document.getElementById('btn-draw').classList.add('active');
+            map.addControl(drawControl);
+            document.getElementById('draw-section').style.display = 'block';
+        } else {
+            document.getElementById('btn-upload').classList.add('active');
+            document.getElementById('upload-section').style.display = 'block';
+        }
+    }
+
+    // --- 3. MAP ENGINE (LEAFLET) ---
+    let map, drawnItems, thiessenLayer, stationLayer, mikroLayer, phbLayer, drawControl;
+
+    function initMap() {
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+        
+        map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        drawnItems = new L.FeatureGroup().addTo(map);
+        thiessenLayer = L.layerGroup().addTo(map);
+        stationLayer = L.layerGroup().addTo(map);
+        mikroLayer = L.geoJSON(null);
+        phbLayer = L.geoJSON(null);
+
+        L.control.layers(
+            { "Peta Jalan": osm, "Satelit": satellite }, 
+            { "Saluran Mikro": mikroLayer, "Saluran PHB": phbLayer, "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems }, 
+            { collapsed: false, position: 'topright' }
+        ).addTo(map);
+
+        drawControl = new L.Control.Draw({
+            draw: {
+                polygon: { allowIntersection: false, shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } },
+                polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
+            }
+        });
+
+        map.on(L.Draw.Event.CREATED, function (e) {
+            resetAnalysis();
+            const layer = e.layer;
+            drawnItems.addLayer(layer);
+            addMiniDelete(layer);
+            processHydrology(layer.toGeoJSON());
+        });
+    }
+
+    function initSystem() {
+        if (typeof dataMikro !== 'undefined') {
+            mikroLayer.addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 });
+        }
+        if (typeof dataPHB !== 'undefined') {
+            phbLayer.addData(dataPHB).setStyle({ color: "#1e3a8a", weight: 5, opacity: 1 });
+        }
+        loadStationData(); 
+        console.log("🚀 Sistem Siap Digunakan");
+    }
+
+    // --- 4. CORE ANALYTICS FUNCTIONS ---
+    function resetAnalysis() {
+        drawnItems.clearLayers();
+        thiessenLayer.clearLayers();
+        
+        // Reset Text UI
+        const safeSetText = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
+        safeSetText('area-val', "0.00");
+        safeSetText('totalAreaFooter', "0.00");
+        safeSetText('totalWeightFooter', "1.0000");
+
+        // Clear Tables
+        document.getElementById('tBody').innerHTML = "";
+        document.getElementById('tBodyRain').innerHTML = "";
+        document.getElementById('fKML').value = "";
+
+        // Hide Sections
+        ['resThiessen', 'resYearly', 'resFrequency', 'resGoF'].forEach(id => {
+            document.getElementById(id).style.display = 'none';
+        });
+
+        if (myChart) { myChart.destroy(); myChart = null; }
+    }
+
+    function addMiniDelete(layer) {
+        const btn = document.createElement('button');
+        btn.className = 'btn-delete-mini';
+        btn.innerHTML = '🗑️ Hapus';
+        btn.onclick = function() { resetAnalysis(); map.closePopup(); };
+        layer.bindPopup(btn, { closeButton: false, offset: L.point(0, -5) });
+    }
+
+    async function loadStationData() {
+        const url = `https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/hujan.json?t=${Date.now()}`;
+        try {
+            const response = await fetch(url);
+            RAIN_DATABASE = await response.json();
+            updateStationMarkers();
+        } catch (err) { 
+            console.error("Gagal sinkron data hujan:", err); 
+        }
+    }
+
+    function updateStationMarkers() {
+        stationLayer.clearLayers();
+        Object.keys(RAIN_DATABASE).forEach(id => {
+            const st = RAIN_DATABASE[id];
+            L.circleMarker([st.lat, st.lng], {
+                radius: 6, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
+            }).addTo(stationLayer)
+            .bindTooltip(`<b>${st.n}</b>`, { permanent: true, direction: 'top', offset: [0,-10], className: 'stasiun-label' });
+        });
+    }
+
+    // Math Utility: Normal Cumulative Distribution Function
     function normalCDF(x, mean, std) {
-    const z = (x - mean) / std;
-    const t = 1 / (1 + 0.2316419 * Math.abs(z));
-    const d = 0.3989423 * Math.exp(-z * z / 2);
-    let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.7814779 + t * (-1.821256 + t * 1.330274))));
-    let cdf = z > 0 ? 1 - p : p;
-    // Karena data kita urutan BESAR ke KECIL (descending), 
-    // maka kita bandingkan dengan peluang terlampaui (1 - cdf)
-    return 1 - cdf; 
-}
+        const z = (x - mean) / std;
+        const t = 1 / (1 + 0.2316419 * Math.abs(z));
+        const d = 0.3989423 * Math.exp(-z * z / 2);
+        let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.7814779 + t * (-1.821256 + t * 1.330274))));
+        let cdf = z > 0 ? 1 - p : p;
+        return 1 - cdf; // Peluang terlampaui (Probabilitas)
+    }
     // --- MAP INITIALIZATION ---
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
