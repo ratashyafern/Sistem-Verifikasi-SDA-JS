@@ -39,7 +39,11 @@
 .nav-tabs { display: flex; background: #f1f5f9; padding: 5px; border-radius: 10px; gap: 5px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 10px; font-weight: 800; font-size: 11px; border: none; border-radius: 8px; cursor: pointer; background: transparent; color: var(--slate); transition: 0.3s; }
         .tab-btn.active { background: white; color: var(--accent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .tab-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .tab-btn:disabled { 
+    opacity: 0.5; 
+    cursor: not-allowed; 
+    background: #e2e8f0;
+    color: #94a3b8;
         /* Perbaikan Perataan Kiri untuk Kolom Pertama */
         .data-table td:first-child, 
         .data-table th:first-child,
@@ -136,10 +140,10 @@
     
     <div class="sidebar-content">
         <!-- 1. NAVIGATION TABS (Pindah ke luar card agar tetap di atas) -->
-        <div id="main-nav" class="nav-tabs" style="display: none; gap: 5px; margin-bottom: 15px; padding: 0 15px;">
-        <button onclick="switchTab('hidrologi')" id="tab-hidrologi" class="tab-btn active" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDROLOGI</button>
-        <button onclick="switchTab('hidraulika')" id="tab-hidraulika" class="tab-btn" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDRAULIKA</button>
-    </div>
+        <div id="main-nav" class="nav-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; padding: 0 15px;">
+    <button onclick="switchTab('hidrologi')" id="tab-hidrologi" class="tab-btn active" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDROLOGI</button>
+    <button onclick="switchTab('hidraulika')" id="tab-hidraulika" class="tab-btn" style="flex:1; padding:10px; font-weight:800; cursor:pointer;" disabled>HIDRAULIKA</button>
+</div>
 
         <!-- 2. GROUP HIDROLOGI (Membungkus Poin 1-5) -->
         <div id="group-hidrologi">
@@ -860,12 +864,17 @@ function displayGoF(results, skCrit) {
         const row10 = Array.from(document.querySelectorAll('#tBodyFreq tr')).find(tr => tr.cells[0].innerText == '10');
         window.selectedRainfall = parseFloat(row10.querySelector(`.col-${terpilih.id}`).innerText);
 
-        document.getElementById('gofConclusion').innerHTML = 
-            `💡 Metode <b>${terpilih.name}</b> terpilih. <br><button onclick="showHydraulicUI()" class="upload-area" style="margin-top:10px; width:100%; background:#16a34a">LANJUT ANALISIS HIDRAULIKA</button>`;
-    } else {
-        document.getElementById('gofConclusion').innerHTML = `⚠️ Tidak ada metode yang memenuhi kriteria.`;
-    }
-    document.getElementById('resGoF').style.display = 'block';
+        document.getElementById('gofConclusion').innerHTML = `
+        <div style="background: #eff6ff; padding: 10px; border-radius: 8px; border: 1px solid #2f80ed; margin-top: 10px;">
+            <p style="color: #1e40af; font-size: 11px;">
+                💡 Metode <b>${terpilih.name}</b> terpilih karena memiliki nilai simpangan terkecil (Δmax: ${terpilih.dm.toFixed(4)}) dan memenuhi syarat Chi-Square.
+            </p>
+            <button onclick="unlockAndSwitchToHydraulic()" class="upload-area" style="margin-top:10px; width:100%; background:#16a34a">
+                LANJUT ANALISIS HIDRAULIKA <i data-lucide="chevron-right"></i>
+            </button>
+        </div>
+    `;
+    lucide.createIcons(); // Agar icon panah muncul
 }
 
 function errorFunction(x) {
@@ -875,6 +884,20 @@ function errorFunction(x) {
                 t * (-0.18628807 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + 
                 t * (-0.82215223 + t * 0.17087277)))))))));
     return x >= 0 ? 1 - tau : tau - 1;
+}
+    function unlockAndSwitchToHydraulic() {
+    // 1. Aktifkan tombol tab hidraulika
+    const btnHidra = document.getElementById('tab-hidraulika');
+    btnHidra.disabled = false;
+    
+    // 2. Munculkan container hidraulika
+    document.getElementById('group-hidraulika').style.display = 'block';
+    
+    // 3. Jalankan fungsi pindah tab yang sudah ada
+    switchTab('hidraulika');
+    
+    // 4. Jalankan inisiasi UI Hidraulika (memuat data seleksi)
+    showHydraulicUI();
 }
 function showHydraulicUI() {
     document.getElementById('group-hidraulika').style.display = 'block';
