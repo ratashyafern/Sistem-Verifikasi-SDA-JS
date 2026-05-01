@@ -7,7 +7,7 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="[https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css)" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
 
     <style>
         :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
@@ -84,120 +84,168 @@
     </div>
     
     <div class="sidebar-content">
-        <div class="card">
-            <h3>1. Input Area DAS (KML/Peta)</h3>
-            <div class="method-stack">
-                <div class="btn-choice" id="btn-upload" onclick="setMode('upload')">
-                    <i data-lucide="file-up"></i>
-                    <span>UPLOAD FILE KML</span>
-                </div>
-                <div class="btn-choice" id="btn-draw" onclick="setMode('draw')">
-                    <i data-lucide="pencil-line"></i>
-                    <span>DIGITASI PETA LANGSUNG</span>
-                </div>
-            </div>
-            <div id="upload-section" style="display:none">
-                <div class="upload-area" onclick="document.getElementById('fKML').click()">
-                    <i data-lucide="folder-open"></i> PILIH FILE KML
-                </div>
-                <input type="file" id="fKML" style="display:none" accept=".kml">
-            </div>
-            <div id="draw-section" style="display:none; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
-                <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
-            </div>
+        <!-- 1. NAVIGATION TABS (Pindah ke luar card agar tetap di atas) -->
+        <div class="nav-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; padding: 0 5px;">
+            <button onclick="switchTab('hidrologi')" id="tab-hidrologi" class="tab-btn active" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDROLOGI</button>
+            <button onclick="switchTab('hidraulika')" id="tab-hidraulika" class="tab-btn" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDRAULIKA</button>
         </div>
 
-        <div id="resThiessen" class="card" style="display:none">
-            <h3>2. Analisa Stasiun Pengaruh</h3>
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-    <tr><th>Stasiun</th><th>Luas (Ha)</th><th>Bobot (W)</th></tr>
-</thead>
-                    <tbody id="tBody"></tbody>
-                    <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; position: sticky; bottom: 0;">
-                        <tr>
-                            <td>TOTAL</td>
-                            <td id="totalAreaFooter">0.00</td>
-                            <td id="totalWeightFooter">1.0000</td>
-                        </tr>
-                    </tfoot>
-                </table>
+        <!-- 2. GROUP HIDROLOGI (Membungkus Poin 1-5) -->
+        <div id="group-hidrologi">
+            <div class="card">
+                <h3>1. Input Area DAS (KML/Peta)</h3>
+                <div class="method-stack">
+                    <div class="btn-choice" id="btn-upload" onclick="setMode('upload')">
+                        <i data-lucide="file-up"></i>
+                        <span>UPLOAD FILE KML</span>
+                    </div>
+                    <div class="btn-choice" id="btn-draw" onclick="setMode('draw')">
+                        <i data-lucide="pencil-line"></i>
+                        <span>DIGITASI PETA LANGSUNG</span>
+                    </div>
+                </div>
+                <div id="upload-section" style="display:none">
+                    <div class="upload-area" onclick="document.getElementById('fKML').click()">
+                        <i data-lucide="folder-open"></i> PILIH FILE KML
+                    </div>
+                    <input type="file" id="fKML" style="display:none" accept=".kml">
+                </div>
+                <div id="draw-section" style="display:none; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
+                    <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
+                </div>
             </div>
-        </div>
 
-        <div id="resYearly" class="card" style="display:none">
-            <h3>3. Curah Hujan Wilayah</h3>
-            <div class="table-container">
-                <table class="data-table">
-                    <thead><tr><th>Tahun</th><th>Hujan (mm)</th></tr></thead>
-                    <tbody id="tBodyRain"></tbody>
-                </table>
+            <div id="resThiessen" class="card" style="display:none">
+                <h3>2. Analisa Stasiun Pengaruh</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Stasiun</th><th>Luas (Ha)</th><th>Bobot (W)</th></tr>
+                        </thead>
+                        <tbody id="tBody"></tbody>
+                        <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; position: sticky; bottom: 0;">
+                            <tr>
+                                <td>TOTAL</td>
+                                <td id="totalAreaFooter">0.00</td>
+                                <td id="totalWeightFooter">1.0000</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
-            <div class="chart-wrapper"><canvas id="rainChart"></canvas></div>
-        </div>
 
-        <div id="resFrequency" class="card" style="display:none">
-    <h3>4. Analisis Frekuensi (Hujan Rencana)</h3>
-    <div class="table-container" style="max-height: 280px;">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th rowspan="2">Tr</th>
-                    <th colspan="4" style="text-align:center">Metode (mm)</th>
-                </tr>
-                <tr>
-                    <th id="h-Normal">Normal</th>
-                    <th id="h-LogNormal">Log Normal</th>
-                    <th id="h-Gumbel">Gumbel</th>
-                    <th id="h-LP3">Log Pearson III</th>
-                </tr>
-            </thead>
-            <tbody id="tBodyFreq"></tbody>
-        </table>
+            <div id="resYearly" class="card" style="display:none">
+                <h3>3. Curah Hujan Wilayah</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead><tr><th>Tahun</th><th>Hujan (mm)</th></tr></thead>
+                        <tbody id="tBodyRain"></tbody>
+                    </table>
+                </div>
+                <div class="chart-wrapper"><canvas id="rainChart"></canvas></div>
+            </div>
+
+            <div id="resFrequency" class="card" style="display:none">
+                <h3>4. Analisis Frekuensi (Hujan Rencana)</h3>
+                <div class="table-container" style="max-height: 280px;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">Tr</th>
+                                <th colspan="4" style="text-align:center">Metode (mm)</th>
+                            </tr>
+                            <tr>
+                                <th id="h-Normal">Normal</th>
+                                <th id="h-LogNormal">Log Normal</th>
+                                <th id="h-Gumbel">Gumbel</th>
+                                <th id="h-LP3">Log Pearson III</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tBodyFreq"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="resGoF" class="card" style="display:none">
+                <h3>5. Uji Kesesuaian (Goodness of Fit)</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Metode</th>
+                                <th>Smirnov (Δmax)</th>
+                                <th>Chi-Square</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tBodyGoF"></tbody>
+                    </table>
+                </div>
+                <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--accent); font-style: italic; font-weight: 600;"></p>
+            </div>
+            
+            <!-- Tombol Navigasi Cepat -->
+            <button onclick="switchTab('hidraulika')" class="upload-area" style="margin-top:10px; background:var(--primary); color:white;">LANJUT KE HIDRAULIKA <i data-lucide="chevron-right"></i></button>
+        </div> <!-- AKHIR GROUP HIDROLOGI -->
+
+        <!-- 3. GROUP HIDRAULIKA (Membungkus Poin 6) -->
+        <!-- 3. GROUP HIDRAULIKA -->
+<div id="group-hidraulika" style="display:none">
+    <div id="resHydraulic" class="card">
+        <h3>6. Analisis Hidraulika (Saluran)</h3>
+        
+        <label style="font-size:10px; font-weight:800;">PILIH PERIODE ULANG (Tr)</label>
+        <select id="selTr" class="btn-choice" style="width:100%; margin-bottom:10px;">
+            <option value="2">2 Tahun</option>
+            <option value="5">5 Tahun</option>
+            <option value="10">10 Tahun</option>
+            <option value="25">25 Tahun</option>
+            <option value="50">50 Tahun</option>
+            <option value="100">100 Tahun</option>
+        </select>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <label style="font-size:10px; font-weight:800;">PANJANG SALURAN (L) - Meter</label>
+            <input type="number" id="inL" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 150">
+            
+            <label style="font-size:10px; font-weight:800;">KEMIRINGAN (S)</label>
+            <input type="number" id="inS" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 0.002">
+            
+            <label style="font-size:10px; font-weight:800;">JENIS LAHAN (C)</label>
+            <select id="selC" class="btn-choice" style="width:100%"></select>
+            
+            <label style="font-size:10px; font-weight:800;">MATERIAL SALURAN (n)</label>
+            <select id="selN" class="btn-choice" style="width:100%"></select>
+
+            <!-- PENAMBAHAN JENIS SALURAN -->
+            <label style="font-size:10px; font-weight:800;">JENIS SALURAN</label>
+            <select id="jenis-precast" class="btn-choice" style="width:100%" onchange="handleDimensiChange()">
+                <option value="u_ditch">U-Ditch</option>
+                <option value="box_culvert">Box Culvert</option>
+                <option value="custom">Custom (Input Manual)</option>
+            </select>
+
+            <!-- BAGIAN DIMENSI (Otomatis vs Manual) -->
+            <div id="section-dimensi-otomatis">
+                <label style="font-size:10px; font-weight:800;">DIMENSI PRECAST (Katalog)</label>
+                <select id="selDim" class="btn-choice" style="width:100%"></select>
+            </div>
+
+            <div id="custom-dimensi" style="display:none; flex-direction:column; gap:5px; background:#f8fafc; padding:10px; border-radius:8px; border:1px dashed #cbd5e1;">
+                <label style="font-size:10px; font-weight:800; color:var(--primary);">INPUT MANUAL (Meter)</label>
+                <input type="number" id="input-b" class="btn-choice" style="width:100%; cursor:text" placeholder="Lebar (B)">
+                <input type="number" id="input-h" class="btn-choice" style="width:100%; cursor:text" placeholder="Tinggi (H)">
+            </div>
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-top:10px; text-align:center;">
+                <canvas id="canvasSaluran" width="300" height="200" style="max-width:100%"></canvas>
+            </div>
+
+            <button onclick="calculateHydraulics()" class="upload-area" style="margin-top:10px;">HITUNG VERIFIKASI</button>
+        </div>
+        <div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
     </div>
 </div>
-
-<div id="resGoF" class="card" style="display:none">
-    <h3>5. Uji Kesesuaian (Goodness of Fit)</h3>
-    <div class="table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Metode</th>
-                    <th>Smirnov (Δmax)</th>
-                    <th>Chi-Square</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="tBodyGoF"></tbody>
-        </table>
-    </div>
-    <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--accent); font-style: italic; font-weight: 600;"></p>
-</div>
-        <div id="resHydraulic" class="card" style="display:none">
-    <h3>6. Analisis Hidraulika (Saluran)</h3>
-    <div style="display:flex; flex-direction:column; gap:8px;">
-        <label style="font-size:10px; font-weight:800;">PANJANG SALURAN (L) - Meter</label>
-        <input type="number" id="inL" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 150">
-        
-        <label style="font-size:10px; font-weight:800;">KEMIRINGAN (S)</label>
-        <input type="number" id="inS" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 0.002">
-        
-        <label style="font-size:10px; font-weight:800;">JENIS LAHAN (C)</label>
-        <select id="selC" class="btn-choice" style="width:100%"></select>
-        
-        <label style="font-size:10px; font-weight:800;">MATERIAL SALURAN (n)</label>
-        <select id="selN" class="btn-choice" style="width:100%"></select>
-
-        <label style="font-size:10px; font-weight:800;">DIMENSI SALURAN</label>
-        <select id="selDim" class="btn-choice" style="width:100%"></select>
-
-        <button onclick="calculateHydraulics()" class="upload-area" style="margin-top:10px;">HITUNG VERIFIKASI</button>
-    </div>
-    <div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
-</div>
-        </div>
     </div>
 </div>
 
@@ -221,7 +269,40 @@
 <script>
     let dataKoefisien = null;
 let dataPrecast = null;
+function switchTab(tab) {
+        const groupHidro = document.getElementById('group-hidrologi');
+        const groupHidra = document.getElementById('group-hidraulika');
+        const btnHidro = document.getElementById('tab-hidrologi');
+        const btnHidra = document.getElementById('tab-hidraulika');
 
+        if (tab === 'hidrologi') {
+            groupHidro.style.display = 'block';
+            groupHidra.style.display = 'none';
+            btnHidro.classList.add('active');
+            btnHidra.classList.remove('active');
+        } else {
+            groupHidro.style.display = 'none';
+            groupHidra.style.display = 'block';
+            btnHidra.classList.add('active');
+            btnHidro.classList.remove('active');
+        }
+    }
+
+    // 3. Fungsi Handle Tampilan Dimensi (TARUH DI SINI)
+    function handleDimensiChange() {
+        const jenis = document.getElementById('jenis-precast').value;
+        const sectionOtomatis = document.getElementById('section-dimensi-otomatis');
+        const sectionCustom = document.getElementById('custom-dimensi');
+
+        if (jenis === 'custom') {
+            sectionOtomatis.style.display = 'none';
+            sectionCustom.style.display = 'flex';
+        } else {
+            sectionOtomatis.style.display = 'block';
+            sectionCustom.style.display = 'none';
+        }
+    drawCrossSection(0, 0); 
+}
 async function loadHydraulicAssets() {
     try {
         const [resKoef, resPrecast] = await Promise.all([
@@ -762,43 +843,140 @@ function showHydraulicUI() {
 }
 
 function calculateHydraulics() {
+    // 1. Ambil Input Dasar
     const L = parseFloat(document.getElementById('inL').value);
     const S = parseFloat(document.getElementById('inS').value);
     const C = parseFloat(document.getElementById('selC').value);
     const n = parseFloat(document.getElementById('selN').value);
-    const dim = document.getElementById('selDim').value;
     const areaHa = parseFloat(document.getElementById('area-val').innerText);
     const R24 = window.selectedRainfall;
 
-    if(!L || !S || !dim) return alert("Mohon isi Panjang, Slope, dan Dimensi!");
+    // --- BAGIAN PERUBAHAN: Parsing Dimensi (B dan H) ---
+    const jenis = document.getElementById('jenis-precast').value;
+    let B, H, nama;
 
-    // 1. Q-Rencana (Rasional)
+    if (jenis === 'custom') {
+        B = parseFloat(document.getElementById('input-b').value);
+        H = parseFloat(document.getElementById('input-h').value);
+        nama = "Custom Manual";
+        
+        // Validasi khusus input manual
+        if (isNaN(B) || isNaN(H) || B <= 0 || H <= 0) {
+            return alert("Masukkan nilai Lebar (B) dan Tinggi (H) yang valid!");
+        }
+    } else {
+        const dim = document.getElementById('selDim').value;
+        if (!dim) return alert("Pilih dimensi dari katalog!");
+        
+        const parts = dim.split('|');
+        B = parseFloat(parts[0]);
+        H = parseFloat(parts[1]);
+        nama = parts[2];
+    }
+    // ----------------------------------------------------
+
+    // Validasi Input Umum
+    if(!L || !S) return alert("Mohon isi Panjang dan Slope saluran!");
+    if(!R24 || isNaN(areaHa)) return alert("Selesaikan analisis hidrologi (pilih stasiun & digitasi area) terlebih dahulu!");
+
+    // 3. Update Visualisasi Canvas
+    if (typeof drawCrossSection === "function") {
+        drawCrossSection(B, H);
+    }
+
+    // 4. Hitung Q-Rencana (Metode Rasional)
     const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385);
     const I = (R24 / 24) * Math.pow((24 / (Tc / 60)), (2/3));
     const Qrencana = (C * I * areaHa) / 360;
 
-    // 2. Q-Kapasitas (Manning)
-    const [b, h, nama] = dim.split('|');
-    const A = parseFloat(b) * parseFloat(h);
-    const P = parseFloat(b) + (2 * parseFloat(h));
+    // 5. Hitung Q-Kapasitas (Manning)
+    const A = B * H;
+    const P = B + (2 * H);
     const R = A / P;
     const Qkapasitas = (1/n) * A * Math.pow(R, 2/3) * Math.sqrt(S);
+    const V = Qkapasitas / A;
 
-    // 3. Output
+    // 6. Output Ke Layar
     const out = document.getElementById('hydraulicOutput');
     const isAman = Qkapasitas > Qrencana;
+    
     out.style.display = 'block';
     out.style.background = isAman ? '#dcfce7' : '#fee2e2';
-    out.style.color = isAman ? '#166534' : '#991b1b';
+    out.style.border = `1px solid ${isAman ? '#166534' : '#991b1b'}`;
+    
     out.innerHTML = `
-        <p style="font-size:11px; font-weight:800;">HASIL VERIFIKASI:</p>
-        <p>Q-Rencana: <b>${Qrencana.toFixed(3)} m³/s</b></p>
-        <p>Q-Kapasitas (${nama}): <b>${Qkapasitas.toFixed(3)} m³/s</b></p>
-        <hr style="margin:5px 0; opacity:0.2">
-        <p style="font-size:12px; font-weight:800;">STATUS: ${isAman ? '✅ AMAN (MEMENUHI)' : '❌ TIDAK CUKUP!'}</p>
+        <div style="color: ${isAman ? '#166534' : '#991b1b'}; padding: 2px;">
+            <p style="font-size:11px; font-weight:800; margin-bottom:5px; text-decoration: underline;">
+                HASIL VERIFIKASI TEKNIS:
+            </p>
+            <table style="width:100%; font-size:11px; border-collapse: collapse;">
+                <tr><td>Q-Rencana (Debit Banjir)</td><td>: <b>${Qrencana.toFixed(3)} m³/s</b></td></tr>
+                <tr><td>Q-Kapasitas (${nama})</td><td>: <b>${Qkapasitas.toFixed(3)} m³/s</b></td></tr>
+                <tr><td>Kecepatan Aliran (V)</td><td>: <b>${V.toFixed(2)} m/s</b></td></tr>
+            </table>
+            <hr style="margin:8px 0; border:0; border-top:1px solid currentColor; opacity:0.2">
+            <p style="font-size:13px; font-weight:800; text-align:center; margin:0;">
+                STATUS: ${isAman ? '✅ AMAN (MEMENUHI)' : '❌ DIMENSI TIDAK CUKUP'}
+            </p>
+        </div>
     `;
-}   
+}
+function drawCrossSection(b, h) {
+    const canvas = document.getElementById('canvasSaluran');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const jenis = document.getElementById('jenis-precast').value;
 
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    if (b <= 0 || h <= 0) {
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "12px Inter";
+        ctx.fillText("Masukkan dimensi untuk visualisasi", 50, 100);
+        return;
+    }
+
+    // Skala gambar agar pas di canvas
+    const margin = 40;
+    const scale = Math.min((canvas.width - 2 * margin) / b, (canvas.height - 2 * margin) / h);
+    
+    const drawB = b * scale;
+    const drawH = h * scale;
+    const startX = (canvas.width - drawB) / 2;
+    const startY = (canvas.height - drawH) / 2;
+
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+
+    if (jenis === 'u_ditch' || jenis === 'custom') {
+        // Gambar bentuk U
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(startX, startY + drawH);
+        ctx.lineTo(startX + drawB, startY + drawH);
+        ctx.lineTo(startX + drawB, startY);
+    } else if (jenis === 'box_culvert') {
+        // Gambar kotak tertutup
+        ctx.rect(startX, startY, drawB, drawH);
+    }
+    
+    ctx.stroke();
+
+    // Arsir Air (Simulasi 70% kapasitas)
+    ctx.fillStyle = "rgba(14, 165, 233, 0.3)";
+    ctx.fillRect(startX, startY + (drawH * 0.3), drawB, drawH * 0.7);
+
+    // Keterangan teks
+    ctx.fillStyle = "#1e293b";
+    ctx.font = "bold 10px Inter";
+    ctx.fillText(`B: ${b}m`, startX + (drawB/2) - 10, startY + drawH + 20);
+    ctx.save();
+    ctx.translate(startX - 10, startY + (drawH/2));
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(`H: ${h}m`, -10, 0);
+    ctx.restore();
+}
+    
    window.onload = async () => { 
     await loadStationData();
     await loadHydraulicAssets(); // Tambahkan ini
