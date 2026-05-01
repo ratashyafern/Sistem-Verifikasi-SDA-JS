@@ -940,16 +940,16 @@ function errorFunction(x) {
 }
 function showHydraulicUI() {
     document.getElementById('group-hidraulika').style.display = 'block';
-    switchTab('hidraulika');
-    document.getElementById('resHydraulic').style.display = 'block';
     const sC = document.getElementById('selC');
     const sN = document.getElementById('selN');
-    const sD = document.getElementById('selDim');
+    const sD = document.getElementById('selDim'); // Pastikan ID ini konsisten di HTML
 
     if (dataKoefisien) {
         sC.innerHTML = dataKoefisien.c_val.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
         sN.innerHTML = dataKoefisien.n_manning.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
     }
+    updateDimensiDropdown('u_ditch');
+}
     
     if (dataPrecast) {
         let optDim = '<option value="">-- Pilih Dimensi --</option>';
