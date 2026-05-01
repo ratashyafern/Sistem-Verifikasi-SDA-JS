@@ -125,71 +125,22 @@
     color: white;
     border-color: var(--primary);
 }
-    #main-nav {
-    position: relative; /* Bukan sticky agar tidak melayang di atas konten saat scroll */
-    background: transparent;
-    border-bottom: none;
-    padding: 0;
-    margin-bottom: 10px;
-}
-
-.tab-btn {
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
-    color: var(--slate);
-    border-radius: 8px; /* Lebih rounded agar modern */
-    transition: 0.3s;
-}
-
-.tab-btn.active {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-    box-shadow: none; /* Hilangkan shadow agar tidak terlihat melayang */
-}
-
-        /* 2. Grid System untuk Form (2 Kolom) */
-        .grid-form {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 10px;
-        }
-
-        /* 3. Helper untuk elemen yang ingin tetap lebar penuh dalam grid */
-        .grid-item-full {
-            grid-column: span 2;
-        }
-
-        /* 4. Memastikan area konten punya padding yang konsisten */
-        .content-body {
-            padding: 5px 0;
-        }
-
-        /* Opsional: Menghaluskan tampilan input di dalam grid */
-        .grid-form .btn-choice {
-            width: 100%;
-            justify-content: space-between;
-        }
     </style>
 </head>
 <body>
 
-<div class="sidebar-header" style="border-bottom: none; padding-bottom: 0;"> <!-- Hilangkan border bawah header -->
+<div id="sidebar">
+    <div class="sidebar-header">
         <a href="index.html" class="back-link"><i data-lucide="arrow-left"></i> Kembali ke Menu Utama</a>
         <h1 style="font-size: 24px; font-weight: 800; color: var(--primary); line-height: 1.1;">VERIFICATION SYSTEM</h1>
         <p style="font-size: 12px; color: var(--slate); margin-top: 4px;">Suku Dinas SDA Jakarta Selatan</p>
-        
-        <!-- Pindahkan Navigasi ke Sini (Di dalam header) agar menyatu -->
-        <div id="main-nav" class="nav-tabs" style="display: flex; gap: 5px; margin-top: 20px; padding: 0;">
-            <button onclick="switchTab('hidrologi')" id="tab-hidrologi" class="tab-btn active" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDROLOGI</button>
-            <button onclick="switchTab('hidraulika')" id="tab-hidraulika" class="tab-btn" style="flex:1; padding:10px; font-weight:800; cursor:pointer;" disabled>HIDRAULIKA</button>
-        </div>
     </div>
     
-    <div class="sidebar-content" style="padding-top: 15px;">
-        <!-- Konten group-hidrologi dsb tetap di sini -->
-    </div>
+    <div class="sidebar-content">
+        <!-- 1. NAVIGATION TABS (Pindah ke luar card agar tetap di atas) -->
+        <div id="main-nav" class="nav-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; padding: 0 15px;">
+    <button onclick="switchTab('hidrologi')" id="tab-hidrologi" class="tab-btn active" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDROLOGI</button>
+    <button onclick="switchTab('hidraulika')" id="tab-hidraulika" class="tab-btn" style="flex:1; padding:10px; font-weight:800; cursor:pointer;" disabled>HIDRAULIKA</button>
 </div>
 
         <!-- 2. GROUP HIDROLOGI (Membungkus Poin 1-5) -->
@@ -295,82 +246,61 @@
         </div>
                    <!-- 3. GROUP HIDRAULIKA -->
 <div id="group-hidraulika" style="display:none">
-    <div class="content-body"> <!-- Bungkus dengan ini -->
-        <div id="resHydraulic" class="card">
-            <h3>6. Analisis Hidraulika (Saluran)</h3>
+    <div id="resHydraulic" class="card">
+        <h3>6. Analisis Hidraulika (Saluran)</h3>
+        
+        <label style="font-size:10px; font-weight:800;">PILIH PERIODE ULANG (Tr)</label>
+        <select id="selTr" class="btn-choice" style="width:100%; margin-bottom:10px;">
+            <option value="2">2 Tahun</option>
+            <option value="5">5 Tahun</option>
+            <option value="10">10 Tahun</option>
+            <option value="25">25 Tahun</option>
+            <option value="50">50 Tahun</option>
+            <option value="100">100 Tahun</option>
+        </select>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <label style="font-size:10px; font-weight:800;">PANJANG SALURAN (L) - Meter</label>
+            <input type="number" id="inL" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 150">
             
-            <div class="grid-form">
-                <!-- Baris 1 -->
-                <div>
-                    <label style="font-size:10px; font-weight:800;">PERIODE ULANG (Tr)</label>
-                    <select id="selTr" class="btn-choice" style="width:100%;">
-                        <option value="2">2 Tahun</option>
-                        <option value="5">5 Tahun</option>
-                        <option value="10">10 Tahun</option>
-                        <option value="25">25 Tahun</option>
-                        <option value="50">50 Tahun</option>
-                        <option value="100">100 Tahun</option>
-                    </select>
-                </div>
-                <div>
-                    <label style="font-size:10px; font-weight:800;">PANJANG (L) - Meter</label>
-                    <input type="number" id="inL" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 150">
-                </div>
+            <label style="font-size:10px; font-weight:800;">KEMIRINGAN (S)</label>
+            <input type="number" id="inS" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 0.002">
+            
+            <label style="font-size:10px; font-weight:800;">JENIS LAHAN (C)</label>
+            <select id="selC" class="btn-choice" style="width:100%"></select>
+            
+            <label style="font-size:10px; font-weight:800;">MATERIAL SALURAN (n)</label>
+            <select id="selN" class="btn-choice" style="width:100%"></select>
 
-                <!-- Baris 2 -->
-                <div>
-                    <label style="font-size:10px; font-weight:800;">KEMIRINGAN (S)</label>
-                    <input type="number" id="inS" class="btn-choice" style="width:100%; cursor:text" placeholder="0.002">
-                </div>
-                <div>
-                    <label style="font-size:10px; font-weight:800;">JENIS LAHAN (C)</label>
-                    <select id="selC" class="btn-choice" style="width:100%"></select>
-                </div>
+            <!-- PENAMBAHAN JENIS SALURAN -->
+            <label style="font-size:10px; font-weight:800;">JENIS SALURAN</label>
+            <select id="jenis-precast" class="btn-choice" style="width:100%" onchange="handleDimensiChange()">
+                <option value="u_ditch">U-Ditch</option>
+                <option value="box_culvert">Box Culvert</option>
+                <option value="custom">Custom (Input Manual)</option>
+            </select>
 
-                <!-- Baris 3 -->
-                <div>
-                    <label style="font-size:10px; font-weight:800;">MATERIAL (n)</label>
-                    <select id="selN" class="btn-choice" style="width:100%"></select>
-                </div>
-                <div>
-                    <label style="font-size:10px; font-weight:800;">TIPE SALURAN</label>
-                    <select id="jenis-precast" class="btn-choice" style="width:100%" onchange="handleDimensiChange()">
-                        <option value="u_ditch">U-Ditch</option>
-                        <option value="box_culvert">Box Culvert</option>
-                        <option value="custom">Custom</option>
-                    </select>
-                </div>
-
-                <!-- Baris 4: Dimensi (Full width) -->
-                <div class="grid-item-full" id="section-dimensi-otomatis">
-                    <label style="font-size:10px; font-weight:800;">DIMENSI KATALOG</label>
-                    <select id="selDim" class="btn-choice" style="width:100%"></select>
-                </div>
-
-                <div class="grid-item-full" id="custom-dimensi" style="display:none; gap:10px;">
-                    <div style="flex:1">
-                        <label style="font-size:10px; font-weight:800;">LEBAR B (m)</label>
-                        <input type="number" id="input-b" class="btn-choice" style="width:100%" placeholder="B">
-                    </div>
-                    <div style="flex:1">
-                        <label style="font-size:10px; font-weight:800;">TINGGI H (m)</label>
-                        <input type="number" id="input-h" class="btn-choice" style="width:100%" placeholder="H">
-                    </div>
-                </div>
-
-                <!-- Canvas Visualisasi (Full width) -->
-                <div class="grid-item-full" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; text-align:center;">
-                    <canvas id="canvasSaluran" width="350" height="150" style="max-width:100%"></canvas>
-                </div>
-
-                <!-- Button (Full width) -->
-                <div class="grid-item-full">
-                    <button onclick="calculateHydraulics()" class="upload-area" style="width: 100%; margin:0;">HITUNG VERIFIKASI</button>
-                </div>
+            <!-- BAGIAN DIMENSI (Otomatis vs Manual) -->
+            <div id="section-dimensi-otomatis">
+                <label style="font-size:10px; font-weight:800;">DIMENSI PRECAST (Katalog)</label>
+                <select id="selDim" class="btn-choice" style="width:100%"></select>
             </div>
 
-            <div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
+            <div id="custom-dimensi" style="display:none; flex-direction:column; gap:5px; background:#f8fafc; padding:10px; border-radius:8px; border:1px dashed #cbd5e1;">
+                <label style="font-size:10px; font-weight:800; color:var(--primary);">INPUT MANUAL (Meter)</label>
+                <input type="number" id="input-b" class="btn-choice" style="width:100%; cursor:text" placeholder="Lebar (B)">
+                <input type="number" id="input-h" class="btn-choice" style="width:100%; cursor:text" placeholder="Tinggi (H)">
+            </div>
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-top:10px; text-align:center;">
+                <canvas id="canvasSaluran" width="300" height="200" style="max-width:100%"></canvas>
+            </div>
+
+            <button onclick="calculateHydraulics()" class="upload-area" style="margin-top:10px;">HITUNG VERIFIKASI</button>
         </div>
+        <div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
+    </div>
+</div>
     </div>
 </div>
 
@@ -393,8 +323,7 @@
 
 <script>
     let dataKoefisien = null;
-    let dataPrecast = null;
-    window.selectedRainfall = 0; // Inisialisasi global
+let dataPrecast = null;
 function switchTab(tab) {
         const groupHidro = document.getElementById('group-hidrologi');
         const groupHidra = document.getElementById('group-hidraulika');
@@ -412,7 +341,6 @@ function switchTab(tab) {
             btnHidra.classList.add('active');
             btnHidro.classList.remove('active');
         }
-    setTimeout(() => { map.invalidateSize(); }, 200);
     }
 
     // 3. Fungsi Handle Tampilan Dimensi (TARUH DI SINI)
@@ -432,16 +360,17 @@ function switchTab(tab) {
 }
 async function loadHydraulicAssets() {
     try {
-            const [resKoef, resPrecast] = await Promise.all([
-                fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/koefisien.json').then(r => r.json()),
-                fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/precast.json').then(r => r.json())
-            ]);
-            dataKoefisien = resKoef;
-            dataPrecast = resPrecast;
-        } catch (e) {
-            console.error("Gagal memuat JSON Assets:", e);
-        }
+        const [resKoef, resPrecast] = await Promise.all([
+            fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/koefisien.json').then(r => r.json()),
+            fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/precast.json').then(r => r.json())
+        ]);
+        dataKoefisien = resKoef;
+        dataPrecast = resPrecast;
+        console.log("Assets Hidrolika Berhasil Dimuat");
+    } catch (e) {
+        console.error("Gagal memuat data JSON:", e);
     }
+}
     function normalCDF(x, mean, std) {
     const z = (x - mean) / std;
     const t = 1 / (1 + 0.2316419 * Math.abs(z));
@@ -922,8 +851,7 @@ function displayGoF(results, skCrit) {
         document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => td.classList.add("kolom-terpilih"));
         
         const row10 = Array.from(document.querySelectorAll('#tBodyFreq tr')).find(tr => tr.cells[0].innerText == '10');
-            const colIndex = { 'Normal': 1, 'LogNormal': 2, 'Gumbel': 3, 'LP3': 4 }[terpilih.id];
-            window.selectedRainfall = parseFloat(row10.cells[colIndex].innerText);
+        window.selectedRainfall = parseFloat(row10.querySelector(`.col-${terpilih.id}`).innerText);
 
         document.getElementById('gofConclusion').innerHTML = `
             <div style="background: #eff6ff; padding: 10px; border-radius: 8px; border: 1px solid #2f80ed; margin-top: 10px;">
@@ -1142,8 +1070,6 @@ function drawCrossSection(b, h) {
     initSystem();
     lucide.createIcons();
 
-    setTimeout(() => { map.invalidateSize(); }, 500);
-
     document.getElementById('fKML').addEventListener('change', function (e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -1160,17 +1086,13 @@ function drawCrossSection(b, h) {
                 }).addTo(drawnItems);
                 
                 addMiniDelete(layer);
-                        map.fitBounds(layer.getBounds());
-                        processHydrology(geojson.features[0]);
-                    }
-                } catch (err) {
-                    alert("Error membaca file KML. Pastikan format benar.");
-                    console.error(err);
-                }
-            };
-            reader.readAsText(file);
-        });
-    };
+                map.fitBounds(layer.getBounds());
+                processHydrology(geojson.features[0]);
+            }
+        };
+        reader.readAsText(file);
+    });
+};
 </script>
 </body>
 </html>
