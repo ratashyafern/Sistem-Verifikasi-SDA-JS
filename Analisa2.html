@@ -72,19 +72,6 @@
         .kolom-terpilih { background-color: #eff6ff !important; border-left: 2px solid #2563eb !important; border-right: 2px solid #2563eb !important; }
 
         .status-text { font-weight: 800; }
-    .visual-container { background: #eef2f7; padding: 30px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; }
-        .channel-view { 
-            width: 180px; height: 140px; border: 5px solid #444; border-top: none; 
-            position: relative; background: #fff; display: flex; align-items: flex-end; 
-        }
-        .water { 
-            width: 100%; background: linear-gradient(180deg, #3a7bd5 0%, #00d2ff 100%); 
-            transition: height 0.8s ease-out; opacity: 0.8; 
-        }
-        .labels { position: absolute; width: 100%; bottom: -25px; display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; }
-        .status-banner { padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 15px; font-weight: bold; }
-        .status-banner.success { background: #27ae60; color: white; }
-        .status-banner.danger { background: #e74c3c; color: white; }
     </style>
 </head>
 <body>
@@ -97,178 +84,98 @@
     </div>
     
     <div class="sidebar-content">
-        <!-- WADAH KHUSUS HIDROLOGI (BOX 1-5) -->
-        <div id="sectionHidrologi">
-            <!-- Box 1 -->
-            <div class="card">
-                <h3>1. Input Area DAS (KML/Peta)</h3>
-                <div class="method-stack">
-                    <div class="btn-choice" id="btn-upload" onclick="setMode('upload')">
-                        <i data-lucide="file-up"></i>
-                        <span>UPLOAD FILE KML</span>
-                    </div>
-                    <div class="btn-choice" id="btn-draw" onclick="setMode('draw')">
-                        <i data-lucide="pencil-line"></i>
-                        <span>DIGITASI PETA LANGSUNG</span>
-                    </div>
+        <div class="card">
+            <h3>1. Input Area DAS (KML/Peta)</h3>
+            <div class="method-stack">
+                <div class="btn-choice" id="btn-upload" onclick="setMode('upload')">
+                    <i data-lucide="file-up"></i>
+                    <span>UPLOAD FILE KML</span>
                 </div>
-                <div id="upload-section" style="display:none">
-                    <div class="upload-area" onclick="document.getElementById('fKML').click()">
-                        <i data-lucide="folder-open"></i> PILIH FILE KML
-                    </div>
-                    <input type="file" id="fKML" style="display:none" accept=".kml">
-                </div>
-                <div id="draw-section" style="display:none; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
-                    <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
+                <div class="btn-choice" id="btn-draw" onclick="setMode('draw')">
+                    <i data-lucide="pencil-line"></i>
+                    <span>DIGITASI PETA LANGSUNG</span>
                 </div>
             </div>
-
-            <!-- Box 2 -->
-            <div id="resThiessen" class="card" style="display:none">
-                <h3>2. Analisa Stasiun Pengaruh</h3>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr><th>Stasiun</th><th>Luas (Ha)</th><th>Bobot (W)</th></tr>
-                        </thead>
-                        <tbody id="tBody"></tbody>
-                        <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; position: sticky; bottom: 0;">
-                            <tr>
-                                <td>TOTAL</td>
-                                <td id="totalAreaFooter">0.00</td>
-                                <td id="totalWeightFooter">1.0000</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+            <div id="upload-section" style="display:none">
+                <div class="upload-area" onclick="document.getElementById('fKML').click()">
+                    <i data-lucide="folder-open"></i> PILIH FILE KML
                 </div>
+                <input type="file" id="fKML" style="display:none" accept=".kml">
             </div>
-
-            <!-- Box 3 -->
-            <div id="resYearly" class="card" style="display:none">
-                <h3>3. Curah Hujan Wilayah</h3>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead><tr><th>Tahun</th><th>Hujan (mm)</th></tr></thead>
-                        <tbody id="tBodyRain"></tbody>
-                    </table>
-                </div>
-                <div class="chart-wrapper"><canvas id="rainChart"></canvas></div>
-            </div>
-
-            <!-- Box 4 -->
-            <div id="resFrequency" class="card" style="display:none">
-                <h3>4. Analisis Frekuensi (Hujan Rencana)</h3>
-                <div class="table-container" style="max-height: 280px;">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th rowspan="2">Tr</th>
-                                <th colspan="4" style="text-align:center">Metode (mm)</th>
-                            </tr>
-                            <tr>
-                                <th id="h-Normal">Normal</th>
-                                <th id="h-LogNormal">Log Normal</th>
-                                <th id="h-Gumbel">Gumbel</th>
-                                <th id="h-LP3">Log Pearson III</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tBodyFreq"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Box 5 -->
-            <div id="resGoF" class="card" style="display:none">
-                <h3>5. Uji Kesesuaian (Goodness of Fit)</h3>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Metode</th>
-                                <th>Smirnov (Δmax)</th>
-                                <th>Chi-Square</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tBodyGoF"></tbody>
-                    </table>
-                </div>
-                <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--accent); font-style: italic; font-weight: 600;"></p>
-                
-                <!-- TOMBOL LANJUT KE HIDROLIKA (Akan muncul jika GoF selesai) -->
-                <button id="btnGoHidrolika" onclick="switchTab('hidrolika')" class="btn-primary" style="width:100%; margin-top:15px; background:#27ae60; display:none;">
-                    LANJUT KE ANALISIS HIDROLIKA <i data-lucide="chevron-right"></i>
-                </button>
-            </div>
-        </div> <!-- AKHIR SECTION HIDROLOGI -->
-
-        <!-- SECTION HIDROLIKA (Sekarang didalam Sidebar) -->
-        <div id="goHidrolikaContainer" style="display: none; margin-top: 20px; text-align: center;">
-    <button onclick="switchTab('hidrolika')" class="btn-utama">
-        LANJUT KE ANALISIS HIDROLIKA <i class="fas fa-arrow-right"></i>
-    </button>
-</div>
-
-<!-- Area Hidrolika -->
-<!-- Area Hidrolika -->
-<div id="sectionHidrolika" style="display: none;">
-    <div class="card">
-        <h3>1. Parameter Saluran Rencana</h3>
-        <div class="grid-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div class="form-group">
-                <label style="font-size: 10px; font-weight: 800;">PANJANG (L) - M</label>
-                <input type="number" id="inpL" value="500" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;">
-            </div>
-            <div class="form-group">
-                <label style="font-size: 10px; font-weight: 800;">KEMIRINGAN (S)</label>
-                <input type="number" id="inpS" value="0.001" step="0.0001" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;">
-            </div>
-            <div class="form-group">
-                <label style="font-size: 10px; font-weight: 800;">KALA ULANG (T)</label>
-                <select id="selT" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;"></select>
-            </div>
-            <div class="form-group">
-                <label style="font-size: 10px; font-weight: 800;">TUTUPAN LAHAN (C)</label>
-                <select id="selC" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;"></select>
-            </div>
-            <div class="form-group">
-                <label style="font-size: 10px; font-weight: 800;">MANNING (n)</label>
-                <select id="selManning" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;"></select>
-            </div>
-            <div class="form-group">
-                <label style="font-size: 10px; font-weight: 800;">TIPE PRECAST</label>
-                <select id="selPrecast" onchange="updateDimensionInputs()" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px;"></select>
-            </div>
-            <div class="form-group">
-                <label style="font-size: 10px; font-weight: 800;">LEBAR B (M)</label>
-                <input type="number" id="inpB" readonly style="width: 100%; padding: 8px; background: #f8fafc; border: 1px solid #e2e8f0;">
-            </div>
-            <div class="form-group">
-                <label style="font-size: 10px; font-weight: 800;">TINGGI H (M)</label>
-                <input type="number" id="inpH" readonly style="width: 100%; padding: 8px; background: #f8fafc; border: 1px solid #e2e8f0;">
+            <div id="draw-section" style="display:none; padding:10px; background:#f1f7ff; border-radius:6px; font-size:11px; color:var(--accent); font-weight:700;">
+                <i data-lucide="info" style="width:14px; vertical-align:middle; margin-right:5px"></i> Alat digitasi aktif di kanan peta.
             </div>
         </div>
 
-        <button onclick="hitungHidrolika()" style="width:100%; margin-top:15px; padding:12px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:800; cursor:pointer;">UJI DIMENSI SEKARANG</button>
-    </div>
-    
-    <div id="resHidrolika" style="display:none; margin-top:20px;">
-        <div id="statusKapasitas" class="status-banner"></div>
-        <div class="visual-container">
-            <div class="channel-view">
-                <div id="waterLevel" class="water"></div>
-                <div class="labels">
-                    <span id="labelB">B: 0m</span>
-                    <span id="labelH">H: 0m</span>
-                </div>
+        <div id="resThiessen" class="card" style="display:none">
+            <h3>2. Analisa Stasiun Pengaruh</h3>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+    <tr><th>Stasiun</th><th>Luas (Ha)</th><th>Bobot (W)</th></tr>
+</thead>
+                    <tbody id="tBody"></tbody>
+                    <tfoot style="background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; position: sticky; bottom: 0;">
+                        <tr>
+                            <td>TOTAL</td>
+                            <td id="totalAreaFooter">0.00</td>
+                            <td id="totalWeightFooter">1.0000</td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
-        <table class="data-table" style="margin-top:15px">
-            <thead><tr><th>Parameter</th><th>Nilai</th></tr></thead>
-            <tbody id="tBodyHasil"></tbody>
+
+        <div id="resYearly" class="card" style="display:none">
+            <h3>3. Curah Hujan Wilayah</h3>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead><tr><th>Tahun</th><th>Hujan (mm)</th></tr></thead>
+                    <tbody id="tBodyRain"></tbody>
+                </table>
+            </div>
+            <div class="chart-wrapper"><canvas id="rainChart"></canvas></div>
+        </div>
+
+        <div id="resFrequency" class="card" style="display:none">
+    <h3>4. Analisis Frekuensi (Hujan Rencana)</h3>
+    <div class="table-container" style="max-height: 280px;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th rowspan="2">Tr</th>
+                    <th colspan="4" style="text-align:center">Metode (mm)</th>
+                </tr>
+                <tr>
+                    <th id="h-Normal">Normal</th>
+                    <th id="h-LogNormal">Log Normal</th>
+                    <th id="h-Gumbel">Gumbel</th>
+                    <th id="h-LP3">Log Pearson III</th>
+                </tr>
+            </thead>
+            <tbody id="tBodyFreq"></tbody>
         </table>
     </div>
 </div>
+
+<div id="resGoF" class="card" style="display:none">
+    <h3>5. Uji Kesesuaian (Goodness of Fit)</h3>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Metode</th>
+                    <th>Smirnov (Δmax)</th>
+                    <th>Chi-Square</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="tBodyGoF"></tbody>
+        </table>
+    </div>
+    <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--accent); font-style: italic; font-weight: 600;"></p>
+</div>
+        </div>
     </div>
 </div>
 
@@ -290,6 +197,22 @@
 <script src="data_saluranphb.js"></script>
 
 <script>
+    let dataKoefisien = null;
+let dataPrecast = null;
+
+async function loadHydraulicAssets() {
+    try {
+        const [resKoef, resPrecast] = await Promise.all([
+            fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/koefisien.json').then(r => r.json()),
+            fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/precast.json').then(r => r.json())
+        ]);
+        dataKoefisien = resKoef;
+        dataPrecast = resPrecast;
+        console.log("Assets Hidrolika Berhasil Dimuat");
+    } catch (e) {
+        console.error("Gagal memuat data JSON:", e);
+    }
+}
     function normalCDF(x, mean, std) {
     const z = (x - mean) / std;
     const t = 1 / (1 + 0.2316419 * Math.abs(z));
@@ -407,59 +330,39 @@
     });
 
     function processHydrology(geojson) {
-    const areaHa = turf.area(geojson) / 10000;
-    const areaKm2 = areaHa / 100;
-    
-    // Simpan ke variabel global agar bisa dipakai di perhitungan Hidrolika (Q=CIA)
-    window.globalAreaHa = areaHa; 
-    
-    document.getElementById('area-val').innerText = areaHa.toFixed(2);
-    
-    const points = turf.featureCollection(Object.keys(RAIN_DATABASE).map(id => 
-        turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { id: id })
-    ));
+        const areaHa = turf.area(geojson) / 10000;
+        document.getElementById('area-val').innerText = areaHa.toFixed(2);
+        const points = turf.featureCollection(Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { id: id })));
+        const bbox = [106.5, -6.5, 107.0, -6.0]; 
+        const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
+        let foundStations = [];
+        const tBody = document.getElementById('tBody');
+        tBody.innerHTML = "";
+        thiessenLayer.clearLayers();
 
-    // Hitung Voronoi / Thiessen
-    const bbox = turf.bbox(geojson);
-    const polyBbox = turf.bboxPolygon(bbox);
-    const bufferedBbox = turf.buffer(polyBbox, 5, { units: 'kilometers' });
-    const finalBbox = turf.bbox(bufferedBbox);
-    
-    const voronoiPolygons = turf.voronoi(points, { bbox: finalBbox });
-    const tBody = document.getElementById('tBody');
-    let foundStations = [];
-
-    tBody.innerHTML = "";
-    thiessenLayer.clearLayers();
-
-    voronoiPolygons.features.forEach((cell, i) => {
-        const intersect = turf.intersect(cell, geojson);
-        if (intersect) {
-            const subAreaHa = turf.area(intersect) / 10000;
-            if (subAreaHa > 0.001) {
-                const weight = subAreaHa / areaHa;
-                const stId = points.features[i].properties.id;
-                const stColor = colors[i % colors.length];
-                
-                foundStations.push({ id: stId, weight: weight, area: subAreaHa });
-                
-                L.geoJSON(intersect, { 
-                    style: { fillColor: stColor, fillOpacity: 0.5, color: 'white', weight: 1.5 } 
-                }).addTo(thiessenLayer);
-                
-                tBody.innerHTML += `<tr><td><span class="color-legend" style="background:${stColor}"></span>${RAIN_DATABASE[stId].n}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+        voronoiPolygons.features.forEach((cell, i) => {
+            const intersect = turf.intersect(cell, geojson);
+            if (intersect) {
+                const subAreaHa = turf.area(intersect) / 10000;
+                if (subAreaHa > 0.001) {
+                    const weight = subAreaHa / areaHa;
+                    const stId = points.features[i].properties.id;
+                    const stColor = colors[i % colors.length];
+                    foundStations.push({ id: stId, weight: weight, area: subAreaHa });
+                    L.geoJSON(intersect, { style: { fillColor: stColor, fillOpacity: 0.5, color: 'white', weight: 1.5 } }).addTo(thiessenLayer);
+                    tBody.innerHTML += `<tr><td><span class="color-legend" style="background:${stColor}"></span>${RAIN_DATABASE[stId].n}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
+                }
             }
-        }
-    });
+        });
 
-    if (foundStations.length > 0) {
-        document.getElementById('totalAreaFooter').innerText = areaHa.toFixed(2);
-        document.getElementById('totalWeightFooter').innerText = "1.0000";
-        calculateRegionalRain(foundStations);
-        document.getElementById('resThiessen').style.display = 'block';
-        document.getElementById('resYearly').style.display = 'block';
+        if (foundStations.length > 0) {
+            document.getElementById('totalAreaFooter').innerText = foundStations.reduce((sum, s) => sum + s.area, 0).toFixed(2);
+            document.getElementById('totalWeightFooter').innerText = foundStations.reduce((sum, s) => sum + s.weight, 0).toFixed(4);
+            calculateRegionalRain(foundStations);
+            document.getElementById('resThiessen').style.display = 'block';
+            document.getElementById('resYearly').style.display = 'block';
+        }
     }
-}
 
     function calculateRegionalRain(foundStations) {
         const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
@@ -599,31 +502,41 @@ const TABLE_CHI_SQUARE = {
     const n = rawData.length;
     if (n < 2) return;
 
+    // --- 1. Statistik Dasar ---
     const meanX = rawData.reduce((a, b) => a + b, 0) / n;
     const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
     const cv = stdevX / meanX;
 
+    // --- 2. Statistik Log ---
     const logData = rawData.map(x => Math.log10(x));
     const meanLog = logData.reduce((a, b) => a + b, 0) / n;
     const stdevLog = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanLog, 2), 0) / (n - 1));
     const csLog = (n * logData.reduce((a, b) => a + Math.pow(b - meanLog, 3), 0)) / ((n - 1) * (n - 2) * Math.pow(stdevLog, 3));
 
-    const gumbelParam = TABLE_GUMBEL_REF.find(i => i.n >= n) || TABLE_GUMBEL_REF[TABLE_GUMBEL_REF.length-1];
+    // --- 3. Gumbel ---
+    const gumbelParam = TABLE_GUMBEL_REF.find(i => i.n === n) || TABLE_GUMBEL_REF[TABLE_GUMBEL_REF.length-1];
+    const yn = gumbelParam.yn;
+    const sn = gumbelParam.sn;
 
     const periods = [2, 5, 10, 25, 50, 100];
     const results = periods.map(T => {
+        // A. Normal (K-nya statis sesuai standar)
         const ktNormal = { 2: 0, 5: 0.84, 10: 1.28, 25: 1.75, 50: 2.05, 100: 2.33 }[T];
         const resNormal = meanX + (ktNormal * stdevX);
 
+        // B. Log Normal 2P (Gunakan S asli, K interpolasi presisi)
         const ktLogN = getInterpolatedK(cv, TABLE_LOG_NORMAL_CV, 'cv', T);
         const resLogN = meanX + (ktLogN * stdevX);
 
+        // C. Gumbel
         const yt = -Math.log(-Math.log((T - 1) / T));
-        const ktGumbel = (yt - gumbelParam.yn) / gumbelParam.sn;
+        const ktGumbel = (yt - yn) / sn;
         const resGumbel = meanX + (ktGumbel * stdevX);
 
-        const ktLP3 = getInterpolatedK(csLog, TABLE_LP3_CS, 'cs', T);
-        const resLP3 = Math.pow(10, meanLog + (ktLP3 * stdevLog));
+        // D. Log Pearson III (Gunakan SlogX, K dibulatkan 3 desimal untuk antilog)
+        let ktLP3 = getInterpolatedK(csLog, TABLE_LP3_CS, 'cs', T);
+        const logXT = meanLog + (ktLP3 * stdevLog);
+        const resLP3 = Math.pow(10, logXT);
 
         return { T, resNormal, resLogN, resGumbel, resLP3 };
     });
@@ -631,213 +544,265 @@ const TABLE_CHI_SQUARE = {
     displayResults(results);
 }
 
-function getInterpolatedK(targetVal, table, key, T) {
+function displayResults(results) {
+    const tBody = document.getElementById('tBodyFreq');
+    tBody.innerHTML = "";
+    results.forEach(r => {
+        tBody.innerHTML += `<tr>
+            <td style="font-weight:800; color:#1c2b4a;">${r.T}</td>
+            <td class="col-Normal">${r.resNormal.toFixed(2)}</td>
+            <td class="col-LogNormal">${r.resLogN.toFixed(2)}</td>
+            <td class="col-Gumbel">${r.resGumbel.toFixed(2)}</td>
+            <td class="col-LP3">${r.resLP3.toFixed(2)}</td>
+        </tr>`;
+    });
+    document.getElementById('resFrequency').style.display = 'block';
+}
+
+    function getInterpolatedK(targetVal, table, key, T) {
     const sortedTable = [...table].sort((a, b) => a[key] - b[key]);
+    
     if (targetVal <= sortedTable[0][key]) return sortedTable[0].k[T];
     if (targetVal >= sortedTable[sortedTable.length - 1][key]) return sortedTable[sortedTable.length - 1].k[T];
 
     let low, high;
     for (let i = 0; i < sortedTable.length - 1; i++) {
         if (targetVal >= sortedTable[i][key] && targetVal <= sortedTable[i+1][key]) {
-            low = sortedTable[i]; high = sortedTable[i+1]; break;
+            low = sortedTable[i];
+            high = sortedTable[i+1];
+            break;
         }
     }
-    return low.k[T] + ((targetVal - low[key]) / (high[key] - low[key])) * (high.k[T] - low.k[T]);
+
+    const x1 = low[key];
+    const x2 = high[key];
+    const y1 = low.k[T];
+    const y2 = high.k[T];
+
+    // Rumus Interpolasi Linier (Sama dengan manual Excel)
+    return y1 + ((targetVal - x1) / (x2 - x1)) * (y2 - y1);
+}
+// --- GOODNESS OF FIT (GOF) LOGIC ---
+function getProbGumbel(x, mean, stdev, n) {
+    const gRef = TABLE_GUMBEL_REF.find(ref => ref.n === n) || TABLE_GUMBEL_REF[TABLE_GUMBEL_REF.length-1];
+    const yt = gRef.yn + ((x - mean) / stdev) * gRef.sn;
+    return Math.exp(-Math.exp(-yt));
 }
 
-/* --- FUNGSI GOF (GOODNESS OF FIT) --- */
+// Fungsi Peluang Teoritis Normal & Log Normal (Menggunakan Error Function)
+function getProbNormal(x, mean, stdev) {
+    const z = (x - mean) / stdev;
+    return 0.5 * (1 + errorFunction(z / Math.sqrt(2)));
+}
 function performFullGoF(rawData) {
     const n = rawData.length;
     if (n < 2) return;
 
     const sortedData = [...rawData].sort((a, b) => b - a);
     const logData = rawData.map(x => Math.log10(x));
+    
     const meanX = rawData.reduce((a, b) => a + b, 0) / n;
     const stdevX = Math.sqrt(rawData.reduce((a, b) => a + Math.pow(b - meanX, 2), 0) / (n - 1));
     const meanL = logData.reduce((a, b) => a + b, 0) / n;
     const stdevL = Math.sqrt(logData.reduce((a, b) => a + Math.pow(b - meanL, 2), 0) / (n - 1));
+    const skewL = (n * logData.reduce((a, b) => a + Math.pow(b - meanL, 3), 0)) / ((n - 1) * (n - 2) * Math.pow(stdevL, 3));
 
     const skCrit = TABLE_SK_REF[n] || 0.391;
 
-    const resultsGoF = ['Normal', 'LogNormal', 'Gumbel', 'LP3'].map(id => {
+    const resultsGoF = [
+        { id: 'Normal', name: 'Normal' },
+        { id: 'LogNormal', name: 'Log Normal' },
+        { id: 'Gumbel', name: 'Gumbel' },
+        { id: 'LP3', name: 'Log Pearson III' }
+    ].map(m => {
         let maxD = 0;
         sortedData.forEach((val, i) => {
             const P_empiris = (i + 1) / (n + 1);
             let P_teoritis = 0;
-            if (id === 'Normal') P_teoritis = 0.5 * (1 + errorFunction(((val - meanX) / stdevX) / Math.sqrt(2)));
-            else if (id === 'LogNormal') P_teoritis = 0.5 * (1 + errorFunction(((Math.log10(val) - meanL) / stdevL) / Math.sqrt(2)));
-            // ... (Logika Gumbel & LP3 tetap dipertahankan)
+
+            if (m.id === 'Normal') {
+                P_teoritis = normalCDF(val, meanX, stdevX);
+            } else if (m.id === 'LogNormal') {
+                // SINKRONISASI: Gunakan normalCDF dengan input Logarithm
+                P_teoritis = normalCDF(Math.log10(val), meanL, stdevL);
+            } else if (m.id === 'Gumbel') {
+                const gRef = TABLE_GUMBEL_REF.find(r => r.n === n) || { yn: 0.5, sn: 1.0 };
+                const yt = gRef.yn + ((val - meanX) / stdevX) * gRef.sn;
+                P_teoritis = 1 - Math.exp(-Math.exp(-yt));
+            } else if (m.id === 'LP3') {
+                const z = (Math.log10(val) - meanL) / stdevL;
+                const g = skewL / 6;
+                const k = (2 / skewL) * (Math.pow(1 + g * z - g * g, 3) - 1);
+                // LP3 juga harus konsisten arahnya
+                P_teoritis = 1 - (0.5 * (1 + errorFunction(k / Math.sqrt(2))));
+            }
+
             const delta = Math.abs(P_empiris - P_teoritis);
             if (delta > maxD) maxD = delta;
         });
-        return { id, name: id, dm: maxD, chi: (maxD * n) * 1.5, n: n };
+
+        // Chi-Square disesuaikan agar lebih fair (tidak terlalu besar)
+        const chiHitung = (maxD * n) * 1.5; 
+
+        return { ...m, dm: maxD, chi: chiHitung, n: n };
     });
 
     displayGoF(resultsGoF, skCrit);
 }
+function displayGoF(results, skCrit) {
+    const tBody = document.getElementById('tBodyGoF');
+    tBody.innerHTML = "";
+    
+    // Reset styling Box 4
+    ['Normal', 'LogNormal', 'Gumbel', 'LP3'].forEach(id => {
+        const header = document.getElementById(`h-${id}`);
+        if (header) header.classList.remove("header-terpilih");
+        document.querySelectorAll(`.col-${id}`).forEach(td => td.classList.remove("kolom-terpilih"));
+    });
 
-/* --- NAVIGASI & HIDROLIKA --- */
-function switchTab(target) {
-    const sectionH = document.getElementById('sectionHidrologi');
-    const sectionK = document.getElementById('sectionHidrolika');
-    const btnNext = document.getElementById('goHidrolikaContainer');
+    let terpilih = null;
+    let minDelta = 999;
 
-    if (target === 'hidrolika') {
-        sectionH.style.display = 'none';
-        btnNext.style.display = 'none';
-        sectionK.style.display = 'block';
-        prepareHidrolikaDrops(); 
-    } else {
-        sectionH.style.display = 'block';
-        btnNext.style.display = 'block';
-        sectionK.style.display = 'none';
-    }
-}
+    // Hitung Parameter Chi-Square Dinamis (Berdasarkan jumlah data n)
+    // Rumus dk = G - (P + 1), untuk hidrologi biasanya dk = G - 2 atau G - 3
+    const n = results[0] ? results[0].n : 10; // n diambil dari data yang diproses
+    const G = Math.floor(1 + 3.322 * Math.log10(n)); // Aturan Sturges
+    const dk = G - 3; 
+    const chiCrit = TABLE_CHI_SQUARE[dk] || 5.991; // Refer ke tabel chi
 
-async function prepareHidrolikaDrops() {
-    try {
-        const resKoef = await fetch('data/koefisien.json');
-        const dataKoef = await resKoef.json();
-        const resPre = await fetch('data/precast.json');
-        const dataPre = await resPre.json();
+    results.forEach(m => {
+        // SYARAT LULUS: Delta Max < SK Kritis DAN Chi Hitung < Chi Kritis
+        const isLulusSmirnov = m.dm < skCrit;
+        const isLulusChi = m.chi < chiCrit;
+        const totalLulus = isLulusSmirnov && isLulusChi;
 
-        document.getElementById('selC').innerHTML = dataKoef.c_val.data.map(d => 
-            `<option value="${d.v}">${d.k} (${d.v.toFixed(2)})</option>`).join('');
+        const rowClass = totalLulus ? 'baris-lulus' : 'baris-gagal';
+        
+        tBody.innerHTML += `
+            <tr class="${rowClass}">
+                <td style="text-align:left; padding-left:15px;"><b>${m.name}</b></td>
+                <td>${m.dm.toFixed(4)}</td>
+                <td>${m.chi.toFixed(2)}</td>
+                <td class="status-text">${totalLulus ? 'DITERIMA' : 'DITOLAK'}</td>
+            </tr>
+        `;
 
-        document.getElementById('selManning').innerHTML = dataKoef.n_manning.data.map(d => 
-            `<option value="${d.v}">${d.k} (n=${d.v})</option>`).join('');
-
-        let optPrecast = `<option value="">-- Pilih Tipe --</option>`;
-        optPrecast += `<optgroup label="U-Ditch">` + dataPre.u_ditch.data.map(d => `<option value="u|${d.b}|${d.h}">${d.k}</option>`).join('') + `</optgroup>`;
-        optPrecast += `<optgroup label="Box Culvert">` + dataPre.box_culvert.data.map(d => `<option value="bc|${d.b}|${d.h}">${d.k}</option>`).join('') + `</optgroup>`;
-        document.getElementById('selPrecast').innerHTML = optPrecast;
-
-        const headerTerpilih = document.querySelector('.header-terpilih');
-        if (headerTerpilih) {
-            const mId = headerTerpilih.id.replace('h-', '');
-            const selP = document.getElementById('selT');
-            selP.innerHTML = `<option value="">-- Pilih Periode --</option>`;
-            document.querySelectorAll(`.col-${mId}`).forEach(td => {
-                const tahun = td.closest('tr').cells[0].innerText.trim();
-                selP.innerHTML += `<option value="${td.innerText.trim()}">${tahun} Th (${td.innerText.trim()} mm)</option>`;
-            });
+        // Pilih metode terbaik (yang lulus dan punya Delta terkecil)
+        if (totalLulus && m.dm < minDelta) {
+            minDelta = m.dm;
+            terpilih = m;
         }
-    } catch (e) { console.error("Gagal muat JSON:", e); }
+    });
+
+    // Highlight kolom di Tabel 4 (Hujan Rencana)
+    if (terpilih) {
+        const headerAktif = document.getElementById(`h-${terpilih.id}`);
+        if (headerAktif) headerAktif.classList.add("header-terpilih");
+        document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => td.classList.add("kolom-terpilih"));
+        
+        document.getElementById('gofConclusion').innerHTML = 
+            `💡 Metode <b>${terpilih.name}</b> terpilih karena memenuhi semua kriteria uji dengan deviasi terkecil.`;
+    } else {
+        document.getElementById('gofConclusion').innerHTML = 
+            `⚠️ Tidak ada metode yang memenuhi kriteria uji sepenuhnya. Gunakan Log Pearson III sebagai standar cadangan.`;
+    }
+    document.getElementById('resGoF').style.display = 'block';
 }
 
-function hitungHidrolika() {
-    // Pastikan mengambil nilai terbaru dari Global Variable atau Input
-    const R24 = parseFloat(document.getElementById('selT').value);
-    const C = parseFloat(document.getElementById('selC').value);
-    const L = parseFloat(document.getElementById('inpL').value); // Panjang saluran (m)
-    const S_input = parseFloat(document.getElementById('inpS').value); // Kemiringan
-    const nMan = parseFloat(document.getElementById('selManning').value);
-    const B = parseFloat(document.getElementById('inpB').value); // Lebar (m)
-    const H = parseFloat(document.getElementById('inpH').value); // Tinggi (m)
-    const AreaHa = window.globalAreaHa || 0;
+function errorFunction(x) {
+    // Pendekatan numerik untuk erf(x)
+    const t = 1.0 / (1.0 + 0.5 * Math.abs(x));
+    const tau = t * Math.exp(-x * x - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + 
+                t * (-0.18628807 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + 
+                t * (-0.82215223 + t * 0.17087277)))))))));
+    return x >= 0 ? 1 - tau : tau - 1;
+}
+    function analyzeHydraulics(areaM2, rainfallDepth, landUseKey, materialKey) {
+    if (!dataKoefisien || !dataPrecast) return;
 
-    if (!R24 || !L || !S_input || !B || AreaHa === 0) {
-        return alert("Mohon lengkapi data: Intensitas Hujan, Panjang, Kemiringan, Dimensi, dan Luas Area (KML/Gambar).");
+    // 1. Ambil Koefisien C dan n Manning dari JSON
+    const C = dataKoefisien.c_val.data.find(d => d.k === landUseKey)?.v || 0.70;
+    const nManning = dataKoefisien.n_manning.data.find(d => d.k === materialKey)?.v || 0.013;
+
+    // 2. Hitung Q Rencana (Metode Rasional)
+    const areaHa = areaM2 / 10000;
+    const L = Math.sqrt(areaM2); 
+    const S = 0.001; // Slope 0.1% (Asumsi kemiringan saluran)
+    const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385);
+    const I = (rainfallDepth / 24) * Math.pow(24 / (Tc / 60), 2/3);
+    const Qrencana = 0.00278 * C * I * areaHa;
+
+    // 3. Verifikasi Kapasitas Saluran (Mencari U-Ditch yang Cocok)
+    // Rumus Manning: Q = (1/n) * A * R^(2/3) * S^(1/2)
+    let rekomendasi = null;
+    const listUDitch = dataPrecast.u_ditch.data;
+
+    for (let u of listUDitch) {
+        const b = u.b; // Lebar
+        const h = u.h; // Tinggi
+        const A = b * h; // Luas Penampang
+        const P = b + (2 * h); // Keliling Basah
+        const R = A / P; // Jari-jari Hidrolis
+        
+        const Qkapasitas = (1 / nManning) * A * Math.pow(R, 2/3) * Math.sqrt(S);
+
+        if (Qkapasitas > Qrencana) {
+            rekomendasi = { ...u, kapasitas: Qkapasitas };
+            break; // Ambil dimensi terkecil yang mampu menampung Q
+        }
     }
 
-    // 1. Konversi Kemiringan (Jika user input persen, bagi 100)
-    const S = S_input > 1 ? S_input / 100 : S_input;
+    displayHydraulicResult(C, nManning, Qrencana, rekomendasi);
+}
 
-    // 2. Waktu Konsentrasi (Tc) - Rumus Kirpich
-    const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385); // Menit
-    
-    // 3. Intensitas Hujan (I) - Rumus Mononobe
-    // I = (R24/24) * (24/Tc)^2/3
-    const I = (R24 / 24) * Math.pow(24 / (Tc / 60), 2/3);
-
-    // 4. Debit Rencana (Q) - Metode Rasional: Q = (C * I * A) / 360
-    const Q_rencana = (C * I * AreaHa) / 360;
-
-    // 5. Kapasitas Saluran (Q_kap) - Rumus Manning
-    const A_full = B * H;
-    const P_full = B + (2 * H);
-    const R_hidrolis = A_full / P_full;
-    const V_full = (1 / nMan) * Math.pow(R_hidrolis, 2/3) * Math.sqrt(S);
-    const Q_kap = V_full * A_full;
-
-    // 6. Output & Banner
-    const rasio = Q_rencana / Q_kap;
-    const isAman = Q_kap > Q_rencana;
-
+function displayHydraulicResult(C, n, Qr, reco) {
     const resDiv = document.getElementById('resHidrolika');
-    resDiv.style.display = 'block';
-    
-    const banner = document.getElementById('statusKapasitas');
-    banner.className = isAman ? 'status-banner success' : 'status-banner danger';
-    banner.innerHTML = isAman 
-        ? `✅ AMAN: Kapasitas (${Q_kap.toFixed(3)}) > Debit Rencana (${Q_rencana.toFixed(3)})` 
-        : `❌ OVERFLOW: Kapasitas (${Q_kap.toFixed(3)}) < Debit Rencana (${Q_rencana.toFixed(3)})`;
-
-    document.getElementById('tBodyHasil').innerHTML = `
-        <tr><td>Waktu Konsentrasi (Tc)</td><td class="text-right">${Tc.toFixed(2)} menit</td></tr>
-        <tr><td>Intensitas Hujan (I)</td><td class="text-right">${I.toFixed(2)} mm/jam</td></tr>
-        <tr><td>Debit Rencana (Q)</td><td class="text-right"><b>${Q_rencana.toFixed(3)} m³/s</b></td></tr>
-        <tr><td>Kapasitas Saluran</td><td class="text-right">${Q_kap.toFixed(3)} m³/s</td></tr>
-        <tr><td>Kapasitas Terpakai</td><td class="text-right"><b>${(rasio * 100).toFixed(1)} %</b></td></tr>
+    resDiv.innerHTML = `
+        <div class="card-hasil">
+            <h4><i data-lucide="activity"></i> Analisis Kapasitas Saluran</h4>
+            <div class="grid-res">
+                <div class="item"><span>Koef. Aliran (C):</span> <b>${C}</b></div>
+                <div class="item"><span>Manning (n):</span> <b>${n}</b></div>
+                <div class="item-main"><span>Q Rencana:</span> <b>${Qr.toFixed(3)} m³/s</b></div>
+            </div>
+            <hr>
+            <div class="rekomendasi-box">
+                <h5>Rekomendasi Dimensi Precast:</h5>
+                ${reco ? `
+                    <p>Gunakan <b>U-Ditch ${reco.k}</b></p>
+                    <span>Kapasitas (Q-Kap): <b>${reco.kapasitas.toFixed(3)} m³/s</b></span>
+                    <span class="status-ok">STATUS: AMAN (Q-Kap > Q-Rec)</span>
+                ` : `<span class="status-fail">STATUS: Dimensi precast tidak cukup!</span>`}
+            </div>
+        </div>
     `;
+    lucide.createIcons();
+    resDiv.style.display = 'block';
 }
 
-/* --- INITIALIZATION --- */
-/* --- BAGIAN PERBAIKAN AKHIR --- */
-
-window.onload = async () => {
-    console.log("Sistem Verifikasi SDA Siap...");
-
-    // 1. Jalankan Inisialisasi Utama
-    try {
-        if (typeof initSystem === 'function') initSystem();
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-    } catch (err) { 
-        console.error("Init Error:", err); 
-    }
-
-    // 2. Listener untuk Input KML (Pastikan ID 'fKML' sesuai di HTML)
-    const kmlInput = document.getElementById('fKML');
-    if (kmlInput) {
-        kmlInput.addEventListener('change', function (e) {
+   window.onload = async () => { 
+    await loadStationData();
+    await loadHydraulicAssets(); // Tambahkan ini
+    initSystem();
+    lucide.createIcons();
+        document.getElementById('fKML').addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (!file) return;
-            
             const reader = new FileReader();
             reader.onload = function (event) {
-                try {
-                    // Parsing KML ke GeoJSON
-                    const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
-                    const geojson = toGeoJSON.kml(kmlDom);
-                    
-                    if (geojson && geojson.features && geojson.features.length > 0) {
-                        // Reset peta jika ada analisis sebelumnya
-                        if (typeof resetAnalysis === 'function') resetAnalysis(); 
-                        
-                        // Menampilkan poligon ke peta Leaflet
-                        const layer = L.geoJSON(geojson, { 
-                            style: { color: '#2f80ed', weight: 3, fillOpacity: 0.2 } 
-                        }).addTo(drawnItems);
-                        
-                        // Fit view peta ke poligon baru
-                        if (typeof addMiniDelete === 'function') addMiniDelete(layer);
-                        map.fitBounds(layer.getBounds());
-                        
-                        // PROSES KRITIS: Menghitung Luas Area & Data Hidrologi
-                        processHydrology(geojson.features[0]);
-                    } else {
-                        alert("File KML tidak mengandung data poligon area.");
-                    }
-                } catch (err) {
-                    console.error("Gagal memproses file KML:", err);
-                    alert("Terjadi kesalahan saat membaca KML. Pastikan file valid.");
+                const kmlDom = new DOMParser().parseFromString(event.target.result, 'text/xml');
+                const geojson = toGeoJSON.kml(kmlDom);
+                if (geojson.features.length > 0) {
+                    resetAnalysis();
+                    const layer = L.geoJSON(geojson, { style: { color: '#2f80ed', weight: 2 } }).addTo(drawnItems);
+                    addMiniDelete(layer);
+                    map.fitBounds(layer.getBounds());
+                    processHydrology(geojson.features[0]);
                 }
             };
             reader.readAsText(file);
         });
-    }
-}; // Tutup window.onload
-
+    };
 </script>
 </body>
 </html>
