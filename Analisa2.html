@@ -300,6 +300,7 @@
 <script src="data_saluranphb.js"></script>
 
 <script>
+    // --- 1. GLOBAL VARIABLES & STATE ---
     let dataKoefisien = null;
     let dataPrecast = null;
     let RAIN_DATABASE = {}; 
@@ -307,11 +308,14 @@
     let selectedRainfall = 0;
     const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
 
-    // --- 1. INITIALIZATION & ASSETS ---
+    // Map Layers & Controls
+    let map, drawnItems, thiessenLayer, stationLayer, mikroLayer, phbLayer, drawControl;
+
+    // --- 2. INITIALIZATION ---
     window.onload = () => {
         initMap();          // Inisialisasi Peta
-        initSystem();       // Inisialisasi Data Saluran
-        loadHydraulicAssets(); // Fetch JSON dari GitHub
+        initSystem();       // Inisialisasi Data Saluran (Mikro/PHB)
+        loadHydraulicAssets(); // Fetch JSON (Koefisien & Precast)
         lucide.createIcons();
         setupEventListeners();
     };
@@ -351,7 +355,7 @@
         }
     }
 
-    // --- 2. UI NAVIGATION & CONTROL ---
+    // --- 3. UI NAVIGATION & CONTROL ---
     function switchTab(tab) {
         const groupHidro = document.getElementById('group-hidrologi');
         const groupHidra = document.getElementById('group-hidraulika');
@@ -371,6 +375,26 @@
         }
     }
 
+    function setMode(mode) {
+        resetAnalysis();
+        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
+        
+        // Safety check jika drawControl belum siap
+        if (drawControl) map.removeControl(drawControl);
+        
+        document.getElementById('upload-section').style.display = 'none';
+        document.getElementById('draw-section').style.display = 'none';
+
+        if(mode === 'draw') {
+            document.getElementById('btn-draw').classList.add('active');
+            if (drawControl) map.addControl(drawControl);
+            document.getElementById('draw-section').style.display = 'block';
+        } else {
+            document.getElementById('btn-upload').classList.add('active');
+            document.getElementById('upload-section').style.display = 'block';
+        }
+    }
+
     function handleDimensiChange() {
         const jenis = document.getElementById('jenis-precast').value;
         const sectionOtomatis = document.getElementById('section-dimensi-otomatis');
@@ -383,30 +407,10 @@
             sectionOtomatis.style.display = 'block';
             sectionCustom.style.display = 'none';
         }
-        // Update visualisasi potongan melintang jika ada nilainya
         if (typeof drawCrossSection === "function") drawCrossSection(0, 0); 
     }
 
-    function setMode(mode) {
-        resetAnalysis();
-        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
-        map.removeControl(drawControl);
-        document.getElementById('upload-section').style.display = 'none';
-        document.getElementById('draw-section').style.display = 'none';
-
-        if(mode === 'draw') {
-            document.getElementById('btn-draw').classList.add('active');
-            map.addControl(drawControl);
-            document.getElementById('draw-section').style.display = 'block';
-        } else {
-            document.getElementById('btn-upload').classList.add('active');
-            document.getElementById('upload-section').style.display = 'block';
-        }
-    }
-
-    // --- 3. MAP ENGINE (LEAFLET) ---
-    let map, drawnItems, thiessenLayer, stationLayer, mikroLayer, phbLayer, drawControl;
-
+    // --- 4. MAP ENGINE (LEAFLET) ---
     function initMap() {
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
         const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
@@ -417,8 +421,8 @@
         drawnItems = new L.FeatureGroup().addTo(map);
         thiessenLayer = L.layerGroup().addTo(map);
         stationLayer = L.layerGroup().addTo(map);
-        mikroLayer = L.geoJSON(null);
-        phbLayer = L.geoJSON(null);
+        mikroLayer = L.geoJSON(null).addTo(map);
+        phbLayer = L.geoJSON(null).addTo(map);
 
         L.control.layers(
             { "Peta Jalan": osm, "Satelit": satellite }, 
@@ -444,34 +448,41 @@
 
     function initSystem() {
         if (typeof dataMikro !== 'undefined') {
-            mikroLayer.addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 });
+            mikroLayer.clearLayers().addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 });
         }
         if (typeof dataPHB !== 'undefined') {
-            phbLayer.addData(dataPHB).setStyle({ color: "#1e3a8a", weight: 5, opacity: 1 });
+            phbLayer.clearLayers().addData(dataPHB).setStyle({ color: "#1e3a8a", weight: 5, opacity: 1 });
         }
         loadStationData(); 
         console.log("🚀 Sistem Siap Digunakan");
     }
 
-    // --- 4. CORE ANALYTICS FUNCTIONS ---
+    // --- 5. CORE ANALYTICS FUNCTIONS ---
     function resetAnalysis() {
-        drawnItems.clearLayers();
-        thiessenLayer.clearLayers();
+        if (drawnItems) drawnItems.clearLayers();
+        if (thiessenLayer) thiessenLayer.clearLayers();
         
-        // Reset Text UI
-        const safeSetText = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
+        const safeSetText = (id, val) => { 
+            const el = document.getElementById(id);
+            if(el) el.innerText = val; 
+        };
+
         safeSetText('area-val', "0.00");
         safeSetText('totalAreaFooter', "0.00");
         safeSetText('totalWeightFooter', "1.0000");
 
-        // Clear Tables
-        document.getElementById('tBody').innerHTML = "";
-        document.getElementById('tBodyRain').innerHTML = "";
-        document.getElementById('fKML').value = "";
+        const tBody = document.getElementById('tBody');
+        const tBodyRain = document.getElementById('tBodyRain');
+        const fKML = document.getElementById('fKML');
 
-        // Hide Sections
-        ['resThiessen', 'resYearly', 'resFrequency', 'resGoF'].forEach(id => {
-            document.getElementById(id).style.display = 'none';
+        if(tBody) tBody.innerHTML = "";
+        if(tBodyRain) tBodyRain.innerHTML = "";
+        if(fKML) fKML.value = "";
+
+        const sections = ['resThiessen', 'resYearly', 'resFrequency', 'resGoF'];
+        sections.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.style.display = 'none';
         });
 
         if (myChart) { myChart.destroy(); myChart = null; }
@@ -492,11 +503,12 @@
             RAIN_DATABASE = await response.json();
             updateStationMarkers();
         } catch (err) { 
-            console.error("Gagal sinkron data hujan:", err); 
+            console.error("❌ Gagal sinkron data hujan:", err); 
         }
     }
 
     function updateStationMarkers() {
+        if (!stationLayer) return;
         stationLayer.clearLayers();
         Object.keys(RAIN_DATABASE).forEach(id => {
             const st = RAIN_DATABASE[id];
@@ -506,105 +518,19 @@
             .bindTooltip(`<b>${st.n}</b>`, { permanent: true, direction: 'top', offset: [0,-10], className: 'stasiun-label' });
         });
     }
-
-    // Math Utility: Normal Cumulative Distribution Function
-    function normalCDF(x, mean, std) {
-        const z = (x - mean) / std;
-        const t = 1 / (1 + 0.2316419 * Math.abs(z));
-        const d = 0.3989423 * Math.exp(-z * z / 2);
-        let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.7814779 + t * (-1.821256 + t * 1.330274))));
-        let cdf = z > 0 ? 1 - p : p;
-        return 1 - cdf; // Peluang terlampaui (Probabilitas)
-    }
-    
-    // --- FUNCTIONS ---
-    function initSystem() {
-        if (typeof dataMikro !== 'undefined') {
-            mikroLayer.addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 }).addTo(map);
-        }
-        if (typeof dataPHB !== 'undefined') {
-            phbLayer.addData(dataPHB).setStyle({ color: "#1e3a8a", weight: 5, opacity: 1 }).addTo(map);
-        }
-    loadStationData(); 
-    
-    console.log("Sistem Siap");
-}
-
-    function resetAnalysis() {
-        drawnItems.clearLayers();
-        thiessenLayer.clearLayers();
-        document.getElementById('area-val').innerText = "0.00";
-        document.getElementById('tBody').innerHTML = "";
-        document.getElementById('tBodyRain').innerHTML = "";
-        document.getElementById('fKML').value = "";
-        if(document.getElementById('totalAreaFooter')) document.getElementById('totalAreaFooter').innerText = "0.00";
-        if(document.getElementById('totalWeightFooter')) document.getElementById('totalWeightFooter').innerText = "1.0000";
-        document.getElementById('resThiessen').style.display = 'none';
-        document.getElementById('resYearly').style.display = 'none';
-        document.getElementById('resFrequency').style.display = 'none';
-        if (myChart) { myChart.destroy(); myChart = null; }
-        document.getElementById('resGoF').style.display = 'none';
-    }
-
-    function addMiniDelete(layer) {
-        const btn = document.createElement('button');
-        btn.className = 'btn-delete-mini';
-        btn.innerHTML = '🗑️ Hapus';
-        btn.onclick = function() { resetAnalysis(); map.closePopup(); };
-        layer.bindPopup(btn, { closeButton: false, offset: L.point(0, -5) });
-    }
-
-    async function loadStationData() {
-        const url = `https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/hujan.json?t=${Date.now()}`;
-        try {
-            const response = await fetch(url);
-            RAIN_DATABASE = await response.json();
-            updateStationMarkers();
-        } catch (err) { console.error("Gagal sinkron data:", err); }
-    }
-
-    function updateStationMarkers() {
-        stationLayer.clearLayers();
-        Object.keys(RAIN_DATABASE).forEach(id => {
-            const st = RAIN_DATABASE[id];
-            L.circleMarker([st.lat, st.lng], {
-                radius: 6, fillColor: "#ea580c", color: "#fff", weight: 2, fillOpacity: 1
-            }).addTo(stationLayer)
-            .bindTooltip(`<b>${st.n}</b>`, { permanent: true, direction: 'top', offset: [0,-10], className: 'stasiun-label' });
-        });
-    }
-
-    function setMode(mode) {
-        resetAnalysis();
-        document.querySelectorAll('.btn-choice').forEach(b => b.classList.remove('active'));
-        map.removeControl(drawControl);
-        document.getElementById('upload-section').style.display = 'none';
-        document.getElementById('draw-section').style.display = 'none';
-        if(mode === 'draw') {
-            document.getElementById('btn-draw').classList.add('active');
-            map.addControl(drawControl);
-            document.getElementById('draw-section').style.display = 'block';
-        } else {
-            document.getElementById('btn-upload').classList.add('active');
-            document.getElementById('upload-section').style.display = 'block';
-        }
-    }
-
-    map.on(L.Draw.Event.CREATED, function (e) {
-        resetAnalysis();
-        var layer = e.layer;
-        drawnItems.addLayer(layer);
-        addMiniDelete(layer);
-        processHydrology(layer.toGeoJSON());
-    });
 
     function processHydrology(geojson) {
         const areaHa = turf.area(geojson) / 10000;
         document.getElementById('area-val').innerText = areaHa.toFixed(2);
-        const points = turf.featureCollection(Object.keys(RAIN_DATABASE).map(id => turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { id: id })));
+        
+        const points = turf.featureCollection(Object.keys(RAIN_DATABASE).map(id => 
+            turf.point([RAIN_DATABASE[id].lng, RAIN_DATABASE[id].lat], { id: id })
+        ));
+        
         const bbox = [106.5, -6.5, 107.0, -6.0]; 
         const voronoiPolygons = turf.voronoi(points, { bbox: bbox });
         let foundStations = [];
+        
         const tBody = document.getElementById('tBody');
         tBody.innerHTML = "";
         thiessenLayer.clearLayers();
@@ -618,7 +544,11 @@
                     const stId = points.features[i].properties.id;
                     const stColor = colors[i % colors.length];
                     foundStations.push({ id: stId, weight: weight, area: subAreaHa });
-                    L.geoJSON(intersect, { style: { fillColor: stColor, fillOpacity: 0.5, color: 'white', weight: 1.5 } }).addTo(thiessenLayer);
+                    
+                    L.geoJSON(intersect, { 
+                        style: { fillColor: stColor, fillOpacity: 0.5, color: 'white', weight: 1.5 } 
+                    }).addTo(thiessenLayer);
+                    
                     tBody.innerHTML += `<tr><td><span class="color-legend" style="background:${stColor}"></span>${RAIN_DATABASE[stId].n}</td><td>${subAreaHa.toFixed(2)}</td><td>${weight.toFixed(4)}</td></tr>`;
                 }
             }
@@ -635,9 +565,11 @@
 
     function calculateRegionalRain(foundStations) {
         const years = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024];
-        let labels = []; let dataValues = [];
+        let labels = []; 
+        let dataValues = [];
         const tBodyRain = document.getElementById('tBodyRain');
         tBodyRain.innerHTML = ""; 
+
         years.forEach((year, index) => {
             let total = 0;
             foundStations.forEach(st => {
@@ -648,12 +580,13 @@
                 }
             });
             const val = total.toFixed(2);
-            labels.push(year); dataValues.push(parseFloat(val));
+            labels.push(year); 
+            dataValues.push(parseFloat(val));
             tBodyRain.innerHTML += `<tr><td>${year}</td><td>${val}</td></tr>`;
         });
         renderChart(labels, dataValues);
-        performFrequencyAnalysis(dataValues);
-        performFullGoF(dataValues);
+        if (typeof performFrequencyAnalysis === "function") performFrequencyAnalysis(dataValues);
+        if (typeof performFullGoF === "function") performFullGoF(dataValues);
     }
 
     function renderChart(labels, data) {
@@ -670,15 +603,30 @@
                     backgroundColor: 'rgba(47, 128, 237, 0.1)', 
                     fill: true, 
                     tension: 0.4,
-                    pointRadius: 2
+                    pointRadius: 3
                 }] 
             },
             options: { 
                 responsive: true, 
                 maintainAspectRatio: false, 
                 plugins: { legend: { display: false } },
-                scales: { x: { ticks: { font: { size: 9 } } }, y: { ticks: { font: { size: 9 } } } }
+                scales: { 
+                    x: { ticks: { font: { size: 9 } } }, 
+                    y: { ticks: { font: { size: 9 } } } 
+                }
             }
+        });
+    }
+
+    // Math Utility: Normal Cumulative Distribution Function
+    function normalCDF(x, mean, std) {
+        const z = (x - mean) / std;
+        const t = 1 / (1 + 0.2316419 * Math.abs(z));
+        const d = 0.3989423 * Math.exp(-z * z / 2);
+        let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.7814779 + t * (-1.821256 + t * 1.330274))));
+        let cdf = z > 0 ? 1 - p : p;
+        return 1 - cdf;
+    }
         });
     }
 const TABLE_CHI_SQUARE = {
