@@ -304,6 +304,7 @@
     let dataPrecast = null;
     let RAIN_DATABASE = {}; 
     let myChart = null;
+    let selectedRainfall = 0;
     const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
 
     window.onload = () => {
@@ -406,11 +407,6 @@ async function loadHydraulicAssets() {
             polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
         }
     });
-
-    let RAIN_DATABASE = {}; 
-    let myChart = null;
-    const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c'];
-
     // --- FUNCTIONS ---
     function initSystem() {
         if (typeof dataMikro !== 'undefined') {
@@ -897,7 +893,7 @@ function displayGoF(results, skCrit) {
         `;
     }
     document.getElementById('resGoF').style.display = 'block';
-    
+    }    
 function goToHydraulics() {
     switchTab('hidraulika');
     showHydraulicUI(); // Otomatis load dropdown C, n, dan Dimensi
@@ -1081,7 +1077,6 @@ function drawCrossSection(b, h, y = 0) {
         ctx.fillText(`y: ${y.toFixed(2)}m`, startX + drawB + 5, (startY + drawH) - (drawY/2));
     }
 }
-            document.getElementById('fKML').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -1091,11 +1086,10 @@ function drawCrossSection(b, h, y = 0) {
         resetAnalysis();
         const layer = L.geoJSON(geojson).addTo(drawnItems);
         map.fitBounds(layer.getBounds());
-        processHydrology(geojson.features[0]); // Memicu analisis otomatis setelah upload
+        processHydrology(geojson.features[0]);// Memicu analisis otomatis setelah upload
     };
     reader.readAsText(file);
 });
-    };
 </script>
 </body>
 </html>
