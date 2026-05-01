@@ -7,7 +7,7 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="[https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css)" />
 
     <style>
         :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
@@ -174,6 +174,28 @@
         </table>
     </div>
     <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--accent); font-style: italic; font-weight: 600;"></p>
+</div>
+        <div id="resHydraulic" class="card" style="display:none">
+    <h3>6. Analisis Hidraulika (Saluran)</h3>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+        <label style="font-size:10px; font-weight:800;">PANJANG SALURAN (L) - Meter</label>
+        <input type="number" id="inL" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 150">
+        
+        <label style="font-size:10px; font-weight:800;">KEMIRINGAN (S)</label>
+        <input type="number" id="inS" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 0.002">
+        
+        <label style="font-size:10px; font-weight:800;">JENIS LAHAN (C)</label>
+        <select id="selC" class="btn-choice" style="width:100%"></select>
+        
+        <label style="font-size:10px; font-weight:800;">MATERIAL SALURAN (n)</label>
+        <select id="selN" class="btn-choice" style="width:100%"></select>
+
+        <label style="font-size:10px; font-weight:800;">DIMENSI SALURAN</label>
+        <select id="selDim" class="btn-choice" style="width:100%"></select>
+
+        <button onclick="calculateHydraulics()" class="upload-area" style="margin-top:10px;">HITUNG VERIFIKASI</button>
+    </div>
+    <div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
 </div>
         </div>
     </div>
@@ -700,11 +722,14 @@ function displayGoF(results, skCrit) {
         if (headerAktif) headerAktif.classList.add("header-terpilih");
         document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => td.classList.add("kolom-terpilih"));
         
+        // Simpan nilai hujan rencana Tr-10 secara global untuk hidraulika
+        const row10 = Array.from(document.querySelectorAll('#tBodyFreq tr')).find(tr => tr.cells[0].innerText == '10');
+        window.selectedRainfall = parseFloat(row10.querySelector(`.col-${terpilih.id}`).innerText);
+
         document.getElementById('gofConclusion').innerHTML = 
-            `💡 Metode <b>${terpilih.name}</b> terpilih karena memenuhi semua kriteria uji dengan deviasi terkecil.`;
+            `💡 Metode <b>${terpilih.name}</b> terpilih. <br><button onclick="showHydraulicUI()" class="upload-area" style="margin-top:10px; width:100%; background:#16a34a">LANJUT ANALISIS HIDRAULIKA</button>`;
     } else {
-        document.getElementById('gofConclusion').innerHTML = 
-            `⚠️ Tidak ada metode yang memenuhi kriteria uji sepenuhnya. Gunakan Log Pearson III sebagai standar cadangan.`;
+        document.getElementById('gofConclusion').innerHTML = `⚠️ Tidak ada metode yang memenuhi kriteria.`;
     }
     document.getElementById('resGoF').style.display = 'block';
 }
@@ -717,68 +742,62 @@ function errorFunction(x) {
                 t * (-0.82215223 + t * 0.17087277)))))))));
     return x >= 0 ? 1 - tau : tau - 1;
 }
-    function analyzeHydraulics(areaM2, rainfallDepth, landUseKey, materialKey) {
-    if (!dataKoefisien || !dataPrecast) return;
+function showHydraulicUI() {
+    document.getElementById('resHydraulic').style.display = 'block';
+    const sC = document.getElementById('selC');
+    const sN = document.getElementById('selN');
+    const sD = document.getElementById('selDim');
 
-    // 1. Ambil Koefisien C dan n Manning dari JSON
-    const C = dataKoefisien.c_val.data.find(d => d.k === landUseKey)?.v || 0.70;
-    const nManning = dataKoefisien.n_manning.data.find(d => d.k === materialKey)?.v || 0.013;
+    // Isi Dropdown C
+    sC.innerHTML = dataKoefisien.c_val.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
+    // Isi Dropdown N
+    sN.innerHTML = dataKoefisien.n_manning.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
+    // Isi Dropdown Dimensi (U-Ditch & Box)
+    let optDim = '<option value="">-- Pilih Dimensi --</option>';
+    dataPrecast.u_ditch.data.forEach(i => optDim += `<option value="${i.b}|${i.h}|${i.k}">U-Ditch ${i.k}</option>`);
+    dataPrecast.box_culvert.data.forEach(i => optDim += `<option value="${i.b}|${i.h}|${i.k}">Box ${i.k}</option>`);
+    sD.innerHTML = optDim;
+    
+    document.getElementById('resHydraulic').scrollIntoView({ behavior: 'smooth' });
+}
 
-    // 2. Hitung Q Rencana (Metode Rasional)
-    const areaHa = areaM2 / 10000;
-    const L = Math.sqrt(areaM2); 
-    const S = 0.001; // Slope 0.1% (Asumsi kemiringan saluran)
+function calculateHydraulics() {
+    const L = parseFloat(document.getElementById('inL').value);
+    const S = parseFloat(document.getElementById('inS').value);
+    const C = parseFloat(document.getElementById('selC').value);
+    const n = parseFloat(document.getElementById('selN').value);
+    const dim = document.getElementById('selDim').value;
+    const areaHa = parseFloat(document.getElementById('area-val').innerText);
+    const R24 = window.selectedRainfall;
+
+    if(!L || !S || !dim) return alert("Mohon isi Panjang, Slope, dan Dimensi!");
+
+    // 1. Q-Rencana (Rasional)
     const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385);
-    const I = (rainfallDepth / 24) * Math.pow(24 / (Tc / 60), 2/3);
-    const Qrencana = 0.00278 * C * I * areaHa;
+    const I = (R24 / 24) * Math.pow((24 / (Tc / 60)), (2/3));
+    const Qrencana = (C * I * areaHa) / 360;
 
-    // 3. Verifikasi Kapasitas Saluran (Mencari U-Ditch yang Cocok)
-    // Rumus Manning: Q = (1/n) * A * R^(2/3) * S^(1/2)
-    let rekomendasi = null;
-    const listUDitch = dataPrecast.u_ditch.data;
+    // 2. Q-Kapasitas (Manning)
+    const [b, h, nama] = dim.split('|');
+    const A = parseFloat(b) * parseFloat(h);
+    const P = parseFloat(b) + (2 * parseFloat(h));
+    const R = A / P;
+    const Qkapasitas = (1/n) * A * Math.pow(R, 2/3) * Math.sqrt(S);
 
-    for (let u of listUDitch) {
-        const b = u.b; // Lebar
-        const h = u.h; // Tinggi
-        const A = b * h; // Luas Penampang
-        const P = b + (2 * h); // Keliling Basah
-        const R = A / P; // Jari-jari Hidrolis
-        
-        const Qkapasitas = (1 / nManning) * A * Math.pow(R, 2/3) * Math.sqrt(S);
-
-        if (Qkapasitas > Qrencana) {
-            rekomendasi = { ...u, kapasitas: Qkapasitas };
-            break; // Ambil dimensi terkecil yang mampu menampung Q
-        }
-    }
-
-    displayHydraulicResult(C, nManning, Qrencana, rekomendasi);
-}
-
-function displayHydraulicResult(C, n, Qr, reco) {
-    const resDiv = document.getElementById('resHidrolika');
-    resDiv.innerHTML = `
-        <div class="card-hasil">
-            <h4><i data-lucide="activity"></i> Analisis Kapasitas Saluran</h4>
-            <div class="grid-res">
-                <div class="item"><span>Koef. Aliran (C):</span> <b>${C}</b></div>
-                <div class="item"><span>Manning (n):</span> <b>${n}</b></div>
-                <div class="item-main"><span>Q Rencana:</span> <b>${Qr.toFixed(3)} m³/s</b></div>
-            </div>
-            <hr>
-            <div class="rekomendasi-box">
-                <h5>Rekomendasi Dimensi Precast:</h5>
-                ${reco ? `
-                    <p>Gunakan <b>U-Ditch ${reco.k}</b></p>
-                    <span>Kapasitas (Q-Kap): <b>${reco.kapasitas.toFixed(3)} m³/s</b></span>
-                    <span class="status-ok">STATUS: AMAN (Q-Kap > Q-Rec)</span>
-                ` : `<span class="status-fail">STATUS: Dimensi precast tidak cukup!</span>`}
-            </div>
-        </div>
+    // 3. Output
+    const out = document.getElementById('hydraulicOutput');
+    const isAman = Qkapasitas > Qrencana;
+    out.style.display = 'block';
+    out.style.background = isAman ? '#dcfce7' : '#fee2e2';
+    out.style.color = isAman ? '#166534' : '#991b1b';
+    out.innerHTML = `
+        <p style="font-size:11px; font-weight:800;">HASIL VERIFIKASI:</p>
+        <p>Q-Rencana: <b>${Qrencana.toFixed(3)} m³/s</b></p>
+        <p>Q-Kapasitas (${nama}): <b>${Qkapasitas.toFixed(3)} m³/s</b></p>
+        <hr style="margin:5px 0; opacity:0.2">
+        <p style="font-size:12px; font-weight:800;">STATUS: ${isAman ? '✅ AMAN (MEMENUHI)' : '❌ TIDAK CUKUP!'}</p>
     `;
-    lucide.createIcons();
-    resDiv.style.display = 'block';
-}
+}   
 
    window.onload = async () => { 
     await loadStationData();
