@@ -125,6 +125,38 @@
     color: white;
     border-color: var(--primary);
 }
+    #main-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--white); /* Menggunakan variabel white Anda */
+            border-bottom: 1px solid #e2e8f0;
+            padding-top: 10px;
+        }
+
+        /* 2. Grid System untuk Form (2 Kolom) */
+        .grid-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        /* 3. Helper untuk elemen yang ingin tetap lebar penuh dalam grid */
+        .grid-item-full {
+            grid-column: span 2;
+        }
+
+        /* 4. Memastikan area konten punya padding yang konsisten */
+        .content-body {
+            padding: 5px 0;
+        }
+
+        /* Opsional: Menghaluskan tampilan input di dalam grid */
+        .grid-form .btn-choice {
+            width: 100%;
+            justify-content: space-between;
+        }
     </style>
 </head>
 <body>
@@ -246,61 +278,82 @@
         </div>
                    <!-- 3. GROUP HIDRAULIKA -->
 <div id="group-hidraulika" style="display:none">
-    <div id="resHydraulic" class="card">
-        <h3>6. Analisis Hidraulika (Saluran)</h3>
-        
-        <label style="font-size:10px; font-weight:800;">PILIH PERIODE ULANG (Tr)</label>
-        <select id="selTr" class="btn-choice" style="width:100%; margin-bottom:10px;">
-            <option value="2">2 Tahun</option>
-            <option value="5">5 Tahun</option>
-            <option value="10">10 Tahun</option>
-            <option value="25">25 Tahun</option>
-            <option value="50">50 Tahun</option>
-            <option value="100">100 Tahun</option>
-        </select>
-
-        <div style="display:flex; flex-direction:column; gap:8px;">
-            <label style="font-size:10px; font-weight:800;">PANJANG SALURAN (L) - Meter</label>
-            <input type="number" id="inL" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 150">
+    <div class="content-body"> <!-- Bungkus dengan ini -->
+        <div id="resHydraulic" class="card">
+            <h3>6. Analisis Hidraulika (Saluran)</h3>
             
-            <label style="font-size:10px; font-weight:800;">KEMIRINGAN (S)</label>
-            <input type="number" id="inS" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 0.002">
-            
-            <label style="font-size:10px; font-weight:800;">JENIS LAHAN (C)</label>
-            <select id="selC" class="btn-choice" style="width:100%"></select>
-            
-            <label style="font-size:10px; font-weight:800;">MATERIAL SALURAN (n)</label>
-            <select id="selN" class="btn-choice" style="width:100%"></select>
+            <div class="grid-form">
+                <!-- Baris 1 -->
+                <div>
+                    <label style="font-size:10px; font-weight:800;">PERIODE ULANG (Tr)</label>
+                    <select id="selTr" class="btn-choice" style="width:100%;">
+                        <option value="2">2 Tahun</option>
+                        <option value="5">5 Tahun</option>
+                        <option value="10">10 Tahun</option>
+                        <option value="25">25 Tahun</option>
+                        <option value="50">50 Tahun</option>
+                        <option value="100">100 Tahun</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:10px; font-weight:800;">PANJANG (L) - Meter</label>
+                    <input type="number" id="inL" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 150">
+                </div>
 
-            <!-- PENAMBAHAN JENIS SALURAN -->
-            <label style="font-size:10px; font-weight:800;">JENIS SALURAN</label>
-            <select id="jenis-precast" class="btn-choice" style="width:100%" onchange="handleDimensiChange()">
-                <option value="u_ditch">U-Ditch</option>
-                <option value="box_culvert">Box Culvert</option>
-                <option value="custom">Custom (Input Manual)</option>
-            </select>
+                <!-- Baris 2 -->
+                <div>
+                    <label style="font-size:10px; font-weight:800;">KEMIRINGAN (S)</label>
+                    <input type="number" id="inS" class="btn-choice" style="width:100%; cursor:text" placeholder="0.002">
+                </div>
+                <div>
+                    <label style="font-size:10px; font-weight:800;">JENIS LAHAN (C)</label>
+                    <select id="selC" class="btn-choice" style="width:100%"></select>
+                </div>
 
-            <!-- BAGIAN DIMENSI (Otomatis vs Manual) -->
-            <div id="section-dimensi-otomatis">
-                <label style="font-size:10px; font-weight:800;">DIMENSI PRECAST (Katalog)</label>
-                <select id="selDim" class="btn-choice" style="width:100%"></select>
+                <!-- Baris 3 -->
+                <div>
+                    <label style="font-size:10px; font-weight:800;">MATERIAL (n)</label>
+                    <select id="selN" class="btn-choice" style="width:100%"></select>
+                </div>
+                <div>
+                    <label style="font-size:10px; font-weight:800;">TIPE SALURAN</label>
+                    <select id="jenis-precast" class="btn-choice" style="width:100%" onchange="handleDimensiChange()">
+                        <option value="u_ditch">U-Ditch</option>
+                        <option value="box_culvert">Box Culvert</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+
+                <!-- Baris 4: Dimensi (Full width) -->
+                <div class="grid-item-full" id="section-dimensi-otomatis">
+                    <label style="font-size:10px; font-weight:800;">DIMENSI KATALOG</label>
+                    <select id="selDim" class="btn-choice" style="width:100%"></select>
+                </div>
+
+                <div class="grid-item-full" id="custom-dimensi" style="display:none; gap:10px;">
+                    <div style="flex:1">
+                        <label style="font-size:10px; font-weight:800;">LEBAR B (m)</label>
+                        <input type="number" id="input-b" class="btn-choice" style="width:100%" placeholder="B">
+                    </div>
+                    <div style="flex:1">
+                        <label style="font-size:10px; font-weight:800;">TINGGI H (m)</label>
+                        <input type="number" id="input-h" class="btn-choice" style="width:100%" placeholder="H">
+                    </div>
+                </div>
+
+                <!-- Canvas Visualisasi (Full width) -->
+                <div class="grid-item-full" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; text-align:center;">
+                    <canvas id="canvasSaluran" width="350" height="150" style="max-width:100%"></canvas>
+                </div>
+
+                <!-- Button (Full width) -->
+                <div class="grid-item-full">
+                    <button onclick="calculateHydraulics()" class="upload-area" style="width: 100%; margin:0;">HITUNG VERIFIKASI</button>
+                </div>
             </div>
 
-            <div id="custom-dimensi" style="display:none; flex-direction:column; gap:5px; background:#f8fafc; padding:10px; border-radius:8px; border:1px dashed #cbd5e1;">
-                <label style="font-size:10px; font-weight:800; color:var(--primary);">INPUT MANUAL (Meter)</label>
-                <input type="number" id="input-b" class="btn-choice" style="width:100%; cursor:text" placeholder="Lebar (B)">
-                <input type="number" id="input-h" class="btn-choice" style="width:100%; cursor:text" placeholder="Tinggi (H)">
-            </div>
-
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-top:10px; text-align:center;">
-                <canvas id="canvasSaluran" width="300" height="200" style="max-width:100%"></canvas>
-            </div>
-
-            <button onclick="calculateHydraulics()" class="upload-area" style="margin-top:10px;">HITUNG VERIFIKASI</button>
+            <div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
         </div>
-        <div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
-    </div>
-</div>
     </div>
 </div>
 
