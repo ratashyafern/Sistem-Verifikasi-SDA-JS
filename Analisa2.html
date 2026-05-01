@@ -268,62 +268,61 @@
     <div id="resHydraulic" class="card">
         <h3>6. Analisis Hidraulika (Saluran)</h3>
         
+        <label style="font-size:10px; font-weight:800;">PILIH PERIODE ULANG (Tr)</label>
+        <select id="selTr" class="btn-choice" style="width:100%; margin-bottom:10px;">
+            <option value="2">2 Tahun</option>
+            <option value="5">5 Tahun</option>
+            <option value="10">10 Tahun</option>
+            <option value="25">25 Tahun</option>
+            <option value="50">50 Tahun</option>
+            <option value="100">100 Tahun</option>
+        </select>
+
         <div style="display:flex; flex-direction:column; gap:8px;">
     
-            <!-- Baris 1: L dan S (Menggunakan Placeholder Abu-abu) -->
-            <div class="input-grid">
-                <div class="input-group">
-                    <label style="font-size:10px; font-weight:800;">PANJANG (L) - m</label>
-                    <input type="number" id="inL" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 150">
-                </div>
-                <div class="input-group">
-                    <label style="font-size:10px; font-weight:800;">SLOPE (S)</label>
-                    <input type="number" id="inS" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 0.002" step="0.0001">
-                </div>
-            </div>
+    <!-- Baris 1: L dan S (Dengan Placeholder Contoh) -->
+    <div class="input-grid">
+        <div class="input-group">
+            <label style="font-size:10px; font-weight:800;">PANJANG (L) - m</label>
+            <input type="number" id="inL" class="btn-choice" style="width:100%; cursor:text" placeholder="150" value="150">
+        </div>
+        <div class="input-group">
+            <label style="font-size:10px; font-weight:800;">SLOPE (S)</label>
+            <input type="number" id="inS" class="btn-choice" style="width:100%; cursor:text" placeholder="0.002" value="0.002" step="0.0001">
+        </div>
+    </div>
 
-            <!-- Baris 2: C dan n -->
-            <div class="input-grid">
-                <div class="input-group">
-                    <label style="font-size:10px; font-weight:800;">LAHAN (C)</label>
-                    <select id="selC" class="btn-choice" style="width:100%"></select>
-                </div>
-                <div class="input-group">
-                    <label style="font-size:10px; font-weight:800;">MATERIAL (n)</label>
-                    <select id="selN" class="btn-choice" style="width:100%"></select>
-                </div>
-            </div>
+    <!-- Baris 2: C dan n -->
+    <div class="input-grid">
+        <div class="input-group">
+            <label style="font-size:10px; font-weight:800;">LAHAN (C)</label>
+            <select id="selC" class="btn-choice" style="width:100%"></select>
+        </div>
+        <div class="input-group">
+            <label style="font-size:10px; font-weight:800;">MATERIAL (n)</label>
+            <select id="selN" class="btn-choice" style="width:100%"></select>
+        </div>
+    </div>
 
-            <!-- Baris 3: Periode (Tr) dan Jenis Saluran -->
-            <div class="input-grid">
-                <div class="input-group">
-                    <label style="font-size:10px; font-weight:800;">PERIODE (Tr)</label>
-                    <select id="selTr" class="btn-choice" style="width:100%;" onchange="updateDebitRencana()">
-                        <option value="2">2 Tahun</option>
-                        <option value="5">5 Tahun</option>
-                        <option value="10" selected>10 Tahun</option>
-                        <option value="25">25 Tahun</option>
-                        <option value="50">50 Tahun</option>
-                        <option value="100">100 Tahun</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label style="font-size:10px; font-weight:800;">JENIS SALURAN</label>
-                    <select id="jenis-precast" class="btn-choice" style="width:100%" onchange="handleDimensiChange()">
-                        <option value="u_ditch">U-Ditch</option>
-                        <option value="box_culvert">Box Culvert</option>
-                        <option value="custom">Custom</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Dropdown Dimensi -->
-            <div class="input-group">
-                <label style="font-size:10px; font-weight:800;">DIMENSI PRECAST (Katalog)</label>
-                <select id="selDimensi" class="btn-choice" style="width:100%;">
-                    <option value="">-- Pilih Dimensi --</option>
-                </select>
-            </div>
+    <!-- Baris 3: Periode (Tr) dan Jenis Saluran -->
+    <div class="input-grid">
+        <div class="input-group">
+            <label style="font-size:10px; font-weight:800;">PERIODE (Tr)</label>
+            <select id="selTr" class="btn-choice" style="width:100%;" onchange="updateDebitRencana()">
+                <!-- Option ini nanti akan diisi otomatis atau disinkronkan via JS -->
+                <option value="2">2 Tahun</option>
+                <option value="5">5 Tahun</option>
+                <option value="10" selected>10 Tahun</option>
+                <option value="25">25 Tahun</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label style="font-size:10px; font-weight:800;">JENIS SALURAN</label>
+            <select id="jenis-precast" class="btn-choice" style="width:100%" onchange="handleDimensiChange()">
+                <option value="u_ditch">U-Ditch</option>
+                <option value="box_culvert">Box Culvert</option>
+                <option value="custom">Custom</option>
+            </select>
         </div>
     </div>
 </div>
@@ -940,16 +939,16 @@ function errorFunction(x) {
 }
 function showHydraulicUI() {
     document.getElementById('group-hidraulika').style.display = 'block';
+    switchTab('hidraulika');
+    document.getElementById('resHydraulic').style.display = 'block';
     const sC = document.getElementById('selC');
     const sN = document.getElementById('selN');
-    const sD = document.getElementById('selDim'); // Pastikan ID ini konsisten di HTML
+    const sD = document.getElementById('selDim');
 
     if (dataKoefisien) {
         sC.innerHTML = dataKoefisien.c_val.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
         sN.innerHTML = dataKoefisien.n_manning.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
     }
-    updateDimensiDropdown('u_ditch');
-}
     
     if (dataPrecast) {
         let optDim = '<option value="">-- Pilih Dimensi --</option>';
