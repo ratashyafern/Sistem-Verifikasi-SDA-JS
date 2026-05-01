@@ -228,9 +228,9 @@
 
             <!-- PENAMBAHAN JENIS SALURAN -->
             <label style="font-size:10px; font-weight:800;">JENIS SALURAN</label>
-            <select id="jenis-precast" class="btn-choice" style="width:100%" onchange="handleDimensiChange()">
-                <option value="u_ditch">U-Ditch</option>
-                <option value="box_culvert">Box Culvert</option>
+           <select id="jenis-precast" onchange="updateDimensiOptions()">
+   <option value="u_ditch">U-Ditch</option>
+   <option value="box_culvert">Box Culvert</option>
                 <option value="custom">Custom (Input Manual)</option>
             </select>
 
@@ -413,50 +413,67 @@
 
     // --- 4. MAP ENGINE (LEAFLET) ---
     function initMap() {
-        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+    
+    // Inisialisasi Map
+    map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    drawnItems = new L.FeatureGroup().addTo(map);
+    thiessenLayer = L.layerGroup().addTo(map);
+    stationLayer = L.layerGroup().addTo(map);
+    mikroLayer = L.geoJSON(null).addTo(map);
+    phbLayer = L.geoJSON(null).addTo(map);
+
+    L.control.layers(
+        { "Peta Jalan": osm, "Satelit": satellite }, 
+        { "Saluran Mikro": mikroLayer, "Saluran PHB": phbLayer, "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems }, 
+        { collapsed: false, position: 'topright' }
+    ).addTo(map);
+
+    drawControl = new L.Control.Draw({
+        draw: {
+            polygon: { allowIntersection: false, shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } },
+            polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
+        }
+    });
+    map.addControl(drawControl); // Pastikan ini dipanggil agar icon gambar muncul
+
+    map.on(L.Draw.Event.CREATED, function (e) {
+        resetAnalysis();
+        const layer = e.layer;
+        drawnItems.addLayer(layer);
         
-        map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        // HITUNG LUAS (Hektar) - Pastikan ini masuk ke UI
+        const areaSqM = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+        const areaHa = areaSqM / 10000;
+        document.getElementById('area-val').innerText = areaHa.toFixed(2);
 
-        drawnItems = new L.FeatureGroup().addTo(map);
-        thiessenLayer = L.layerGroup().addTo(map);
-        stationLayer = L.layerGroup().addTo(map);
-        mikroLayer = L.geoJSON(null).addTo(map);
-        phbLayer = L.geoJSON(null).addTo(map);
+        addMiniDelete(layer);
+        processHydrology(layer.toGeoJSON());
+    });
 
-        L.control.layers(
-            { "Peta Jalan": osm, "Satelit": satellite }, 
-            { "Saluran Mikro": mikroLayer, "Saluran PHB": phbLayer, "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems }, 
-            { collapsed: false, position: 'topright' }
-        ).addTo(map);
+    // Panggil initSystem setelah map siap
+    initSystem();
+}
 
-        drawControl = new L.Control.Draw({
-            draw: {
-                polygon: { allowIntersection: false, shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } },
-                polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
-            }
-        });
-
-        map.on(L.Draw.Event.CREATED, function (e) {
-            resetAnalysis();
-            const layer = e.layer;
-            drawnItems.addLayer(layer);
-            addMiniDelete(layer);
-            processHydrology(layer.toGeoJSON());
-        });
+function initSystem() {
+    // Sinkronkan Dropdown saat sistem siap
+    if (typeof updateDimensiOptions === "function") {
+        updateDimensiOptions();
     }
 
-    function initSystem() {
-        if (typeof dataMikro !== 'undefined') {
-            mikroLayer.clearLayers().addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 });
-        }
-        if (typeof dataPHB !== 'undefined') {
-            phbLayer.clearLayers().addData(dataPHB).setStyle({ color: "#1e3a8a", weight: 5, opacity: 1 });
-        }
-        loadStationData(); 
-        console.log("🚀 Sistem Siap Digunakan");
+    if (typeof dataMikro !== 'undefined' && dataMikro !== null) {
+        mikroLayer.clearLayers().addData(dataMikro).setStyle({ color: "#00BFFF", weight: 2, opacity: 0.8 });
     }
+    if (typeof dataPHB !== 'undefined' && dataPHB !== null) {
+        phbLayer.clearLayers().addData(dataPHB).setStyle({ color: "#1e3a8a", weight: 5, opacity: 1 });
+    }
+    
+    if (typeof loadStationData === "function") loadStationData(); 
+    console.log("🚀 Sistem Siap Digunakan");
+}
 
     // --- 5. CORE ANALYTICS FUNCTIONS ---
     function resetAnalysis() {
@@ -976,14 +993,37 @@ function showHydraulicUI() {
     // Isi Dropdown N
     sN.innerHTML = dataKoefisien.n_manning.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
     // Isi Dropdown Dimensi (U-Ditch & Box)
-    let optDim = '<option value="">-- Pilih Dimensi --</option>';
-    dataPrecast.u_ditch.data.forEach(i => optDim += `<option value="${i.b}|${i.h}|${i.k}">U-Ditch ${i.k}</option>`);
-    dataPrecast.box_culvert.data.forEach(i => optDim += `<option value="${i.b}|${i.h}|${i.k}">Box ${i.k}</option>`);
-    sD.innerHTML = optDim;
+    updateDimensiOptions();
     
     document.getElementById('resHydraulic').scrollIntoView({ behavior: 'smooth' });
 }
+function updateDimensiOptions() {
+    const jenis = document.getElementById('jenis-precast').value;
+    const sD = document.getElementById('selDim');
+    
+    // Ambil data dari variabel dataPrecast yang sudah di-load dari precast.json
+    if (!dataPrecast || !dataPrecast[jenis]) return;
 
+    let options = '<option value="">-- Pilih Dimensi --</option>';
+    dataPrecast[jenis].data.forEach(i => {
+        // Value format: B|H|Nama
+        options += `<option value="${i.b}|${i.h}|${i.k}">${i.k}</option>`;
+    });
+    sD.innerHTML = options;
+}
+
+    if(sD) sD.style.display = 'block';
+    if(customArea) customArea.style.display = 'none';
+
+    let options = '<option value="">-- Pilih Dimensi --</option>';
+    // Mengambil data langsung dari precast.json sesuai key (u_ditch / box_culvert)
+    if (dataPrecast[jenis]) {
+        dataPrecast[jenis].data.forEach(i => {
+            options += `<option value="${i.b}|${i.h}|${i.k}">${i.k}</option>`;
+        });
+    }
+    sD.innerHTML = options;
+}
 function calculateHydraulics() {
     // 1. Ambil Input Dasar (Sama seperti kode Anda)
     const L = parseFloat(document.getElementById('inL').value);
@@ -1016,23 +1056,39 @@ function calculateHydraulics() {
     const I = (R24 / 24) * Math.pow((24 / (Tc / 60)), (2/3));
     const Qrencana = (C * I * areaHa) / 360;
 
-    // 4. Hitung Freeboard & Kapasitas Manning (Logika Anda)
-    let freeboard = (jenis === 'box_culvert') ? (0.2 * H) : Math.sqrt(0.5 * H);
-    const h_efektif = Math.max(0, H - freeboard);
-    
-    const A = B * h_efektif; 
-    const P = B + (2 * h_efektif);
-    const R = h_efektif > 0 ? A / P : 0;
-    const Qkapasitas = (1/n) * A * Math.pow(R, 2/3) * Math.sqrt(S);
+    // 4. Hitung Kapasitas Maksimal Saluran (Saat air setinggi H-freeboard)
+let freeboard = (jenis === 'box_culvert') ? (0.2 * H) : (0.1 * H); // Standar praktis SDA
+const y_maks = H - freeboard;
+
+const A_maks = B * y_maks;
+const P_maks = B + (2 * y_maks);
+const R_maks = A_maks / P_maks;
+const Qkapasitas = (1/n) * A_maks * Math.pow(R_maks, 2/3) * Math.sqrt(S);
+
+// 5. Cari Kedalaman Air Nyata (y) dari Qrencana (Iterasi Sederhana Manning)
+let y_nyata = 0;
+if (Qrencana > 0) {
+    // Pendekatan: y = ( (Q * n) / (B * S^0.5) ) ^ 0.6 (Rumus saluran lebar)
+    // Untuk presisi, kita gunakan rasio sederhana terhadap Qkapasitas
+    y_nyata = y_maks * Math.pow((Qrencana / Qkapasitas), 0.6);
+}
+
+// 6. Visualisasi (Gunakan y_nyata)
+const h_visual = Math.min(H, H * (Qrencana / Qkapasitas) * (h_efektif/H));
+if (typeof drawCrossSection === "function") {
+    drawCrossSection(B, H, h_visual);
+}
+
+
     
     // Hitung Persentase Kapasitas Terpakai
     const rasioKapasitas = (Qrencana / Qkapasitas) * 100;
 
     // 5. UPDATE VISUALISASI (Gambar 3)
     // Tinggi air di gambar kita buat proporsional terhadap debit
-    const h_visual = Math.min(H, H * (Qrencana / Qkapasitas) * (h_efektif/H));
+    const h_render = Math.min(H, y_nyata); 
     if (typeof drawCrossSection === "function") {
-        drawCrossSection(B, H, h_visual);
+        drawCrossSection(B, H, h_render);
     }
 
     // 6. OUTPUT KE TABEL (Gambar 4)
@@ -1043,18 +1099,15 @@ function calculateHydraulics() {
 
     // Isi Hasil Analisis
     document.getElementById('res-q').innerText = Qrencana.toFixed(3) + " m³/s";
-    document.getElementById('res-y').innerText = h_efektif.toFixed(2) + " m"; // Tinggi air rencana
+    
+    // TAMPILKAN y_nyata (Kedalaman Air Sebenarnya)
+    document.getElementById('res-y').innerText = y_nyata.toFixed(2) + " m"; 
     document.getElementById('res-h').innerText = H.toFixed(2) + " m";
     
-    const pSel = document.getElementById('res-persen');
-    pSel.innerText = rasioKapasitas.toFixed(1) + " %";
-    pSel.className = rasioKapasitas > 100 ? "val-red" : "val-blue";
-
-    // Update Status Alert & Tampilkan
-    const isAman = Qkapasitas > Qrencana;
-    updateAlert(isAman);
-    document.getElementById('hydraulicOutput').style.display = 'block';
-}
+    // Tambahkan info Kapasitas di tabel agar user tahu batas maksimalnya
+    if(document.getElementById('res-q-kapasitas')) {
+        document.getElementById('res-q-kapasitas').innerText = Qkapasitas.toFixed(3) + " m³/s";
+    }
 
 // Fungsi pembantu untuk Alert Status
 function updateAlert(isAman) {
