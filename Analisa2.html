@@ -72,6 +72,54 @@
         .kolom-terpilih { background-color: #eff6ff !important; border-left: 2px solid #2563eb !important; border-right: 2px solid #2563eb !important; }
 
         .status-text { font-weight: 800; }
+        .nav-tabs {
+    display: none; /* Sembunyi di awal */
+    flex-direction: row;
+    background: #f1f5f9;
+    padding: 5px 15px 0 15px;
+    border-bottom: 1px solid #e2e8f0;
+    gap: 5px;
+}
+
+.tab-link {
+    padding: 8px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--slate);
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    border: 1px solid transparent;
+    transition: 0.2s;
+    text-transform: uppercase;
+}
+
+.tab-link:hover { background: #e2e8f0; }
+
+.tab-link.active {
+    background: white;
+    color: var(--accent);
+    border: 1px solid #e2e8f0;
+    border-bottom: 1px solid white;
+    margin-bottom: -1px;
+}
+
+/* Container untuk isi konten per tab */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+        .tab-btn {
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: var(--slate);
+    border-radius: 6px;
+    transition: 0.3s;
+}
+
+.tab-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
     </style>
 </head>
 <body>
@@ -85,10 +133,10 @@
     
     <div class="sidebar-content">
         <!-- 1. NAVIGATION TABS (Pindah ke luar card agar tetap di atas) -->
-        <div class="nav-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; padding: 0 5px;">
-            <button onclick="switchTab('hidrologi')" id="tab-hidrologi" class="tab-btn active" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDROLOGI</button>
-            <button onclick="switchTab('hidraulika')" id="tab-hidraulika" class="tab-btn" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDRAULIKA</button>
-        </div>
+        <div id="main-nav" class="nav-tabs" style="display: none; gap: 5px; margin-bottom: 15px; padding: 0 15px;">
+        <button onclick="switchTab('hidrologi')" id="tab-hidrologi" class="tab-btn active" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDROLOGI</button>
+        <button onclick="switchTab('hidraulika')" id="tab-hidraulika" class="tab-btn" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDRAULIKA</button>
+    </div>
 
         <!-- 2. GROUP HIDROLOGI (Membungkus Poin 1-5) -->
         <div id="group-hidrologi">
@@ -182,14 +230,16 @@
                     </table>
                 </div>
                 <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--accent); font-style: italic; font-weight: 600;"></p>
+                
+                <!-- TAMBAHKAN TOMBOL LANJUT DI SINI -->
+                <div id="btnLanjutContainer" style="display:none;">
+                    <button onclick="switchTab('hidraulika')" class="upload-area" style="background: #16a34a; margin-top: 15px; width: 100%;">
+                        LANJUT KE ANALISIS HIDRAULIKA <i data-lucide="chevron-right"></i>
+                    </button>
+                </div>
             </div>
-            
-            <!-- Tombol Navigasi Cepat -->
-            <button onclick="switchTab('hidraulika')" class="upload-area" style="margin-top:10px; background:var(--primary); color:white;">LANJUT KE HIDRAULIKA <i data-lucide="chevron-right"></i></button>
-        </div> <!-- AKHIR GROUP HIDROLOGI -->
-
-        <!-- 3. GROUP HIDRAULIKA (Membungkus Poin 6) -->
-        <!-- 3. GROUP HIDRAULIKA -->
+        </div>
+                   <!-- 3. GROUP HIDRAULIKA -->
 <div id="group-hidraulika" style="display:none">
     <div id="resHydraulic" class="card">
         <h3>6. Analisis Hidraulika (Saluran)</h3>
@@ -824,22 +874,24 @@ function errorFunction(x) {
     return x >= 0 ? 1 - tau : tau - 1;
 }
 function showHydraulicUI() {
+    document.getElementById('group-hidraulika').style.display = 'block';
+    switchTab('hidraulika');
     document.getElementById('resHydraulic').style.display = 'block';
     const sC = document.getElementById('selC');
     const sN = document.getElementById('selN');
     const sD = document.getElementById('selDim');
 
-    // Isi Dropdown C
-    sC.innerHTML = dataKoefisien.c_val.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
-    // Isi Dropdown N
-    sN.innerHTML = dataKoefisien.n_manning.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
-    // Isi Dropdown Dimensi (U-Ditch & Box)
-    let optDim = '<option value="">-- Pilih Dimensi --</option>';
-    dataPrecast.u_ditch.data.forEach(i => optDim += `<option value="${i.b}|${i.h}|${i.k}">U-Ditch ${i.k}</option>`);
-    dataPrecast.box_culvert.data.forEach(i => optDim += `<option value="${i.b}|${i.h}|${i.k}">Box ${i.k}</option>`);
-    sD.innerHTML = optDim;
+    if (dataKoefisien) {
+        sC.innerHTML = dataKoefisien.c_val.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
+        sN.innerHTML = dataKoefisien.n_manning.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
+    }
     
-    document.getElementById('resHydraulic').scrollIntoView({ behavior: 'smooth' });
+    if (dataPrecast) {
+        let optDim = '<option value="">-- Pilih Dimensi --</option>';
+        dataPrecast.u_ditch.data.forEach(i => optDim += `<option value="${i.b}|${i.h}|${i.k}">U-Ditch ${i.k}</option>`);
+        dataPrecast.box_culvert.data.forEach(i => optDim += `<option value="${i.b}|${i.h}|${i.k}">Box ${i.k}</option>`);
+        sD.innerHTML = optDim;
+    }
 }
 
 function calculateHydraulics() {
@@ -975,6 +1027,24 @@ function drawCrossSection(b, h) {
     ctx.rotate(-Math.PI / 2);
     ctx.fillText(`H: ${h}m`, -10, 0);
     ctx.restore();
+}
+    function openTab(evt, tabName) {
+    var i, tabcontent, tablinks;
+    tabcontent = document.getElementsByClassName("tab-content");
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].classList.remove("active");
+    }
+    tablinks = document.getElementsByClassName("tab-link");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].classList.remove("active");
+    }
+    document.getElementById(tabName).classList.add("active");
+    evt.currentTarget.classList.add("active");
+}
+    function switchTabToHidraulika() {
+    // Simulasi klik tab hidraulika
+    const event = { currentTarget: document.querySelectorAll('.tab-link')[1] };
+    openTab(event, 'hidraulika');
 }
     
    window.onload = async () => { 
