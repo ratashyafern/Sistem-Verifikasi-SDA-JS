@@ -16,6 +16,16 @@
         
         #sidebar { width: 450px; background: #f8fafc; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; }
         .sidebar-header { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; background: white; }
+        /* CSS Tambahan agar Nav Tetap di Atas */
+        #main-nav { 
+            position: sticky; 
+            top: 0; 
+            background: #f8fafc; 
+            z-index: 20; 
+            padding-top: 15px; 
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
         .sidebar-content { padding: 8px 15px; flex-grow: 1; overflow-y: auto; }
         #map { flex-grow: 1; position: relative; }
 
@@ -77,6 +87,15 @@
         .kolom-terpilih { background-color: #eff6ff !important; border-left: 2px solid #2563eb !important; border-right: 2px solid #2563eb !important; }
 
         .status-text { font-weight: 800; }
+            
+            /* Class untuk grid 2 kolom */
+            .input-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin-bottom: 10px;
+            }
+            .input-group { display: flex; flex-direction: column; gap: 4px; }
         .nav-tabs {
     display: none; /* Sembunyi di awal */
     flex-direction: row;
@@ -260,25 +279,50 @@
         </select>
 
         <div style="display:flex; flex-direction:column; gap:8px;">
-            <label style="font-size:10px; font-weight:800;">PANJANG SALURAN (L) - Meter</label>
-            <input type="number" id="inL" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 150">
-            
-            <label style="font-size:10px; font-weight:800;">KEMIRINGAN (S)</label>
-            <input type="number" id="inS" class="btn-choice" style="width:100%; cursor:text" placeholder="Contoh: 0.002">
-            
-            <label style="font-size:10px; font-weight:800;">JENIS LAHAN (C)</label>
-            <select id="selC" class="btn-choice" style="width:100%"></select>
-            
-            <label style="font-size:10px; font-weight:800;">MATERIAL SALURAN (n)</label>
-            <select id="selN" class="btn-choice" style="width:100%"></select>
+            <!-- Baris 1: L dan S -->
+            <div class="input-grid">
+                <div class="input-group">
+                    <label style="font-size:10px; font-weight:800;">PANJANG (L) - m</label>
+                    <input type="number" id="inL" class="btn-choice" style="width:100%; cursor:text" placeholder="m'">
+                </div>
+                <div class="input-group">
+                    <label style="font-size:10px; font-weight:800;">SLOPE (S)</label>
+                    <input type="number" id="inS" class="btn-choice" style="width:100%; cursor:text" placeholder="0.00x">
+                </div>
+            </div>
 
-            <!-- PENAMBAHAN JENIS SALURAN -->
-            <label style="font-size:10px; font-weight:800;">JENIS SALURAN</label>
-            <select id="jenis-precast" class="btn-choice" style="width:100%" onchange="handleDimensiChange()">
-                <option value="u_ditch">U-Ditch</option>
-                <option value="box_culvert">Box Culvert</option>
-                <option value="custom">Custom (Input Manual)</option>
-            </select>
+            <!-- Baris 2: C dan n -->
+            <div class="input-grid">
+                <div class="input-group">
+                    <label style="font-size:10px; font-weight:800;">LAHAN (C)</label>
+                    <select id="selC" class="btn-choice" style="width:100%"></select>
+                </div>
+                <div class="input-group">
+                    <label style="font-size:10px; font-weight:800;">MATERIAL (n)</label>
+                    <select id="selN" class="btn-choice" style="width:100%"></select>
+                </div>
+            </div>
+
+            <!-- Baris 3: Jenis Saluran & Periode Ulang -->
+            <div class="input-grid">
+                <div class="input-group">
+                    <label style="font-size:10px; font-weight:800;">PERIODE (Tr)</label>
+                    <select id="selTr" class="btn-choice" style="width:100%;">
+                        <option value="2">2 Thn</option>
+                        <option value="5">5 Thn</option>
+                        <option value="10" selected>10 Thn</option>
+                        <option value="25">25 Thn</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label style="font-size:10px; font-weight:800;">JENIS SALURAN</label>
+                    <select id="jenis-precast" class="btn-choice" style="width:100%" onchange="handleDimensiChange()">
+                        <option value="u_ditch">U-Ditch</option>
+                        <option value="box_culvert">Box Culvert</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+            </div>
 
             <!-- BAGIAN DIMENSI (Otomatis vs Manual) -->
             <div id="section-dimensi-otomatis">
