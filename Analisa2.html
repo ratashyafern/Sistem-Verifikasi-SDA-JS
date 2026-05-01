@@ -195,9 +195,6 @@
                 </div>
                 <p id="gofConclusion" style="font-size: 10px; margin-top: 8px; color: var(--accent); font-style: italic; font-weight: 600;"></p>
             </div>
-            
-            <!-- Tombol Navigasi Cepat -->
-            <button onclick="switchTab('hidraulika')" class="upload-area" style="margin-top:10px; background:var(--primary); color:white;">LANJUT KE HIDRAULIKA <i data-lucide="chevron-right"></i></button>
         </div> <!-- AKHIR GROUP HIDROLOGI -->
 
         <!-- 3. GROUP HIDRAULIKA (Membungkus Poin 6) -->
@@ -367,6 +364,10 @@
             groupHidra.style.display = 'none';
             btnHidro.classList.add('active');
             btnHidra.classList.remove('active');
+            // Penting: Refresh peta agar muncul sempurna
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
         } else {
             groupHidro.style.display = 'none';
             groupHidra.style.display = 'block';
@@ -928,16 +929,16 @@ function displayGoF(results, skCrit) {
         }
 
         // 3. UPDATE TOMBOL LANJUT (Menggunakan class .btn-full .btn-success dari CSS baru)
-        document.getElementById('gofConclusion').innerHTML = `
-            <div style="margin-top:15px; border-top: 1px solid #e2e8f0; padding-top:15px;">
-                <p style="font-size: 12px; color: #1e2b4a; margin-bottom: 10px;">
-                    💡 Metode <b>${terpilih.name}</b> terpilih sebagai referensi desain.
-                </p>
-                <button onclick="goToHydraulics()" class="btn-full btn-success">
-                    LANJUT KE HIDRAULIKA <i data-lucide="chevron-right"></i>
-                </button>
-            </div>
-        `;
+       document.getElementById('gofConclusion').innerHTML = `
+    <div style="margin-top:15px; border-top: 1px solid #e2e8f0; padding-top:15px;">
+        <p style="font-size: 12px; color: #1e2b4a; margin-bottom: 10px;">
+            💡 Metode <b>${terpilih.name}</b> terpilih sebagai referensi desain.
+        </p>
+        <button onclick="goToHydraulics()" class="btn-full btn-success">
+            LANJUT KE HIDRAULIKA <i data-lucide="chevron-right"></i>
+        </button>
+    </div>
+`;
         
         // Render ulang icon Lucide jika Anda menggunakannya
         if (window.lucide) lucide.createIcons();
@@ -954,7 +955,8 @@ function displayGoF(results, skCrit) {
 function goToHydraulics() {
     switchTab('hidraulika');
     showHydraulicUI(); // Otomatis load dropdown C, n, dan Dimensi
-   showSection('hydraulics');
+   document.querySelector('.sidebar-content').scrollTop = 0;
+}
 }
 function errorFunction(x) {
     // Pendekatan numerik untuk erf(x)
