@@ -1134,19 +1134,6 @@ function drawCrossSection(b, h, y = 0) {
         ctx.fillText(`y: ${y.toFixed(2)}m`, startX + drawB + 5, (startY + drawH) - (drawY/2));
     }
 }
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        const kml = new DOMParser().parseFromString(event.target.result, 'text/xml');
-        const geojson = toGeoJSON.kml(kml);
-        resetAnalysis();
-        const layer = L.geoJSON(geojson).addTo(drawnItems);
-        map.fitBounds(layer.getBounds());
-        processHydrology(geojson.features[0]);// Memicu analisis otomatis setelah upload
-    };
-    reader.readAsText(file);
-});
 </script>
 </body>
 </html>
