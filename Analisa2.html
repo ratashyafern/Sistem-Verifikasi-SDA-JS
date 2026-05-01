@@ -516,29 +516,7 @@
         let cdf = z > 0 ? 1 - p : p;
         return 1 - cdf; // Peluang terlampaui (Probabilitas)
     }
-    // --- MAP INITIALIZATION ---
-    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-    var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
     
-    var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    var drawnItems = new L.FeatureGroup().addTo(map);
-    var thiessenLayer = L.layerGroup().addTo(map);
-    var stationLayer = L.layerGroup().addTo(map);
-    var mikroLayer = L.geoJSON(null);
-    var phbLayer = L.geoJSON(null);
-
-    L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, 
-    { "Saluran Mikro": mikroLayer, "Saluran PHB": phbLayer, "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems }, 
-    { collapsed: false, position: 'topright' }).addTo(map);
-
-    var drawControl = new L.Control.Draw({
-        draw: {
-            polygon: { allowIntersection: false, shapeOptions: { color: '#2f80ed', fillOpacity: 0.4 } },
-            polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
-        }
-    });
     // --- FUNCTIONS ---
     function initSystem() {
         if (typeof dataMikro !== 'undefined') {
