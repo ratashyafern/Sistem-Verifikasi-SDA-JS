@@ -126,13 +126,27 @@
     border-color: var(--primary);
 }
     #main-nav {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: var(--white); /* Menggunakan variabel white Anda */
-            border-bottom: 1px solid #e2e8f0;
-            padding-top: 10px;
-        }
+    position: relative; /* Bukan sticky agar tidak melayang di atas konten saat scroll */
+    background: transparent;
+    border-bottom: none;
+    padding: 0;
+    margin-bottom: 10px;
+}
+
+.tab-btn {
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: var(--slate);
+    border-radius: 8px; /* Lebih rounded agar modern */
+    transition: 0.3s;
+}
+
+.tab-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: none; /* Hilangkan shadow agar tidak terlihat melayang */
+}
 
         /* 2. Grid System untuk Form (2 Kolom) */
         .grid-form {
@@ -161,18 +175,21 @@
 </head>
 <body>
 
-<div id="sidebar">
-    <div class="sidebar-header">
+<div class="sidebar-header" style="border-bottom: none; padding-bottom: 0;"> <!-- Hilangkan border bawah header -->
         <a href="index.html" class="back-link"><i data-lucide="arrow-left"></i> Kembali ke Menu Utama</a>
         <h1 style="font-size: 24px; font-weight: 800; color: var(--primary); line-height: 1.1;">VERIFICATION SYSTEM</h1>
         <p style="font-size: 12px; color: var(--slate); margin-top: 4px;">Suku Dinas SDA Jakarta Selatan</p>
+        
+        <!-- Pindahkan Navigasi ke Sini (Di dalam header) agar menyatu -->
+        <div id="main-nav" class="nav-tabs" style="display: flex; gap: 5px; margin-top: 20px; padding: 0;">
+            <button onclick="switchTab('hidrologi')" id="tab-hidrologi" class="tab-btn active" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDROLOGI</button>
+            <button onclick="switchTab('hidraulika')" id="tab-hidraulika" class="tab-btn" style="flex:1; padding:10px; font-weight:800; cursor:pointer;" disabled>HIDRAULIKA</button>
+        </div>
     </div>
     
-    <div class="sidebar-content">
-        <!-- 1. NAVIGATION TABS (Pindah ke luar card agar tetap di atas) -->
-        <div id="main-nav" class="nav-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; padding: 0 15px;">
-    <button onclick="switchTab('hidrologi')" id="tab-hidrologi" class="tab-btn active" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDROLOGI</button>
-    <button onclick="switchTab('hidraulika')" id="tab-hidraulika" class="tab-btn" style="flex:1; padding:10px; font-weight:800; cursor:pointer;" disabled>HIDRAULIKA</button>
+    <div class="sidebar-content" style="padding-top: 15px;">
+        <!-- Konten group-hidrologi dsb tetap di sini -->
+    </div>
 </div>
 
         <!-- 2. GROUP HIDROLOGI (Membungkus Poin 1-5) -->
@@ -376,7 +393,8 @@
 
 <script>
     let dataKoefisien = null;
-let dataPrecast = null;
+    let dataPrecast = null;
+    window.selectedRainfall = 0; // Inisialisasi global
 function switchTab(tab) {
         const groupHidro = document.getElementById('group-hidrologi');
         const groupHidra = document.getElementById('group-hidraulika');
@@ -394,6 +412,7 @@ function switchTab(tab) {
             btnHidra.classList.add('active');
             btnHidro.classList.remove('active');
         }
+    setTimeout(() => { map.invalidateSize(); }, 200);
     }
 
     // 3. Fungsi Handle Tampilan Dimensi (TARUH DI SINI)
@@ -413,17 +432,16 @@ function switchTab(tab) {
 }
 async function loadHydraulicAssets() {
     try {
-        const [resKoef, resPrecast] = await Promise.all([
-            fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/koefisien.json').then(r => r.json()),
-            fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/precast.json').then(r => r.json())
-        ]);
-        dataKoefisien = resKoef;
-        dataPrecast = resPrecast;
-        console.log("Assets Hidrolika Berhasil Dimuat");
-    } catch (e) {
-        console.error("Gagal memuat data JSON:", e);
+            const [resKoef, resPrecast] = await Promise.all([
+                fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/koefisien.json').then(r => r.json()),
+                fetch('https://raw.githubusercontent.com/ratashyafern/Sistem-Verifikasi-SDA-JS/main/data/precast.json').then(r => r.json())
+            ]);
+            dataKoefisien = resKoef;
+            dataPrecast = resPrecast;
+        } catch (e) {
+            console.error("Gagal memuat JSON Assets:", e);
+        }
     }
-}
     function normalCDF(x, mean, std) {
     const z = (x - mean) / std;
     const t = 1 / (1 + 0.2316419 * Math.abs(z));
@@ -904,7 +922,8 @@ function displayGoF(results, skCrit) {
         document.querySelectorAll(`.col-${terpilih.id}`).forEach(td => td.classList.add("kolom-terpilih"));
         
         const row10 = Array.from(document.querySelectorAll('#tBodyFreq tr')).find(tr => tr.cells[0].innerText == '10');
-        window.selectedRainfall = parseFloat(row10.querySelector(`.col-${terpilih.id}`).innerText);
+            const colIndex = { 'Normal': 1, 'LogNormal': 2, 'Gumbel': 3, 'LP3': 4 }[terpilih.id];
+            window.selectedRainfall = parseFloat(row10.cells[colIndex].innerText);
 
         document.getElementById('gofConclusion').innerHTML = `
             <div style="background: #eff6ff; padding: 10px; border-radius: 8px; border: 1px solid #2f80ed; margin-top: 10px;">
@@ -1123,6 +1142,8 @@ function drawCrossSection(b, h) {
     initSystem();
     lucide.createIcons();
 
+    setTimeout(() => { map.invalidateSize(); }, 500);
+
     document.getElementById('fKML').addEventListener('change', function (e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -1139,13 +1160,17 @@ function drawCrossSection(b, h) {
                 }).addTo(drawnItems);
                 
                 addMiniDelete(layer);
-                map.fitBounds(layer.getBounds());
-                processHydrology(geojson.features[0]);
-            }
-        };
-        reader.readAsText(file);
-    });
-};
+                        map.fitBounds(layer.getBounds());
+                        processHydrology(geojson.features[0]);
+                    }
+                } catch (err) {
+                    alert("Error membaca file KML. Pastikan format benar.");
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+        });
+    };
 </script>
 </body>
 </html>
