@@ -843,7 +843,8 @@ function displayGoF(results, skCrit) {
             terpilih = m;
         }
     });
-
+    document.getElementById('resGoF').style.display = 'block';
+    
     if (terpilih) {
         const headerAktif = document.getElementById(`h-${terpilih.id}`);
         if (headerAktif) headerAktif.classList.add("header-terpilih");
@@ -862,6 +863,9 @@ function displayGoF(results, skCrit) {
                 </button>
             </div>`;
         lucide.createIcons();
+        } else {
+        document.getElementById('gofConclusion').innerHTML = `
+            <p style="color:red; font-size:10px;">⚠️ Tidak ada metode yang memenuhi kriteria uji kesesuaian.</p>`;
     }
 }
 
