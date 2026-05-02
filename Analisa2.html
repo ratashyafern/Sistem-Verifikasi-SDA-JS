@@ -1051,25 +1051,22 @@ function renderChannelSVG(tipe, B, H, D, z, y) {
     const box = document.getElementById('channelBox');
     const svgW = box.clientWidth || 300;
     const svgH = 180; 
-    const margin = 35; // Margin agak lebar untuk label
+    const margin = 35; 
     
     const scale = (svgH - (2 * margin)) / (H || 1);
     const centerX = svgW / 2;
     const bottomY = svgH - margin;
     
-    let fbVal = 0;
-    if (tipe === 'box_culvert') {
-        fbVal = H-(0.15* H);
-    } else {
-        fbVal = H-(0.15*H);
-    }
-    const yFreeboard = fbVal * scale;
+    // Hitung ambang batas aman (H - 15% Freeboard)
+    const hAman = H * 0.85; 
+    const yFreeboard = hAman * scale;
+    const isOverFB = y > hAman;
 
     let draw = `<svg width="100%" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">
         <defs>
             <linearGradient id="waterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style="stop-color:#60a5fa; stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#2563eb; stop-opacity:1" />
+                <stop offset="0%" style="stop-color:${isOverFB ? '#f97316' : '#60a5fa'}; stop-opacity:1" />
+                <stop offset="100%" style="stop-color:${isOverFB ? '#ea580c' : '#2563eb'}; stop-opacity:1" />
             </linearGradient>
         </defs>`;
 
@@ -1077,26 +1074,24 @@ function renderChannelSVG(tipe, B, H, D, z, y) {
     const hFull = H * scale;
     const yAir = Math.min(y, H) * scale;
 
-    // Gambar Air
+    // Gambar Air (Warna gradien berubah jika lewat FB)
     if (y > 0) {
         draw += `<rect x="${centerX - bHalf}" y="${bottomY - yAir}" width="${B * scale}" height="${yAir}" fill="url(#waterGrad)" />`;
     }
 
-    // 2. Gambar Saluran (Box/U-Ditch)
+    // Gambar Saluran
     if (tipe === 'box_culvert') {
         draw += `<rect x="${centerX - bHalf}" y="${bottomY - hFull}" width="${B * scale}" height="${hFull}" fill="none" stroke="#1e293b" stroke-width="6"/>`;
     } else {
         draw += `<polyline points="${centerX - bHalf},${bottomY - hFull} ${centerX - bHalf},${bottomY} ${centerX + bHalf},${bottomY} ${centerX + bHalf},${bottomY - hFull}" fill="none" stroke="#1e293b" stroke-width="6" stroke-linejoin="round"/>`;
     }
 
-    // 3. Gambar Garis Freeboard (Merah Putus-putus)
-    draw += `<line x1="${centerX - bHalf}" y1="${bottomY - yFreeboard}" x2="${centerX + bHalf}" y2="${bottomY - yFreeboard}" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4"/>`;
-    draw += `<text x="${centerX + bHalf + 5}" y="${bottomY - yFreeboard}" fill="#ef4444" style="font-size:9px; font-weight:bold;">FB</text>`;
+    // Garis Freeboard (Merah)
+    draw += `<line x1="${centerX - bHalf}" y1="${bottomY - yFreeboard}" x2="${centerX + bHalf}" y2="${bottomY - yFreeboard}" stroke="#ef4444" stroke-width="2" stroke-dasharray="4"/>`;
+    draw += `<text x="${centerX + bHalf + 5}" y="${bottomY - yFreeboard}" fill="#ef4444" style="font-size:10px; font-weight:800;">FB</text>`;
 
-    // 4. Keterangan Angka Dimensi
-    // Label Tinggi (H)
+    // Label Dimensi
     draw += `<text x="${centerX - bHalf - 25}" y="${bottomY - (hFull/2)}" fill="#64748b" style="font-size:10px; font-weight:bold;" transform="rotate(-90, ${centerX - bHalf - 25}, ${bottomY - (hFull/2)})">H: ${H.toFixed(2)}m</text>`;
-    // Label Lebar (B)
     draw += `<text x="${centerX}" y="${bottomY + 15}" fill="#64748b" text-anchor="middle" style="font-size:10px; font-weight:bold;">B: ${B.toFixed(2)}m</text>`;
     
     draw += `</svg>`;
@@ -1111,21 +1106,23 @@ function updateHydraulicTable(Q_target, y, limit, Tc, I, R24) {
     
     resDiv.style.display = 'block';
     const waterDepth = isNaN(y) ? 0 : y;
-    const isOverflow = waterDepth >= (limit * 0.9); 
+    
+    // Logika Inti: Aman jika air tidak menyentuh/melewati batas Freeboard (85% dari H)
+    const hAman = limit * 0.85;
+    const isAman = waterDepth <= hAman;
 
-    statusBadge.innerHTML = isOverflow ? "⚠️ KAPASITAS TIDAK MEMENUHI" : "✅ KAPASITAS MEMENUHI";
-    statusBadge.style.background = isOverflow ? "#dc2626" : "#059669";
+    statusBadge.innerHTML = isAman ? "✅ KAPASITAS AMAN (DI BAWAH FB)" : "⚠️ TIDAK AMAN (MELAMPAUI FB)";
+    statusBadge.style.background = isAman ? "#059669" : "#dc2626";
 
     resultBody.innerHTML = `
         <tr style="background:#f1f5f9"><td colspan="2"><b>PARAMETER INPUT</b></td></tr>
         <tr><td>Hujan Rencana (R24)</td><td>${R24.toFixed(2)} mm</td></tr>
-        <tr><td>Waktu Konsentrasi (Tc)</td><td>${Tc.toFixed(2)} Menit</td></tr>
         <tr><td>Intensitas Hujan (I)</td><td>${I.toFixed(2)} mm/jam</td></tr>
         <tr style="background:#f1f5f9"><td colspan="2"><b>HASIL ANALISIS</b></td></tr>
         <tr><td>Debit Rasional (Q)</td><td><b style="color:blue">${Q_target.toFixed(3)} m³/s</b></td></tr>
         <tr><td>Kedalaman Air (y)</td><td>${waterDepth >= limit ? '<span style="color:red;font-weight:bold;">MELUAP</span>' : waterDepth.toFixed(3) + ' m'}</td></tr>
-        <tr><td>Kapasitas Terpakai</td><td>${((waterDepth/limit)*100).toFixed(1)} %</td></tr>
-        <tr><td>Dimensi Saluran (H)</td><td>${limit.toFixed(2)} m</td></tr>
+        <tr><td>Batas Freeboard</td><td>${hAman.toFixed(2)} m</td></tr>
+        <tr><td>Status Verifikasi</td><td><b style="color:${isAman ? '#059669' : '#dc2626'}">${isAman ? 'AMAN' : 'TIDAK AMAN'}</b></td></tr>
     `;
 }
     
