@@ -402,13 +402,13 @@ function switchTab(tab) {
     const sectionCustom = document.getElementById('custom-dimensi');
     const sD = document.getElementById('selDim');
     
-    // Sembunyikan kontainer gambar setiap kali jenis saluran diganti
-    const canvasContainer = document.getElementById('canvasSaluran').parentElement;
-    canvasContainer.style.display = 'none'; 
+    // Sembunyikan output lama jika ganti jenis
+    document.getElementById('hydraulicOutput').style.display = 'none';
 
     if (jenis === 'custom') {
         sectionOtomatis.style.display = 'none';
         sectionCustom.style.display = 'flex';
+        // Reset canvas jika pindah ke custom
     } else {
         sectionOtomatis.style.display = 'block';
         sectionCustom.style.display = 'none';
@@ -416,12 +416,29 @@ function switchTab(tab) {
         if (dataPrecast && dataPrecast[jenis]) {
             let optDim = '<option value="">-- Pilih Dimensi --</option>';
             dataPrecast[jenis].data.forEach(i => {
+                // value menyimpan b|h|k (lebar|tinggi|katalog)
                 optDim += `<option value="${i.b}|${i.h}|${i.k}">${i.k}</option>`;
             });
             sD.innerHTML = optDim;
         }
     }
 }
+
+// TAMBAHKAN INI: Listener agar saat dropdown dipilih, gambar muncul
+document.getElementById('selDim').addEventListener('change', function() {
+    const val = this.value;
+    if (!val) return;
+    
+    const parts = val.split('|');
+    const b_meter = parseFloat(parts[0]) / 1000;
+    const h_meter = parseFloat(parts[1]) / 1000;
+    
+    // Tampilkan kontainer canvas
+    document.getElementById('canvasSaluran').parentElement.style.display = 'block';
+    
+    // Gambar dimensi kosong (tinggi air 0 dulu karena belum dihitung)
+    drawDynamicCanvas(b_meter, h_meter, 0, 0); 
+});
 async function loadHydraulicAssets() {
     try {
         const [resKoef, resPrecast] = await Promise.all([
@@ -1034,6 +1051,7 @@ function calculateHydraulics() {
     let y = 0.001; 
     let Qkapasitas = 0;
     const step = 0.001; 
+    let isAman = true;
     
     // Loop untuk mencari y yang menghasilkan Q_cek >= Qrencana
     while (y <= H) {
@@ -1046,7 +1064,12 @@ function calculateHydraulics() {
         if (Q_cek >= Qrencana) break;
         y += step;
     }
-
+    if (y > H) {
+        y = H;         // Batasi visualisasi air mentok di tinggi saluran
+        isAman = false; // Tandai bahwa kapasitas tidak cukup (meluap)
+    }
+    displayResults(y, Qrencana, Qkapasitas, isAman); 
+}
     // e. Perhitungan Freeboard (Tinggi Jagaan)
     // Sesuai request: U-Ditch = sqrt(0.5*y), Box = 0.2*H
     const fb_req = (jenis === 'box_culvert') ? (0.2 * H) : Math.sqrt(0.5 * y);
@@ -1105,10 +1128,10 @@ function drawDynamicCanvas(b, h, y, fb_req) {
     const y0 = (canvas.height - d_H) / 2;
 
     // 1. Gambar Air (Warna Biru)
-    ctx.fillStyle = "#3b82f6";
-    ctx.globalAlpha = 0.6;
-    ctx.fillRect(x0, (y0 + d_H) - d_Y, d_B, d_Y);
-    ctx.globalAlpha = 1.0;
+    ctx.fillStyle = "#1e293b";
+ctx.font = "bold 11px Inter";
+// Label Lebar (B) di bawah
+ctx.fillText(`${b.toFixed(2)}m`, x0 + (d_B/2) - 15, y0 + d_H + 20);
 
     // 2. Gambar Batas Freeboard (Garis Merah Putus-putus)
     ctx.setLineDash([5, 5]);
@@ -1139,10 +1162,11 @@ function drawDynamicCanvas(b, h, y, fb_req) {
     ctx.font = "bold 11px Inter";
     ctx.fillText(`${b.toFixed(2)}m`, x0 + (d_B/2) - 15, y0 + d_H + 20);
     ctx.save();
-    ctx.translate(x0 - 20, y0 + (d_H/2));
-    ctx.rotate(-Math.PI/2);
-    ctx.fillText(`${h.toFixed(2)}m`, -15, 0);
-    ctx.restore();
+ctx.translate(x0 - 25, y0 + (d_H/2));
+ctx.rotate(-Math.PI/2);
+ctx.textAlign = "center";
+ctx.fillText(`${h.toFixed(2)}m`, 0, 0);
+ctx.restore();
 }
     function openTab(evt, tabName) {
     var i, tabcontent, tablinks;
