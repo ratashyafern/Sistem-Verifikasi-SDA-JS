@@ -1019,7 +1019,9 @@ function analyzeHydraulics() {
         return;
     }
     const dataHujan = window.dataHujanTerpilih.find(item => item.T === Tr);
-    const R24 = dataHujan ? dataHujan.nilai : 150;
+    const selectedTr = document.getElementById('periode-ulang')?.value || "2";
+const bestMethod = window.hasilGof?.metodeTerbaik || "Normal"; 
+const R24 = window.hasilFrekuensi?.[selectedTr]?.[bestMethod] || 150;
     
     // 4. Hitung Tc, I, dan Q Target (Rasional)
     const Tc_min = 0.0195 * Math.pow(L_m, 0.77) * Math.pow(S, -0.385);
