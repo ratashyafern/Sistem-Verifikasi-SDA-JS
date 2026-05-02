@@ -1104,16 +1104,24 @@ function updateHydraulicTable(Q_target, y, limit, Tc, I, R24) {
     const resultBody = document.getElementById('hResultBody');
     const statusBadge = document.getElementById('statusBadge');
     
+    // Cek apakah elemen ada di HTML agar tidak error
+    if (!resDiv || !resultBody || !statusBadge) return;
+
     resDiv.style.display = 'block';
     const waterDepth = isNaN(y) ? 0 : y;
     
-    // Logika Inti: Aman jika air tidak menyentuh/melewati batas Freeboard (85% dari H)
+    // 1. PERBAIKAN: Hitung persentase isi
     const persenIsi = (waterDepth / limit) * 100;
-    const isAman = waterDepth <= hAman;
 
-    statusBadge.innerHTML = isAman ? "✅ KAPASITAS AMAN (DI BAWAH FB)" : "⚠️ TIDAK AMAN (MELAMPAUI FB)";
+    // 2. PERBAIKAN: variabel 'hAman' sebelumnya tidak ada/tidak terdefinisi
+    // Kita langsung bandingkan waterDepth dengan limit (H)
+    const isAman = waterDepth <= limit;
+
+    // Update Status Badge
+    statusBadge.innerHTML = isAman ? "✅ KAPASITAS MEMENUHI" : "⚠️ KAPASITAS TIDAK MEMENUHI";
     statusBadge.style.background = isAman ? "#059669" : "#dc2626";
 
+    // Update Isi Tabel
     resultBody.innerHTML = `
         <tr style="background:#f1f5f9"><td colspan="2"><b>PARAMETER INPUT</b></td></tr>
         <tr><td>Hujan Rencana (R24)</td><td>${R24.toFixed(2)} mm</td></tr>
@@ -1121,8 +1129,8 @@ function updateHydraulicTable(Q_target, y, limit, Tc, I, R24) {
         <tr style="background:#f1f5f9"><td colspan="2"><b>HASIL ANALISIS</b></td></tr>
         <tr><td>Debit Rasional (Q)</td><td><b style="color:blue">${Q_target.toFixed(3)} m³/s</b></td></tr>
         <tr><td>Kedalaman Air (y)</td><td>${waterDepth >= limit ? '<span style="color:red;font-weight:bold;">MELUAP</span>' : waterDepth.toFixed(3) + ' m'}</td></tr>
-        <tr><td>Persentase Terpakai</td><td><b>${persenIsi.toFixed(2)}%</b></td></tr>
-        <tr><td>Status Verifikasi</td><td><b style="color:${isAman ? '#059669' : '#dc2626'}">${isAman ? 'AMAN' : 'TIDAK AMAN'}</b></td></tr>
+        <tr><td>Persentase Pengisian</td><td><b>${persenIsi.toFixed(2)}%</b></td></tr>
+        <tr><td>Status Verifikasi</td><td><b style="color:${isAman ? '#059669' : '#dc2626'}">${isAman ? 'KAPASITAS MEMENUHI' : 'KAPASITAS TIDAK MEMENUHI'}</b></td></tr>
     `;
 }
     
