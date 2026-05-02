@@ -336,11 +336,6 @@
                 <input type="number" id="input-b" class="btn-choice" style="width:100%; cursor:text" placeholder="Lebar (B)">
                 <input type="number" id="input-h" class="btn-choice" style="width:100%; cursor:text" placeholder="Tinggi (H)">
             </div>
-
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-top:10px; text-align:center;">
-                <canvas id="canvasSaluran" width="300" height="200" style="max-width:100%"></canvas>
-            </div>
-
             <button onclick="analyzeHydraulics()" class="upload-area" style="background:var(--accent); margin-top:15px;">
     UJI DIMENSI SEKARANG
 </button>
@@ -1070,9 +1065,9 @@ function renderChannelSVG(tipe, B, H, D, z, y) {
     
     let fbVal = 0;
     if (tipe === 'box_culvert') {
-        fbVal = 0.15* H;
+        fbVal = H-(0.15* H);
     } else {
-        fbVal = 0.15*H;
+        fbVal = H-(0.15*H);
     }
     const yFreeboard = fbVal * scale;
 
