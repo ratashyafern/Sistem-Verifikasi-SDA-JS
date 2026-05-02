@@ -979,30 +979,30 @@ function showHydraulicUI() {
 }
 
 function calculateHydraulics() {
-    // 1. Ambil Parameter Input dari UI
-    const L = parseFloat(document.getElementById('inL').value); // Panjang Saluran (m)
-    const S = parseFloat(document.getElementById('inS').value); // Kemiringan Saluran
-    const C = parseFloat(document.getElementById('selC').value); // Koefisien Pengaliran
-    const n = parseFloat(document.getElementById('selN').value); // Koefisien Manning
-    const Tr = parseInt(document.getElementById('selTr').value); // Periode Ulang (Dropdown)
-    const areaHa = parseFloat(document.getElementById('area-val').innerText); // Luas Area (Ha)
-    const jenis = document.getElementById('jenis-precast').value; // Tipe: U-Ditch / Box
+    // 1. Ambil Parameter Input
+    const L = parseFloat(document.getElementById('inL').value); 
+    const S = parseFloat(document.getElementById('inS').value); 
+    const C = parseFloat(document.getElementById('selC').value); 
+    const n = parseFloat(document.getElementById('selN').value); 
+    const Tr = parseInt(document.getElementById('selTr').value); 
+    const areaHa = parseFloat(document.getElementById('area-val').innerText); 
+    const jenis = document.getElementById('jenis-precast').value; 
 
     // 2. Validasi Sinkronisasi dengan Tab Hidrologi
     if (!window.dataHujanTerpilih) {
-        alert("⚠️ Data curah hujan belum tersedia. Selesaikan Analisis Hidrologi & Uji GoF terlebih dahulu!");
+        alert("⚠️ Selesaikan Analisis Hidrologi & Uji GoF terlebih dahulu!");
         return;
     }
 
-    // Ambil nilai R24 sesuai Periode Ulang (Tr) yang dipilih
+    // Ambil nilai R24 (Hujan Rencana) sesuai Tr yang dipilih
     const dataHujan = window.dataHujanTerpilih.find(item => item.T === Tr);
     if (!dataHujan) {
-        alert(`⚠️ Data hujan untuk periode ulang ${Tr} tahun tidak ditemukan!`);
+        alert(`⚠️ Data hujan periode ${Tr} tahun tidak ditemukan!`);
         return;
     }
     const R24 = dataHujan.nilai;
 
-    // 3. Ambil Dimensi Saluran (Precast atau Custom)
+    // 3. Ambil Dimensi Saluran
     let B, H;
     if (jenis === 'custom') {
         B = parseFloat(document.getElementById('input-b').value);
@@ -1011,52 +1011,52 @@ function calculateHydraulics() {
         const dimVal = document.getElementById('selDim').value;
         if (!dimVal) { alert("Pilih dimensi saluran!"); return; }
         const parts = dimVal.split('|');
-        B = parseFloat(parts[0]) / 1000; // Asumsi data JSON dalam mm, konversi ke meter
+        B = parseFloat(parts[0]) / 1000; // Konversi mm ke meter
         H = parseFloat(parts[1]) / 1000;
     }
 
     if (!L || !S || isNaN(areaHa)) {
-        alert("Lengkapi data L, S, dan Area terlebih dahulu!");
+        alert("Lengkapi data L, S, dan Luas DAS!");
         return;
     }
 
     // --- PROSES PERHITUNGAN ---
     
-    // a. Tc (Kirpich) - Menit
+    // a. Tc (Kirpich) -> Hasil dalam menit
     const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385);
 
-    // b. Intensitas (Mononobe) - mm/jam
+    // b. Intensitas (Mononobe) -> mm/jam
     const I = (R24 / 24) * Math.pow((24 / (Tc / 60)), (2/3));
 
-    // c. Q Rencana (Rasional) - m3/detik
+    // c. Q Rencana (Metode Rasional) -> m3/detik
     const Qrencana = (C * I * areaHa) / 360;
 
-    // d. Mencari y (Tinggi Muka Air) secara iteratif (Manning)
-    let y = 0.01; 
+    // d. Mencari y (Tinggi Muka Air) secara iteratif dengan Manning
+    let y = 0.001; 
     let Qkapasitas = 0;
     const step = 0.001; 
     
+    // Loop untuk mencari y yang menghasilkan Q_cek >= Qrencana
     while (y <= H) {
         let A = B * y;
         let P = B + (2 * y);
         let R = A / P;
         let Q_cek = (1/n) * A * Math.pow(R, 2/3) * Math.sqrt(S);
         
-        if (Q_cek >= Qrencana) {
-            Qkapasitas = Q_cek;
-            break;
-        }
+        Qkapasitas = Q_cek;
+        if (Q_cek >= Qrencana) break;
         y += step;
-        Qkapasitas = Q_cek; // Update Q terakhir jika sampai puncak tetap tidak cukup
     }
 
-    // e. Freeboard (Tinggi Jagaan)
-    // Aturan: Box Culvert 20% H, U-Ditch akar(0.5*y)
+    // e. Perhitungan Freeboard (Tinggi Jagaan)
+    // Sesuai request: U-Ditch = sqrt(0.5*y), Box = 0.2*H
     const fb_req = (jenis === 'box_culvert') ? (0.2 * H) : Math.sqrt(0.5 * y);
     const fb_aktual = H - y;
+
+    // Cek Status Keamanan
     const isAman = (Qkapasitas >= Qrencana) && (fb_aktual >= fb_req);
 
-    // 4. Update UI & Canvas
+    // 4. Update UI & Visualisasi
     renderHydraulicResult(Qrencana, Qkapasitas, y, B, H, isAman, fb_req, fb_aktual, Tc, I);
     drawDynamicCanvas(B, H, y, fb_req);
 }
@@ -1066,26 +1066,19 @@ function renderHydraulicResult(Qr, Qk, y, B, H, isAman, fb_req, fb_aktual, Tc, I
     out.className = `status-card ${isAman ? 'status-aman' : 'status-bahaya'}`;
     
     out.innerHTML = `
-        <div style="text-align:left; font-family:'Inter',sans-serif;">
-            <div style="display:flex; justify-content:space-between; border-bottom:1px solid #ccc; padding-bottom:5px; margin-bottom:8px;">
-                <span style="font-weight:bold; color:#1c2b4a;">PARAMETER INPUT</span>
-                <span style="font-size:10px; color:#666;">Tc: ${Tc.toFixed(2)} min | I: ${I.toFixed(2)} mm/h</span>
-            </div>
-            <table style="width:100%; font-size:11px; border-collapse:collapse;">
-                <tr><td>Debit Rencana (Qs)</td><td>: <b>${Qr.toFixed(3)} m³/s</b></td></tr>
-                <tr><td>Kapasitas Saluran (Qs)</td><td>: <b>${Qk.toFixed(3)} m³/s</b></td></tr>
-                <tr><td>Tinggi Muka Air (y)</td><td>: <b>${y.toFixed(2)} m</b></td></tr>
-                <tr style="border-top:1px dashed #bbb;">
-                    <td>Tinggi Jagaan (Min)</td><td>: ${fb_req.toFixed(2)} m</td>
-                </tr>
-                <tr>
-                    <td>Tinggi Jagaan (Aktual)</td><td>: <span style="color:${fb_aktual < fb_req ? 'red':'green'}">${fb_aktual.toFixed(2)} m</span></td>
+        <div style="text-align:left; font-size:11px;">
+            <p style="font-weight:bold; border-bottom:1px solid #ccc; margin-bottom:5px;">HASIL VERIFIKASI</p>
+            <table style="width:100%;">
+                <tr><td>Q Rencana</td><td>: <b>${Qr.toFixed(3)} m³/s</b></td></tr>
+                <tr><td>Q Kapasitas</td><td>: <b>${Qk.toFixed(3)} m³/s</b></td></tr>
+                <tr><td>Tinggi Air (y)</td><td>: <b>${y.toFixed(2)} m</b></td></tr>
+                <tr style="color: ${fb_aktual < fb_req ? '#991b1b' : '#166534'}">
+                    <td>Jagaan (Aktual/Min)</td>
+                    <td>: <b>${fb_aktual.toFixed(2)}m / ${fb_req.toFixed(2)}m</b></td>
                 </tr>
             </table>
-            <div style="margin-top:10px; padding:8px; background:rgba(255,255,255,0.5); border-radius:4px; text-align:center;">
-                <span style="font-size:13px; font-weight:800;">
-                    STATUS: ${isAman ? '✅ KAPASITAS AMAN' : '❌ PERLU RE-DESIGN'}
-                </span>
+            <div style="margin-top:10px; font-weight:800; text-align:center;">
+                STATUS: ${isAman ? '✅ KAPASITAS AMAN' : '❌ RE-DESIGN DIMENSI'}
             </div>
         </div>
     `;
@@ -1093,62 +1086,61 @@ function renderHydraulicResult(Qr, Qk, y, B, H, isAman, fb_req, fb_aktual, Tc, I
 
 function drawDynamicCanvas(b, h, y, fb_req) {
     const canvas = document.getElementById('canvasSaluran');
-    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const jenis = document.getElementById('jenis-precast').value;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Scaling agar gambar pas di tengah canvas
-    const margin = 50;
+    const margin = 40;
     const scale = Math.min((canvas.width - 2 * margin) / b, (canvas.height - 2 * margin) / h);
     
     const d_B = b * scale;
     const d_H = h * scale;
-    const d_Y = y * scale;
+    const d_Y = Math.min(y * scale, d_H); // Tinggi air visual tidak boleh melebihi H
     const d_FB = fb_req * scale;
     
     const x0 = (canvas.width - d_B) / 2;
     const y0 = (canvas.height - d_H) / 2;
 
-    // 1. Gambar Air
+    // 1. Gambar Air (Warna Biru)
     ctx.fillStyle = "#3b82f6";
     ctx.globalAlpha = 0.6;
     ctx.fillRect(x0, (y0 + d_H) - d_Y, d_B, d_Y);
     ctx.globalAlpha = 1.0;
 
-    // 2. Gambar Batas Jagaan (Garis Merah Putus-putus)
+    // 2. Gambar Batas Freeboard (Garis Merah Putus-putus)
     ctx.setLineDash([5, 5]);
     ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(x0 - 10, y0 + d_FB);
-    ctx.lineTo(x0 + d_B + 10, y0 + d_FB);
+    ctx.moveTo(x0 - 15, y0 + d_FB);
+    ctx.lineTo(x0 + d_B + 15, y0 + d_FB);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 3. Gambar Struktur Beton
+    // 3. Gambar Struktur Saluran (Beton)
     ctx.strokeStyle = "#334155";
-    ctx.lineWidth = 5;
-    ctx.lineJoin = "round";
+    ctx.lineWidth = 4;
     ctx.beginPath();
     if (jenis === 'box_culvert') {
-        ctx.strokeRect(x0, y0, d_B, d_H);
+        ctx.strokeRect(x0, y0, d_B, d_H); // Saluran Tertutup
     } else {
-        ctx.moveTo(x0, y0);
+        ctx.moveTo(x0, y0); // Saluran Terbuka
         ctx.lineTo(x0, y0 + d_H);
         ctx.lineTo(x0 + d_B, y0 + d_H);
         ctx.lineTo(x0 + d_B, y0);
     }
     ctx.stroke();
 
-    // 4. Dimensi Text
+    // 4. Label Dimensi
     ctx.fillStyle = "#1e293b";
-    ctx.font = "bold 10px Inter";
-    ctx.fillText(`${b.toFixed(2)}m`, x0 + (d_B/2) - 10, y0 + d_H + 15);
+    ctx.font = "bold 11px Inter";
+    ctx.fillText(`${b.toFixed(2)}m`, x0 + (d_B/2) - 15, y0 + d_H + 20);
     ctx.save();
-    ctx.translate(x0 - 15, y0 + (d_H/2));
+    ctx.translate(x0 - 20, y0 + (d_H/2));
     ctx.rotate(-Math.PI/2);
-    ctx.fillText(`${h.toFixed(2)}m`, -10, 0);
+    ctx.fillText(`${h.toFixed(2)}m`, -15, 0);
     ctx.restore();
 }
     function openTab(evt, tabName) {
