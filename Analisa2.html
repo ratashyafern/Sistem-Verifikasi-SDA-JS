@@ -427,6 +427,8 @@ function updateVisualOnly() {
             hVal = parseFloat(split[1]);
         }
     }
+    drawCrossSection(bVal, hVal);
+}
 async function loadHydraulicAssets() {
     try {
         const [resKoef, resPrecast] = await Promise.all([
