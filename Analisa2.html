@@ -318,28 +318,26 @@
             </div>
 
             <!-- BAGIAN DIMENSI (Otomatis vs Manual) -->
-            <div id="section-dimensi-otomatis" class="input-group">
-                    <label style="font-size:10px; font-weight:800;">DIMENSI PRECAST</label>
-                    <select id="selDim" class="btn-choice" style="width:100%" onchange="updateVisualOnly()"></select>
-                </div>
+            <div id="section-dimensi-otomatis">
+                <label style="font-size:10px; font-weight:800;">DIMENSI PRECAST (Katalog)</label>
+                <select id="selDim" class="btn-choice" style="width:100%"></select>
             </div>
 
-            <!-- INPUT CUSTOM (Muncul jika pilih manual) -->
-            <div id="custom-dimensi" style="display:none; gap:5px; background:#f8fafc; padding:10px; border-radius:8px; border:1px dashed #cbd5e1;">
-                <input type="number" id="input-b" class="btn-choice" style="width:100%" placeholder="Lebar (B)" oninput="updateVisualOnly()">
-                <input type="number" id="input-h" class="btn-choice" style="width:100%" placeholder="Tinggi (H)" oninput="updateVisualOnly()">
+            <div id="custom-dimensi" style="display:none; flex-direction:column; gap:5px; background:#f8fafc; padding:10px; border-radius:8px; border:1px dashed #cbd5e1;">
+                <label style="font-size:10px; font-weight:800; color:var(--primary);">INPUT MANUAL (Meter)</label>
+                <input type="number" id="input-b" class="btn-choice" style="width:100%; cursor:text" placeholder="Lebar (B)">
+                <input type="number" id="input-h" class="btn-choice" style="width:100%; cursor:text" placeholder="Tinggi (H)">
             </div>
 
-            <!-- REVISI POSISI TOMBOL: Tepat di atas Canvas -->
-            <button onclick="calculateHydraulics()" class="upload-area" style="margin-top:5px; background: #007bff; color:white;">
-                HITUNG VERIFIKASI
-            </button>
-
-            <!-- VISUALISASI -->
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; text-align:center;">
-                <canvas id="canvasSaluran" width="300" height="150" style="max-width:100%"></canvas>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-top:10px; text-align:center;">
+                <canvas id="canvasSaluran" width="300" height="200" style="max-width:100%"></canvas>
             </div>
+
+            <button onclick="calculateHydraulics()" class="upload-area" style="margin-top:10px;">HITUNG VERIFIKASI</button>
         </div>
+        <div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
+    </div>
+</div>
     </div>
 </div>
 
@@ -384,50 +382,18 @@ function switchTab(tab) {
 
     // 3. Fungsi Handle Tampilan Dimensi (TARUH DI SINI)
     function handleDimensiChange() {
-    const jenis = document.getElementById('jenis-precast').value;
-    const sectionOtomatis = document.getElementById('section-dimensi-otomatis');
-    const sectionCustom = document.getElementById('custom-dimensi');
-    const selDim = document.getElementById('selDim');
+        const jenis = document.getElementById('jenis-precast').value;
+        const sectionOtomatis = document.getElementById('section-dimensi-otomatis');
+        const sectionCustom = document.getElementById('custom-dimensi');
 
-    if (jenis === 'custom') {
-        sectionOtomatis.style.display = 'none';
-        sectionCustom.style.display = 'flex';
-    } else {
-        sectionOtomatis.style.display = 'block';
-        sectionCustom.style.display = 'none';
-        
-        // Filter isi dropdown: Hanya ambil data sesuai key (u_ditch atau box_culvert)
-        selDim.innerHTML = `<option value="">-- Pilih Ukuran --</option>`;
-        
-        if (dataPrecast[jenis] && dataPrecast[jenis].data) {
-            dataPrecast[jenis].data.forEach(item => {
-                const opt = document.createElement('option');
-                opt.value = `${item.b}|${item.h}|${item.k}`;
-                opt.textContent = item.k; // Menampilkan label misal: "BC 600x600"
-                selDim.appendChild(opt);
-            });
+        if (jenis === 'custom') {
+            sectionOtomatis.style.display = 'none';
+            sectionCustom.style.display = 'flex';
+        } else {
+            sectionOtomatis.style.display = 'block';
+            sectionCustom.style.display = 'none';
         }
-    }
-    updateVisualOnly();
-}
-
-// Fungsi agar canvas update saat ganti pilihan (tanpa klik hitung dulu)
-function updateVisualOnly() {
-    const jenis = document.getElementById('jenis-precast').value;
-    let bVal, hVal;
-
-    if (jenis === 'custom') {
-        bVal = parseFloat(document.getElementById('input-b').value) || 0;
-        hVal = parseFloat(document.getElementById('input-h').value) || 0;
-    } else {
-        const val = document.getElementById('selDim').value;
-        if (val) {
-            const split = val.split('|');
-            bVal = parseFloat(split[0]);
-            hVal = parseFloat(split[1]);
-        }
-    }
-    drawCrossSection(bVal, hVal);
+    drawCrossSection(0, 0); 
 }
 async function loadHydraulicAssets() {
     try {
