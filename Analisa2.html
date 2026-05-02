@@ -1018,16 +1018,14 @@ function analyzeHydraulics() {
         alert("Selesaikan Analisis Hidrologi & Uji GoF terlebih dahulu!");
         return;
     }
-    const dataHujan = window.dataHujanTerpilih.find(item => item.T === Tr);
-    const selectedTr = document.getElementById('periode-ulang')?.value || "2";
-const bestMethod = window.hasilGof?.metodeTerbaik || "Normal"; 
-const R24 = window.hasilFrekuensi?.[selectedTr]?.[bestMethod] || 150;
+    const dataHujanSesuaiTr = window.dataHujanTerpilih.find(item => item.T === Tr);
+    const R24 = dataHujanSesuaiTr ? dataHujanSesuaiTr.nilai : 150; // Fallback ke 150 jika tidak ketemu
     
     // 4. Hitung Tc, I, dan Q Target (Rasional)
     const Tc_min = 0.0195 * Math.pow(L_m, 0.77) * Math.pow(S, -0.385);
     const Tc_jam = Math.max(Tc_min, 5) / 60; 
     const I = (R24 / 24) * Math.pow(24 / Tc_jam, 2/3);
-    const Q_target = (1 / 3.6) * cPilihan * I * (areaHa / 100); // Area ke km2
+    const Q_target = (1 / 3.6) * cPilihan * I * (areaHa / 100);
 
     // 5. Iterasi Manning mencari kedalaman air (y)
     let y = 0.001, Q_calc = 0;
