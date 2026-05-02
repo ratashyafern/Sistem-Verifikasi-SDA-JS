@@ -401,10 +401,10 @@ function switchTab(tab) {
     const sectionOtomatis = document.getElementById('section-dimensi-otomatis');
     const sectionCustom = document.getElementById('custom-dimensi');
     const sD = document.getElementById('selDim');
+    
+    // Sembunyikan kontainer gambar setiap kali jenis saluran diganti
     const canvasContainer = document.getElementById('canvasSaluran').parentElement;
-
-    // Sembunyikan visual dulu (Revisi Poin 2)
-    canvasContainer.style.display = 'none';
+    canvasContainer.style.display = 'none'; 
 
     if (jenis === 'custom') {
         sectionOtomatis.style.display = 'none';
@@ -413,9 +413,8 @@ function switchTab(tab) {
         sectionOtomatis.style.display = 'block';
         sectionCustom.style.display = 'none';
         
-        // Filter Dimensi (Revisi Poin 1)
         if (dataPrecast && dataPrecast[jenis]) {
-            let optDim = '<option value="">-- Pilih Dimensi ' + (jenis === "u_ditch" ? "U-Ditch" : "Box") + " --</option>";
+            let optDim = '<option value="">-- Pilih Dimensi --</option>';
             dataPrecast[jenis].data.forEach(i => {
                 optDim += `<option value="${i.b}|${i.h}|${i.k}">${i.k}</option>`;
             });
@@ -1055,7 +1054,9 @@ function calculateHydraulics() {
 
     // Cek Status Keamanan
     const isAman = (Qkapasitas >= Qrencana) && (fb_aktual >= fb_req);
-
+    // Tampilkan canvas hanya SETELAH tombol diklik
+    const canvasContainer = document.getElementById('canvasSaluran').parentElement;
+    canvasContainer.style.display = 'block';
     // 4. Update UI & Visualisasi
     renderHydraulicResult(Qrencana, Qkapasitas, y, B, H, isAman, fb_req, fb_aktual, Tc, I);
     drawDynamicCanvas(B, H, y, fb_req);
