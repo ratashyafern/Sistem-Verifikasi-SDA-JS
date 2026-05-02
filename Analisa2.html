@@ -1108,7 +1108,7 @@ function updateHydraulicTable(Q_target, y, limit, Tc, I, R24) {
     const waterDepth = isNaN(y) ? 0 : y;
     
     // Logika Inti: Aman jika air tidak menyentuh/melewati batas Freeboard (85% dari H)
-    const hAman = limit * 0.85;
+    const persenIsi = (waterDepth / limit) * 100;
     const isAman = waterDepth <= hAman;
 
     statusBadge.innerHTML = isAman ? "✅ KAPASITAS AMAN (DI BAWAH FB)" : "⚠️ TIDAK AMAN (MELAMPAUI FB)";
@@ -1121,7 +1121,7 @@ function updateHydraulicTable(Q_target, y, limit, Tc, I, R24) {
         <tr style="background:#f1f5f9"><td colspan="2"><b>HASIL ANALISIS</b></td></tr>
         <tr><td>Debit Rasional (Q)</td><td><b style="color:blue">${Q_target.toFixed(3)} m³/s</b></td></tr>
         <tr><td>Kedalaman Air (y)</td><td>${waterDepth >= limit ? '<span style="color:red;font-weight:bold;">MELUAP</span>' : waterDepth.toFixed(3) + ' m'}</td></tr>
-        <tr><td>Batas Freeboard</td><td>${hAman.toFixed(2)} m</td></tr>
+        <tr><td>Persentase Terpakai</td><td><b>${persenIsi.toFixed(2)}%</b></td></tr>
         <tr><td>Status Verifikasi</td><td><b style="color:${isAman ? '#059669' : '#dc2626'}">${isAman ? 'AMAN' : 'TIDAK AMAN'}</b></td></tr>
     `;
 }
