@@ -12,22 +12,13 @@
     <style>
         :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
-        body { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
-        
-        #sidebar { width: 450px; background: #f8fafc; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; }
-        .sidebar-header { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; background: white; }
-        /* CSS Tambahan agar Nav Tetap di Atas */
-        #main-nav { 
-            position: sticky; 
-            top: 0; 
-            background: #f8fafc; 
-            z-index: 20; 
-            padding-top: 15px; 
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .sidebar-content { padding: 8px 15px; flex-grow: 1; overflow-y: auto; }
-        #map { flex-grow: 1; position: relative; }
+        body { display: flex; width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); }
+    #sidebar { width: 450px; height: 100vh; background: #f8fafc; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; flex-shrink: 0; }
+    #map { flex-grow: 1; height: 100vh; position: relative; z-index: 1; }
+
+    .sidebar-header { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; background: white; }
+    #main-nav { padding: 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    .sidebar-content { padding: 15px; flex-grow: 1; overflow-y: auto; }
 
         .back-link { display: flex; align-items: center; gap: 8px; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; }
         .card { background: #ffffff; border: 1px solid #eef2f6; border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
@@ -170,12 +161,14 @@
         <p style="font-size: 12px; color: var(--slate); margin-top: 4px;">Suku Dinas SDA Jakarta Selatan</p>
     </div>
     
+    <div id="main-nav">
+        <div style="display: flex; gap: 5px; background: #f1f5f9; padding: 5px; border-radius: 10px;">
+            <button onclick="switchTab('hidrologi')" id="tab-hidrologi" class="tab-btn active" style="flex:1; padding:10px; font-weight:800; cursor:pointer; border:none; border-radius:8px;">HIDROLOGI</button>
+            <button onclick="switchTab('hidraulika')" id="tab-hidraulika" class="tab-btn" style="flex:1; padding:10px; font-weight:800; cursor:pointer; border:none; border-radius:8px;" disabled>HIDRAULIKA</button>
+        </div>
+    </div>
+    
     <div class="sidebar-content">
-        <!-- 1. NAVIGATION TABS (Pindah ke luar card agar tetap di atas) -->
-        <div id="main-nav" class="nav-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; padding: 0 15px;">
-    <button onclick="switchTab('hidrologi')" id="tab-hidrologi" class="tab-btn active" style="flex:1; padding:10px; font-weight:800; cursor:pointer;">HIDROLOGI</button>
-    <button onclick="switchTab('hidraulika')" id="tab-hidraulika" class="tab-btn" style="flex:1; padding:10px; font-weight:800; cursor:pointer;" disabled>HIDRAULIKA</button>
-</div>
 
         <!-- 2. GROUP HIDROLOGI (Membungkus Poin 1-5) -->
         <div id="group-hidrologi">
@@ -1069,11 +1062,19 @@ function renderChannelSVG(tipe, B, H, D, z, y) {
     const box = document.getElementById('channelBox');
     const svgW = box.clientWidth || 300;
     const svgH = 180; 
-    const margin = 30;
+    const margin = 35; // Margin agak lebar untuk label
     
     const scale = (svgH - (2 * margin)) / (H || 1);
     const centerX = svgW / 2;
     const bottomY = svgH - margin;
+    
+    let fbVal = 0;
+    if (tipe === 'box_culvert') {
+        fbVal = H - (0.2 * H);
+    } else {
+        fbVal = H - Math.sqrt(0.5 * H);
+    }
+    const yFreeboard = fbVal * scale;
 
     let draw = `<svg width="100%" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">
         <defs>
@@ -1090,14 +1091,24 @@ function renderChannelSVG(tipe, B, H, D, z, y) {
     // Gambar Air
     if (y > 0) {
         draw += `<rect x="${centerX - bHalf}" y="${bottomY - yAir}" width="${B * scale}" height="${yAir}" fill="url(#waterGrad)" />`;
-        draw += `<line x1="${centerX - bHalf}" y1="${bottomY - yAir}" x2="${centerX + bHalf}" y2="${bottomY - yAir}" stroke="white" stroke-width="2" stroke-dasharray="4"/>`;
     }
-    // Gambar Saluran (Box/U-Ditch)
+
+    // 2. Gambar Saluran (Box/U-Ditch)
     if (tipe === 'box_culvert') {
         draw += `<rect x="${centerX - bHalf}" y="${bottomY - hFull}" width="${B * scale}" height="${hFull}" fill="none" stroke="#1e293b" stroke-width="6"/>`;
     } else {
         draw += `<polyline points="${centerX - bHalf},${bottomY - hFull} ${centerX - bHalf},${bottomY} ${centerX + bHalf},${bottomY} ${centerX + bHalf},${bottomY - hFull}" fill="none" stroke="#1e293b" stroke-width="6" stroke-linejoin="round"/>`;
     }
+
+    // 3. Gambar Garis Freeboard (Merah Putus-putus)
+    draw += `<line x1="${centerX - bHalf}" y1="${bottomY - yFreeboard}" x2="${centerX + bHalf}" y2="${bottomY - yFreeboard}" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4"/>`;
+    draw += `<text x="${centerX + bHalf + 5}" y="${bottomY - yFreeboard}" fill="#ef4444" style="font-size:9px; font-weight:bold;">FB</text>`;
+
+    // 4. Keterangan Angka Dimensi
+    // Label Tinggi (H)
+    draw += `<text x="${centerX - bHalf - 25}" y="${bottomY - (hFull/2)}" fill="#64748b" style="font-size:10px; font-weight:bold;" transform="rotate(-90, ${centerX - bHalf - 25}, ${bottomY - (hFull/2)})">H: ${H.toFixed(2)}m</text>`;
+    // Label Lebar (B)
+    draw += `<text x="${centerX}" y="${bottomY + 15}" fill="#64748b" text-anchor="middle" style="font-size:10px; font-weight:bold;">B: ${B.toFixed(2)}m</text>`;
     
     draw += `</svg>`;
     box.innerHTML = draw;
@@ -1119,10 +1130,11 @@ function updateHydraulicTable(Q_target, y, limit, Tc, I, R24) {
     resultBody.innerHTML = `
         <tr style="background:#f1f5f9"><td colspan="2"><b>PARAMETER INPUT</b></td></tr>
         <tr><td>Hujan Rencana (R24)</td><td>${R24.toFixed(2)} mm</td></tr>
-        <tr><td>Tc / Intensitas</td><td>${Tc.toFixed(2)} mnt / ${I.toFixed(2)} mm/j</td></tr>
+        <tr><td>Waktu Konsentrasi (Tc)</td><td>${Tc.toFixed(2)} Menit</td></tr>
+        <tr><td>Intensitas Hujan (I)</td><td>${I.toFixed(2)} mm/jam</td></tr>
         <tr style="background:#f1f5f9"><td colspan="2"><b>HASIL ANALISIS</b></td></tr>
         <tr><td>Debit Rasional (Q)</td><td><b style="color:blue">${Q_target.toFixed(3)} m³/s</b></td></tr>
-        <tr><td>Kedalaman Air (y)</td><td>${waterDepth >= limit ? '<span style="color:red;font-weight:bold;">FULL</span>' : waterDepth.toFixed(3) + ' m'}</td></tr>
+        <tr><td>Kedalaman Air (y)</td><td>${waterDepth >= limit ? '<span style="color:red;font-weight:bold;">MELUAP</span>' : waterDepth.toFixed(3) + ' m'}</td></tr>
         <tr><td>Kapasitas Terpakai</td><td>${((waterDepth/limit)*100).toFixed(1)} %</td></tr>
         <tr><td>Dimensi Saluran (H)</td><td>${limit.toFixed(2)} m</td></tr>
     `;
