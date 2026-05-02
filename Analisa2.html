@@ -319,27 +319,23 @@
 
             <!-- BAGIAN DIMENSI (Otomatis vs Manual) -->
             <div id="section-dimensi-otomatis">
-    <label style="font-size:10px; font-weight:800;">DIMENSI PRECAST (Katalog)</label>
-    <select id="selDim" class="btn-choice" style="width:100%"></select>
-</div>
+                <label style="font-size:10px; font-weight:800;">DIMENSI PRECAST (Katalog)</label>
+                <select id="selDim" class="btn-choice" style="width:100%"></select>
+            </div>
 
-<div id="custom-dimensi" style="display:none; flex-direction:column; gap:5px; background:#f8fafc; padding:10px; border-radius:8px; border:1px dashed #cbd5e1;">
-    <label style="font-size:10px; font-weight:800; color:var(--primary);">INPUT MANUAL (Meter)</label>
-    <input type="number" id="input-b" class="btn-choice" style="width:100%; cursor:text" placeholder="Lebar (B)">
-    <input type="number" id="input-h" class="btn-choice" style="width:100%; cursor:text" placeholder="Tinggi (H)">
-</div>
+            <div id="custom-dimensi" style="display:none; flex-direction:column; gap:5px; background:#f8fafc; padding:10px; border-radius:8px; border:1px dashed #cbd5e1;">
+                <label style="font-size:10px; font-weight:800; color:var(--primary);">INPUT MANUAL (Meter)</label>
+                <input type="number" id="input-b" class="btn-choice" style="width:100%; cursor:text" placeholder="Lebar (B)">
+                <input type="number" id="input-h" class="btn-choice" style="width:100%; cursor:text" placeholder="Tinggi (H)">
+            </div>
 
-<!-- TOMBOL HITUNG (Poin 3: Letakkan persis di bawah dimensi) -->
-<button onclick="calculateHydraulics()" class="upload-area" style="margin-top:15px; width:100%; background: var(--accent); border:none; height: 50px;">
-    HITUNG VERIFIKASI SEKARANG
-</button>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-top:10px; text-align:center;">
+                <canvas id="canvasSaluran" width="300" height="200" style="max-width:100%"></canvas>
+            </div>
 
-<!-- VISUALISASI (Default Sembunyi) -->
-<div id="visualContainer" style="display:none; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-top:10px; text-align:center;">
-    <canvas id="canvasSaluran" width="300" height="200" style="max-width:100%"></canvas>
-</div>
-
-<div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
+            <button onclick="calculateHydraulics()" class="upload-area" style="margin-top:10px;">HITUNG VERIFIKASI</button>
+        </div>
+        <div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
     </div>
 </div>
     </div>
