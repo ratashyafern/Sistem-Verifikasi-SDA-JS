@@ -154,6 +154,8 @@
         <h1 style="font-size: 24px; font-weight: 800; color: var(--primary); line-height: 1.1;">VERIFICATION SYSTEM</h1>
         <p style="font-size: 12px; color: var(--slate); margin-top: 4px;">Suku Dinas SDA Jakarta Selatan</p>
     </div>
+    </div>
+<div id="map" style="flex-grow: 1; height: 100vh;"></div>
     
     <div class="sidebar-content">
         <!-- 1. NAVIGATION TABS (Pindah ke luar card agar tetap di atas) -->
@@ -403,7 +405,7 @@ function switchTab(tab) {
         
         // Filter Dimensi (Revisi Poin 1)
         if (dataPrecast && dataPrecast[jenis]) {
-            let optDim = '<option value="">-- Pilih Dimensi ${dataPrecast[jenis].n} --</option>';
+            let optDim = `<option value="">-- Pilih Dimensi ${dataPrecast[jenis].n} --</option>`;
             dataPrecast[jenis].data.forEach(i => {
                 optDim += `<option value="${i.b}|${i.h}|${i.k}">${i.k}</option>`;
             });
@@ -954,10 +956,9 @@ function showHydraulicUI() {
         sC.innerHTML = dataKoefisien.c_val.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
         sN.innerHTML = dataKoefisien.n_manning.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
     }
-    // Dropdown dimensi (selDim) dikosongkan dulu, akan diisi di handleDimensiChange
-    document.getElementById('selDim').innerHTML = '<option value="">-- Pilih Jenis Dulu --</option>';
+    // REVISI: Langsung panggil handleDimensiChange agar dropdown dimensi terisi sesuai default (U-Ditch)
+    handleDimensiChange(); 
 }
-
 function calculateHydraulics() {
     // 1. Ambil Input Dasar
     const L = parseFloat(document.getElementById('inL').value);
