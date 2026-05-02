@@ -324,17 +324,20 @@
             </div>
 
             <div id="custom-dimensi" style="display:none; flex-direction:column; gap:5px; background:#f8fafc; padding:10px; border-radius:8px; border:1px dashed #cbd5e1;">
-                <label style="font-size:10px; font-weight:800; color:var(--primary);">INPUT MANUAL (Meter)</label>
-                <input type="number" id="input-b" class="btn-choice" style="width:100%; cursor:text" placeholder="Lebar (B)">
-                <input type="number" id="input-h" class="btn-choice" style="width:100%; cursor:text" placeholder="Tinggi (H)">
-            </div>
+    <label style="font-size:10px; font-weight:800; color:var(--primary);">INPUT MANUAL (Meter)</label>
+    <input type="number" id="input-b" class="btn-choice" style="width:100%; cursor:text" placeholder="Lebar (B)">
+    <input type="number" id="input-h" class="btn-choice" style="width:100%; cursor:text" placeholder="Tinggi (H)">
+</div>
 
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-top:10px; text-align:center;">
-                <canvas id="canvasSaluran" width="300" height="200" style="max-width:100%"></canvas>
-            </div>
+<!-- TOMBOL HITUNG (Revisi Poin 3: Letak di bawah dimensi, panjang 2 box) -->
+<button onclick="calculateHydraulics()" class="upload-area" style="margin-top:15px; width:100%; background: var(--primary); padding: 18px; font-size: 14px; letter-spacing: 1px;">
+    HITUNG VERIFIKASI SEKARANG <i data-lucide="calculator" style="width:18px;"></i>
+</button>
 
-            <button onclick="calculateHydraulics()" class="upload-area" style="margin-top:10px;">HITUNG VERIFIKASI</button>
-        </div>
+<!-- Container Visual (Sembunyikan default) -->
+<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-top:15px; text-align:center; display:none;">
+    <canvas id="canvasSaluran" width="300" height="200" style="max-width:100%"></canvas>
+</div>
         <div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
     </div>
 </div>
@@ -382,18 +385,31 @@ function switchTab(tab) {
 
     // 3. Fungsi Handle Tampilan Dimensi (TARUH DI SINI)
     function handleDimensiChange() {
-        const jenis = document.getElementById('jenis-precast').value;
-        const sectionOtomatis = document.getElementById('section-dimensi-otomatis');
-        const sectionCustom = document.getElementById('custom-dimensi');
+    const jenis = document.getElementById('jenis-precast').value;
+    const sectionOtomatis = document.getElementById('section-dimensi-otomatis');
+    const sectionCustom = document.getElementById('custom-dimensi');
+    const sD = document.getElementById('selDim');
 
-        if (jenis === 'custom') {
-            sectionOtomatis.style.display = 'none';
-            sectionCustom.style.display = 'flex';
-        } else {
-            sectionOtomatis.style.display = 'block';
-            sectionCustom.style.display = 'none';
+    // Reset dan Sembunyikan Visual Canvas (Revisi Poin 2)
+    const canvasContainer = document.getElementById('canvasSaluran').parentElement;
+    canvasContainer.style.display = 'block';
+
+    if (jenis === 'custom') {
+        sectionOtomatis.style.display = 'none';
+        sectionCustom.style.display = 'flex';
+    } else {
+        sectionOtomatis.style.display = 'block';
+        sectionCustom.style.display = 'none';
+        
+        // Filter Dimensi (Revisi Poin 1)
+        if (dataPrecast && dataPrecast[jenis]) {
+            let optDim = '<option value="">-- Pilih Dimensi ${dataPrecast[jenis].n} --</option>';
+            dataPrecast[jenis].data.forEach(i => {
+                optDim += `<option value="${i.b}|${i.h}|${i.k}">${i.k}</option>`;
+            });
+            sD.innerHTML = optDim;
         }
-    drawCrossSection(0, 0); 
+    }
 }
 async function loadHydraulicAssets() {
     try {
@@ -933,19 +949,13 @@ function showHydraulicUI() {
     document.getElementById('resHydraulic').style.display = 'block';
     const sC = document.getElementById('selC');
     const sN = document.getElementById('selN');
-    const sD = document.getElementById('selDim');
 
     if (dataKoefisien) {
         sC.innerHTML = dataKoefisien.c_val.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
         sN.innerHTML = dataKoefisien.n_manning.data.map(i => `<option value="${i.v}">${i.k} (${i.v})</option>`).join('');
     }
-    
-    if (dataPrecast) {
-        let optDim = '<option value="">-- Pilih Dimensi --</option>';
-        dataPrecast.u_ditch.data.forEach(i => optDim += `<option value="${i.b}|${i.h}|${i.k}">U-Ditch ${i.k}</option>`);
-        dataPrecast.box_culvert.data.forEach(i => optDim += `<option value="${i.b}|${i.h}|${i.k}">Box ${i.k}</option>`);
-        sD.innerHTML = optDim;
-    }
+    // Dropdown dimensi (selDim) dikosongkan dulu, akan diisi di handleDimensiChange
+    document.getElementById('selDim').innerHTML = '<option value="">-- Pilih Jenis Dulu --</option>';
 }
 
 function calculateHydraulics() {
