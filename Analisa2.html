@@ -1010,7 +1010,6 @@ function calculateHydraulics() {
         return;
     }
 
-    // Ambil nilai R24 (Hujan Rencana) sesuai Tr yang dipilih
     const dataHujan = window.dataHujanTerpilih.find(item => item.T === Tr);
     if (!dataHujan) {
         alert(`⚠️ Data hujan periode ${Tr} tahun tidak ditemukan!`);
@@ -1027,7 +1026,7 @@ function calculateHydraulics() {
         const dimVal = document.getElementById('selDim').value;
         if (!dimVal) { alert("Pilih dimensi saluran!"); return; }
         const parts = dimVal.split('|');
-        B = parseFloat(parts[0]) / 1000; // Konversi mm ke meter
+        B = parseFloat(parts[0]) / 1000; 
         H = parseFloat(parts[1]) / 1000;
     }
 
@@ -1038,22 +1037,21 @@ function calculateHydraulics() {
 
     // --- PROSES PERHITUNGAN ---
     
-    // a. Tc (Kirpich) -> Hasil dalam menit
+    // a. Tc (Kirpich)
     const Tc = 0.0195 * Math.pow(L, 0.77) * Math.pow(S, -0.385);
 
-    // b. Intensitas (Mononobe) -> mm/jam
+    // b. Intensitas (Mononobe)
     const I = (R24 / 24) * Math.pow((24 / (Tc / 60)), (2/3));
 
-    // c. Q Rencana (Metode Rasional) -> m3/detik
+    // c. Q Rencana (Metode Rasional)
     const Qrencana = (C * I * areaHa) / 360;
 
-    // d. Mencari y (Tinggi Muka Air) secara iteratif dengan Manning
+    // d. Mencari y (Tinggi Muka Air) secara iteratif
     let y = 0.001; 
     let Qkapasitas = 0;
     const step = 0.001; 
-    let isAman = true;
+    let kapasitasCukup = true;
     
-    // Loop untuk mencari y yang menghasilkan Q_cek >= Qrencana
     while (y <= H) {
         let A = B * y;
         let P = B + (2 * y);
@@ -1064,26 +1062,26 @@ function calculateHydraulics() {
         if (Q_cek >= Qrencana) break;
         y += step;
     }
+
     if (y > H) {
-        y = H;         // Batasi visualisasi air mentok di tinggi saluran
-        isAman = false; // Tandai bahwa kapasitas tidak cukup (meluap)
+        y = H; 
+        kapasitasCukup = false; 
     }
-    displayResults(y, Qrencana, Qkapasitas, isAman); 
-}
+
     // e. Perhitungan Freeboard (Tinggi Jagaan)
-    // Sesuai request: U-Ditch = sqrt(0.5*y), Box = 0.2*H
     const fb_req = (jenis === 'box_culvert') ? (0.2 * H) : Math.sqrt(0.5 * y);
     const fb_aktual = H - y;
 
-    // Cek Status Keamanan
-    const isAman = (Qkapasitas >= Qrencana) && (fb_aktual >= fb_req);
-    // Tampilkan canvas hanya SETELAH tombol diklik
+    // Cek Status Keamanan Akhir (Kapasitas Cukup & Jagaan Memenuhi)
+    const isAman = kapasitasCukup && (fb_aktual >= fb_req);
+
+    // 4. Update UI & Visualisasi
     const canvasContainer = document.getElementById('canvasSaluran').parentElement;
     canvasContainer.style.display = 'block';
-    // 4. Update UI & Visualisasi
+
     renderHydraulicResult(Qrencana, Qkapasitas, y, B, H, isAman, fb_req, fb_aktual, Tc, I);
     drawDynamicCanvas(B, H, y, fb_req);
-}
+} 
 function renderHydraulicResult(Qr, Qk, y, B, H, isAman, fb_req, fb_aktual, Tc, I) {
     const out = document.getElementById('hydraulicOutput');
     out.style.display = 'block';
