@@ -343,15 +343,13 @@
                 <input type="number" id="input-b" class="btn-choice" style="width:100%; cursor:text" placeholder="Lebar (B)">
                 <input type="number" id="input-h" class="btn-choice" style="width:100%; cursor:text" placeholder="Tinggi (H)">
             </div>
-
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-top:10px; text-align:center;">
-                <canvas id="canvasSaluran" width="300" height="200" style="max-width:100%"></canvas>
-            </div>
-
             <button onclick="calculateHydraulics()" class="upload-area" style="margin-top:10px;">HITUNG VERIFIKASI</button>
         </div>
         <div id="hydraulicOutput" style="margin-top:15px; display:none; padding:10px; border-radius:8px;"></div>
-    </div>
+    <div class="canvas-container" style="margin-top: 20px; text-align: center; background: #f8fafc; border-radius: 8px; padding: 10px; border: 1px solid #e2e8f0;">
+    <p style="font-size: 10px; color: #64748b; margin-bottom: 5px; font-weight: bold;">VISUALISASI POTONGAN MELINTANG</p>
+    <canvas id="canvasSaluran" width="300" height="200" style="max-width: 100%; height: auto;"></canvas>
+</div>
 </div>
     </div>
 </div>
