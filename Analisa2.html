@@ -346,10 +346,26 @@
                 </table>
             </div>
     <div id="export-section" style="margin-top: 20px; padding-bottom: 20px;">
-    <button onclick="generatePDF()" class="upload-area" style="background: #4b5563; width: 100%;">
-        <i data-lucide="file-text"></i> EXPORT LAPORAN FORMAL (PDF)
+    <button id="btnExport" onclick="generatePDF()" class="upload-area" style="background: #4b5563; width: 100%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+        <i data-lucide="file-text"></i> 
+        <span id="btnText">EXPORT LAPORAN FORMAL (PDF)</span>
     </button>
 </div>
+    <style>
+    .loading-spinner {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #ffffff;
+        border-bottom-color: transparent;
+        border-radius: 50%;
+        display: inline-block;
+        animation: rotation 1s linear infinite;
+    }
+    @keyframes rotation {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
         </div> <!-- Menutup #group-hidraulika -->
     </div> <!-- Menutup .sidebar-content -->
 </div> <!-- Menutup #sidebar -->
@@ -1139,74 +1155,111 @@ function updateHydraulicTable(Q_target, y, limit, Tc, I, R24) {
         <tr><td>Status Verifikasi</td><td><b style="color:${isAman ? '#059669' : '#dc2626'}">${isAman ? 'KAPASITAS MEMENUHI' : 'KAPASITAS TIDAK MEMENUHI'}</b></td></tr>
     `;
 }
-function generatePDF() {
-    // 1. Ambil data dari elemen UI yang ada
-    const areaVal = document.getElementById('area-val')?.innerText || "-";
-    const statusText = document.getElementById('statusBadge')?.innerText || "-";
-    const channelVisual = document.getElementById('channelBox').innerHTML; // Mengambil SVG Saluran
-    const tableHidraulika = document.getElementById('resHidrolikaVisual').querySelector('table').outerHTML;
-
-    // 2. Buat kontainer laporan "bayangan" di memori
-    const element = document.createElement('div');
-    element.style.padding = '40px';
-    element.style.fontFamily = 'Arial, sans-serif';
+async function generatePDF() {
+    const btn = document.getElementById('btnExport');
+    const btnText = document.getElementById('btnText');
     
-    element.innerHTML = `
-        <!-- HEADER DINAS -->
-        <div style="text-align: center; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 20px;">
-            <h2 style="margin:0;">LAPORAN VERIFIKASI TEKNIS DRAINASE</h2>
-            <p style="margin:5px 0;">Suku Dinas Sumber Daya Air Kota Administrasi Jakarta Selatan</p>
-        </div>
+    // Aktifkan Loading
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    btnText.innerHTML = '<span class="loading-spinner"></span> Sedang Memproses...';
 
-        <!-- I. DATA INPUT -->
-        <div style="margin-bottom: 15px;">
-            <table style="width:100%; border-collapse: collapse; font-size: 12px;">
-                <tr style="background:#f3f4f6;"><td colspan="2" style="padding:5px; border:1px solid #000;"><b>I. DATA PERENCANAAN</b></td></tr>
-                <tr><td style="border:1px solid #000; padding:5px; width:40%;">Luas Catchment Area</td><td style="border:1px solid #000; padding:5px;">: ${areaVal} Ha</td></tr>
-                <tr><td style="border:1px solid #000; padding:5px;">Waktu Verifikasi</td><td style="border:1px solid #000; padding:5px;">: ${new Date().toLocaleString('id-ID')}</td></tr>
-            </table>
-        </div>
+    try {
+        const areaVal = document.getElementById('area-val')?.innerText || "-";
+        const statusText = document.getElementById('statusBadge')?.innerText || "-";
+        
+        // Ambil elemen visual
+        const thiessenHTML = document.getElementById('resThiessen').innerHTML;
+        const yearlyRainHTML = document.getElementById('resYearly').innerHTML;
+        const frequencyHTML = document.getElementById('resFrequency').querySelector('table')?.outerHTML || "Data Tidak Tersedia";
+        const gofHTML = document.getElementById('resGoF').querySelector('table')?.outerHTML || "Data Tidak Tersedia";
+        const channelVisual = document.getElementById('channelBox').innerHTML;
+        const tableHidraulika = document.getElementById('resHidrolikaVisual').querySelector('table').outerHTML;
 
-        <!-- II. ANALISIS HIDROLOGI -->
-        <div style="margin-bottom: 15px;">
-            <p style="font-size:12px; margin-bottom:5px;"><b>II. ANALISIS HIDROLOGI</b></p>
-            <div style="border:1px solid #000; padding:10px; font-size:11px;">
-                ${document.getElementById('resFrequency').innerHTML}
+        const element = document.createElement('div');
+        element.style.padding = '40px';
+        element.style.fontFamily = 'Arial, sans-serif';
+        element.style.color = '#000';
+
+        element.innerHTML = `
+            <!-- HEADER -->
+            <div style="text-align: center; border-bottom: 3px double #000; padding-bottom: 5px; margin-bottom: 5px;">
+                <h2 style="margin:0; font-size: 18px;">LAPORAN HASIL VERIFIKASI TEKNIS DRAINASE</h2>
+                <h4 style="margin:5px 0; font-weight: normal;">Suku Dinas Sumber Daya Air Kota Administrasi Jakarta Selatan</h4>
             </div>
-        </div>
+            
+            <!-- WAKTU VERIFIKASI (DI LUAR TABEL) -->
+            <div style="text-align: right; font-size: 10px; margin-bottom: 20px;">
+                Waktu Verifikasi: ${new Date().toLocaleString('id-ID', {dateStyle: 'full', timeStyle: 'short'})}
+            </div>
 
-        <!-- III. VISUAL & PERHITUNGAN SALURAN -->
-        <div style="margin-bottom: 15px; page-break-inside: avoid;">
-            <p style="font-size:12px; margin-bottom:5px;"><b>III. ANALISIS HIDRAULIKA & VISUALISASI</b></p>
-            <div style="display: flex; border: 1px solid #000; padding: 10px;">
-                <div style="flex: 1; text-align: center;">
-                    <div style="transform: scale(0.8);">${channelVisual}</div>
-                    <p style="font-size:9px;">Skema Penampang</p>
-                </div>
-                <div style="flex: 1; font-size:11px;">
-                    ${tableHidraulika}
+            <!-- I. DATA PERENCANAAN -->
+            <div style="margin-bottom: 20px;">
+                <table style="width:100%; border-collapse: collapse; font-size: 11px;">
+                    <tr style="background:#f2f2f2;"><td colspan="2" style="padding:6px; border:1px solid #000;"><b>I. DATA WILAYAH & CATCHMENT</b></td></tr>
+                    <tr><td style="border:1px solid #000; padding:6px; width:40%;">Luas Catchment Area</td><td style="border:1px solid #000; padding:6px;">: ${areaVal} Ha</td></tr>
+                </table>
+                <div style="margin-top:10px; display:flex; gap:10px;">
+                    <div style="flex:1; font-size:10px; border:1px solid #eee; padding:5px;">
+                        <b>Pengaruh Stasiun (Thiessen):</b><br>${thiessenHTML}
+                    </div>
+                    <div style="flex:1; font-size:10px; border:1px solid #eee; padding:5px;">
+                        <b>Curah Hujan Wilayah:</b><br>${yearlyRainHTML}
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- IV. KESIMPULAN -->
-        <div style="border: 2px solid #000; padding: 15px; text-align: center; margin-top: 20px;">
-            <p style="margin:0; font-size:12px;">STATUS VERIFIKASI:</p>
-            <h2 style="margin:5px 0; color:${statusText.includes('TIDAK') ? '#dc2626' : '#16a34a'}">${statusText.toUpperCase()}</h2>
-        </div>
-    `;
+            <!-- II. ANALISIS HIDROLOGI (TABEL BERSIH Tanpa Angka 4) -->
+            <div style="margin-bottom: 20px;">
+                <p style="font-size:11px; margin-bottom:5px; background:#f2f2f2; padding:6px; border:1px solid #000;"><b>II. ANALISIS HIDROLOGI & FREKUENSI</b></p>
+                <div style="font-size:10px;">
+                    <p style="margin:5px 0;"><b>Tabel Hujan Rencana:</b></p>
+                    ${frequencyHTML}
+                    <p style="margin:10px 0 5px 0;"><b>Uji Kesesuaian (Goodness of Fit):</b></p>
+                    ${gofHTML}
+                </div>
+            </div>
 
-    // 3. Konfigurasi Export
-    const opt = {
-        margin: 10,
-        filename: `Verifikasi_SDA_${areaVal}Ha.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+            <!-- III. ANALISIS HIDRAULIKA -->
+            <div style="margin-bottom: 20px; page-break-inside: avoid;">
+                <p style="font-size:11px; margin-bottom:5px; background:#f2f2f2; padding:6px; border:1px solid #000;"><b>III. PENAMPANG SALURAN & HIDRAULIKA</b></p>
+                <div style="display: flex; border: 1px solid #000; padding: 10px; align-items: center;">
+                    <div style="flex: 1; text-align: center; border-right: 1px solid #eee;">
+                        <div style="transform: scale(0.85);">${channelVisual}</div>
+                    </div>
+                    <div style="flex: 1; font-size:10px; padding-left:10px;">
+                        ${tableHidraulika}
+                    </div>
+                </div>
+            </div>
 
-    // 4. Eksekusi
-    html2pdf().set(opt).from(element).save();
+            <!-- IV. KESIMPULAN -->
+            <div style="border: 2px solid #000; padding: 15px; text-align: center; margin-top: 10px;">
+                <p style="margin:0; font-size:11px;">KESIMPULAN ANALISIS TEKNIS:</p>
+                <h2 style="margin:5px 0; color:${statusText.includes('TIDAK') ? '#dc2626' : '#16a34a'}; font-size:20px;">${statusText.toUpperCase()}</h2>
+                <p style="font-size:9px; color:#666;">Dicetak secara sistem melalui Aplikasi Verifikasi Drainase SDA Jaksel</p>
+            </div>
+        `;
+
+        const opt = {
+            margin: 10,
+            filename: `Laporan_SDA_${areaVal}Ha.pdf`,
+            image: { type: 'jpeg', quality: 1 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        await html2pdf().set(opt).from(element).save();
+
+    } catch (err) {
+        console.error(err);
+        alert("Gagal export PDF. Pastikan semua data sudah terisi.");
+    } finally {
+        // Kembalikan tombol ke semula
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btnText.innerHTML = 'EXPORT LAPORAN FORMAL (PDF)';
+    }
 }    
    window.onload = async () => { 
     await loadStationData();
