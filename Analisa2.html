@@ -388,7 +388,6 @@
 <script src="https://unpkg.com/@mapbox/togeojson@0.16.0/togeojson.js"></script>
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <script src="data_saluranmikro.js"></script>
 <script src="data_saluranphb.js"></script>
@@ -1165,34 +1164,19 @@ async function generatePDF() {
     const btnText = document.getElementById('btnText');
     const loader = document.getElementById('loaderIcon');
     const icon = document.getElementById('staticIcon');
-
-    // 1. Validasi awal
-    if (!document.getElementById('map')) {
-        alert("Elemen peta tidak ditemukan.");
-        return;
-    }
-
+    
     btn.disabled = true;
     loader.style.display = 'inline-block';
     icon.style.display = 'none';
     btnText.innerText = 'Sedang Memproses...';
 
     try {
-        // 2. Capture Peta dulu
-        const canvasMap = await html2canvas(document.getElementById('map'), {
-            useCORS: true,
-            scale: 2,
-            logging: false
-        });
-        const imgDataMap = canvasMap.toDataURL('image/png');
-
-        // 3. Ambil data input/dashboard
         const areaVal = document.getElementById('area-val')?.innerText || "-";
-        const statusText = document.getElementById('statusBadge')?.innerText || "Status Tidak Diketahui";
+        const statusText = document.getElementById('statusBadge')?.innerText || "-";
         const isAman = !statusText.includes('TIDAK');
-        const namaSaluran = document.getElementById('inNamaSaluran')?.value || "Saluran Tanpa Nama";
+        const namaSaluran = document.getElementById('inNamaSaluran')?.value || "-"; // Tambahkan ini
+const periodeTr = document.getElementById('selTr')?.value || "-"; // Tambahkan ini
         
-        // Helper untuk membersihkan tabel agar rapi di PDF
         const getCleanTable = (sourceId) => {
             const container = document.getElementById(sourceId);
             const sourceTable = container ? container.querySelector('table') : null;
@@ -1205,62 +1189,50 @@ async function generatePDF() {
             return clone.outerHTML;
         };
 
-        // 4. Buat elemen untuk PDF
         const element = document.createElement('div');
-        element.style.padding = '20px 30px';
+        element.style.padding = '20px 30px'; // Margin diperkecil agar tidak banyak ruang kosong
         element.style.fontFamily = 'Arial, sans-serif';
-        element.style.color = '#000';
 
         element.innerHTML = `
-            <!-- HEADER -->
+            <!-- HEADER PADAT -->
             <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 10px;">
-                <h2 style="margin:0; font-size: 14px;">LAPORAN HASIL VERIFIKASI TEKNIS DRAINASE</h2>
-                <p style="margin:2px 0; font-size: 11px;"><b>${namaSaluran.toUpperCase()}</b></p>
-                <p style="margin:2px 0; font-size: 10px;">Suku Dinas Sumber Daya Air Kota Administrasi Jakarta Selatan</p>
-            </div>
+    <h2 style="margin:0; font-size: 14px;">LAPORAN HASIL VERIFIKASI TEKNIS DRAINASE</h2>
+    <p style="margin:2px 0; font-size: 11px;"><b>${namaSaluran.toUpperCase()}</b></p> <!-- Nama Saluran muncul di sini -->
+    <p style="margin:2px 0; font-size: 10px;">Suku Dinas Sumber Daya Air Kota Administrasi Jakarta Selatan</p>
+</div>
             
             <div style="text-align: right; font-size: 8px; margin-bottom: 10px;">
                 Dicetak: ${new Date().toLocaleString('id-ID')} WIB
             </div>
 
-            <!-- SECTION I & II: CATCHMENT & PETA -->
-            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+            <!-- SECTION I & II DALAM SATU BARIS UNTUK EFISIENSI -->
+            <div style="display: flex; gap: 20px; margin-bottom: 15px;">
                 <div style="flex: 1;">
-                    <h3 style="background:#e2e8f0; font-size:11px; padding:4px; margin:0 0 5px 0; border:1px solid #000;">I. DATA CATCHMENT</h3>
-                    ${getCleanTable('tableArea')}
-                    
-                    <h4 style="font-size:10px; margin:10px 0 3px 0;">Hujan Wilayah:</h4>
-                    ${getCleanTable('tableRainfall')}
-                </div>
-
-                <div style="flex: 1.2; border: 1px solid #000; display: flex; flex-direction: column;">
-                    <h3 style="background:#e2e8f0; font-size:11px; padding:4px; margin:0; border-bottom:1px solid #000;">II. PETA CATCHMENT AREA</h3>
-                    <img src="${imgDataMap}" style="width:100%; height:auto; display:block;">
-                    <p style="font-size:7px; padding:5px; margin:0; color:#444; font-style:italic;">* Capture otomatis sistem verifikasi SDA.</p>
-                </div>
-            </div>
-
-            <!-- SECTION III: HIDROLOGI -->
-            <div style="margin-bottom: 15px;">
-                <h3 style="background:#e2e8f0; font-size:11px; padding:4px; margin:0 0 5px 0; border:1px solid #000;">III. ANALISIS HIDROLOGI</h3>
-                <div style="display: flex; gap: 10px;">
-                    <div style="flex:1;">
-                        <p style="font-size:9px; font-weight:bold; margin:0;">Hujan Rencana (mm):</p>
-                        ${getCleanTable('resTableHidro')}
+                    <p style="font-size:10px; background:#eee; padding:3px; border:1px solid #000; margin-bottom:5px;"><b>I. DATA CATCHMENT</b></p>
+                    <p style="font-size:9px; margin:2px 0;">Luas: <b>${areaVal} Ha</b></p>
+                    ${getCleanTable('resThiessen')}
+                    <div style="margin-top:10px;">
+                        <p style="font-size:9px; margin:0;"><b>Hujan Wilayah:</b></p>
+                        ${getCleanTable('resYearly')}
                     </div>
-                    <div style="flex:1;">
-                        <p style="font-size:9px; font-weight:bold; margin:0;">Uji GoF:</p>
-                        ${getCleanTable('resTableGoF')}
+                </div>
+                <div style="flex: 1.5;">
+                    <p style="font-size:10px; background:#eee; padding:3px; border:1px solid #000; margin-bottom:5px;"><b>II. ANALISIS HIDROLOGI</b></p>
+                    <p style="font-size:9px; margin:0;"><b>Hujan Rencana (mm):</b></p>
+                    ${getCleanTable('resFrequency')}
+                    <div style="margin-top:10px;">
+                        <p style="font-size:9px; margin:0;"><b>Uji GoF:</b></p>
+                        ${getCleanTable('resGoF')}
                     </div>
                 </div>
             </div>
 
-            <!-- SECTION IV: HIDRAULIKA -->
+            <!-- SECTION III & IV (HIDRAULIKA) - DIPAKSA JANGAN TERPOTONG HALAMAN -->
             <div style="page-break-inside: avoid; border-top: 1px dashed #ccc; padding-top: 10px;">
-                <h3 style="background:#e2e8f0; font-size:11px; padding:4px; margin:0 0 5px 0; border:1px solid #000;">IV. ANALISIS HIDRAULIKA SALURAN</h3>
-                <div style="display: flex; border: 1px solid #000; padding: 5px; align-items: center; background: #fafafa;">
+                <p style="font-size:10px; background:#eee; padding:3px; border:1px solid #000; margin-bottom:5px;"><b>III. ANALISIS HIDRAULIKA SALURAN</b></p>
+                <div style="display: flex; border: 1px solid #000; padding: 10px; align-items: center; background: #fafafa;">
                     <div style="flex: 1; text-align: center;">
-                        <div style="transform: scale(0.8);">${document.getElementById('channelBox').innerHTML}</div>
+                        <div style="transform: scale(0.85);">${document.getElementById('channelBox').innerHTML}</div>
                     </div>
                     <div style="flex: 1.2;">
                         ${getCleanTable('resHidrolikaVisual')}
@@ -1278,18 +1250,17 @@ async function generatePDF() {
 
         const opt = {
             margin: 5,
-            filename: `Laporan_Drainase_${namaSaluran.replace(/\s+/g, '_')}.pdf`,
+            filename: `Laporan_Drainase_${areaVal}Ha.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        // 5. Eksekusi simpan
         await html2pdf().set(opt).from(element).save();
 
     } catch (err) {
         console.error(err);
-        alert("Gagal ekspor PDF. Pastikan semua data sudah terisi.");
+        alert("Gagal ekspor PDF.");
     } finally {
         btn.disabled = false;
         loader.style.display = 'none';
