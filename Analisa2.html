@@ -345,6 +345,11 @@
                     <tbody id="hResultBody"></tbody>
                 </table>
             </div>
+    <div id="export-section" style="margin-top: 20px; padding-bottom: 20px;">
+    <button onclick="generatePDF()" class="upload-area" style="background: #4b5563; width: 100%;">
+        <i data-lucide="file-text"></i> EXPORT LAPORAN FORMAL (PDF)
+    </button>
+</div>
         </div> <!-- Menutup #group-hidraulika -->
     </div> <!-- Menutup .sidebar-content -->
 </div> <!-- Menutup #sidebar -->
@@ -362,6 +367,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/@mapbox/togeojson@0.16.0/togeojson.js"></script>
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <script src="data_saluranmikro.js"></script>
 <script src="data_saluranphb.js"></script>
@@ -1133,7 +1139,68 @@ function updateHydraulicTable(Q_target, y, limit, Tc, I, R24) {
         <tr><td>Status Verifikasi</td><td><b style="color:${isAman ? '#059669' : '#dc2626'}">${isAman ? 'KAPASITAS MEMENUHI' : 'KAPASITAS TIDAK MEMENUHI'}</b></td></tr>
     `;
 }
+function generatePDF() {
+    const element = document.createElement('div');
+    element.style.padding = '30px';
+    element.style.background = '#fff';
     
+    // Ambil data penting dari UI
+    const areaVal = document.getElementById('area-val').innerText;
+    const statusText = document.getElementById('statusBadge').innerText;
+    const date = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    element.innerHTML = `
+        <div style="text-align: center; border-bottom: 2px solid #1c2b4a; padding-bottom: 10px; margin-bottom: 20px;">
+            <h2 style="margin:0; color:#1c2b4a;">LAPORAN VERIFIKASI DRAINASE</h2>
+            <p style="margin:5px 0; font-size:12px; color:#64748b;">Suku Dinas Sumber Daya Air Kota Administrasi Jakarta Selatan</p>
+            <p style="margin:0; font-size:10px;">Tanggal Analisis: ${date}</p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <h4 style="background:#f1f5f9; padding:5px;">1. DATA CATCHMENT AREA</h4>
+            <p>Luas Catchment: <b>${areaVal} Ha</b></p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <h4 style="background:#f1f5f9; padding:5px;">2. ANALISA THIESSEN & CURAH HUJAN</h4>
+            <div style="display:flex; gap:20px;">
+                <div style="flex:1">${document.getElementById('resThiessen').innerHTML}</div>
+                <div style="flex:1">${document.getElementById('resYearly').innerHTML}</div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px; page-break-before: always;">
+            <h4 style="background:#f1f5f9; padding:5px;">3. ANALISIS FREKUENSI & GOF</h4>
+            ${document.getElementById('resFrequency').innerHTML}
+            <div style="margin-top:10px;">${document.getElementById('resGoF').innerHTML}</div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <h4 style="background:#f1f5f9; padding:5px;">4. PARAMETER & HASIL HIDRAULIKA</h4>
+            <div style="text-align:center; margin:20px 0;">
+                ${document.getElementById('channelBox').innerHTML}
+            </div>
+            ${document.getElementById('resHidrolikaVisual').querySelector('table').outerHTML}
+        </div>
+
+        <div style="margin-top: 30px; padding: 15px; border: 2px solid #1c2b4a; text-align: center;">
+            <p style="margin:0; font-size:14px;">KESIMPULAN AKHIR:</p>
+            <h3 style="margin:5px 0; color:${statusText.includes('TIDAK') ? '#dc2626' : '#059669'}">${statusText}</h3>
+        </div>
+    `;
+
+    // Pengaturan PDF
+    const opt = {
+        margin:       10,
+        filename:     `Laporan_SDA_JS_${areaVal}Ha.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Jalankan export
+    html2pdf().set(opt).from(element).save();
+}    
    window.onload = async () => { 
     await loadStationData();
     await loadHydraulicAssets(); 
