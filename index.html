@@ -336,6 +336,9 @@ footer{
 
 <script>
 function goToMenu(){
+    // Menghapus parameter ?page=menu dari URL agar jika di-refresh manual balik ke Welcome
+    window.history.replaceState({}, document.title, window.location.pathname);
+    
     document.getElementById("welcome-page").style.display = "none";
     document.getElementById("menu-page").style.display = "block";
     window.scrollTo(0,0);
@@ -347,6 +350,15 @@ function goToWelcome(){
     window.scrollTo(0,0);
 }
 
+// Logika Pendeteksi: Hanya pindah ke menu jika ada tanda khusus dari Repository
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('page') === 'menu') {
+        goToMenu(); 
+    }
+    // Jika tidak ada parameter ?page=menu, maka secara default 
+    // browser akan mengikuti CSS kamu yang menampilkan welcome-page (active)
+});
 lucide.createIcons();
 </script>
 
