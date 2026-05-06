@@ -346,12 +346,7 @@ function goToWelcome(){
     document.getElementById("welcome-page").style.display = "block";
     window.scrollTo(0,0);
 }
-window.addEventListener('DOMContentLoaded', () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('page') === 'menu') {
-        goToMenu(); // Paksa pindah ke menu jika ada parameter ?page=menu
-    }
-});
+
 lucide.createIcons();
 </script>
 
