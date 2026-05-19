@@ -1275,9 +1275,12 @@ const periodeTr = document.getElementById('selTr')?.value || "-"; // Tambahkan i
             </div>
         `;
 
+        const cleanNamaSaluran = namaSaluran.trim().replace(/[^a-zA-Z0-9\s-_]/g, '').replace(/\s+/g, '_');
+        const fileNameResult = cleanNamaSaluran !== "" && cleanNamaSaluran !== "-" ? `Laporan_Drainase_${cleanNamaSaluran}.pdf` : `Laporan_Drainase_${areaVal}Ha.pdf`;
+
         const opt = {
             margin: 5,
-            filename: `Laporan_Drainase_${areaVal}Ha.pdf`,
+            filename: fileNameResult, // <--- Sudah menggunakan nama jalan/saluran otomatis
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
