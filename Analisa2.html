@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 
     <style>
         :root { --primary: #1c2b4a; --accent: #2f80ed; --bg: #f4f7fb; --white: #ffffff; --slate: #64748b; }
@@ -383,6 +384,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/@mapbox/togeojson@0.16.0/togeojson.js"></script>
@@ -489,12 +491,37 @@ async function loadHydraulicAssets() {
     var map = L.map('map', { zoomControl: false, layers: [osm] }).setView([-6.2845, 106.8124], 12);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // 1. PASANG GEOCODER TERLEBIH DAHULU (Agar posisinya di paling atas)
+    L.Control.geocoder({
+        position: 'topright', // Set ke kanan atas
+        defaultMarkGeocode: false,
+        placeholder: "Cari jalan / koordinat...",
+        errorMessage: "Lokasi tidak ditemukan."
+    })
+    .on('markgeocode', function(e) {
+        var bbox = e.geocode.bbox;
+        var poly = L.polygon([
+            bbox.getSouthEast(),
+            bbox.getNorthEast(),
+            bbox.getNorthWest(),
+            bbox.getSouthWest()
+        ]);
+        map.fitBounds(poly.getBounds());
+        
+        L.popup()
+            .setLatLng(e.geocode.center)
+            .setContent(`<b>Lokasi ditemukan:</b><br>${e.geocode.name}`)
+            .openOn(map);
+    })
+    .addTo(map);
+    
     var drawnItems = new L.FeatureGroup().addTo(map);
     var thiessenLayer = L.layerGroup().addTo(map);
     var stationLayer = L.layerGroup().addTo(map);
     var mikroLayer = L.geoJSON(null);
     var phbLayer = L.geoJSON(null);
 
+    // 2. BARU PASANG KONTROL LAYER (Otomatis akan bergeser ke bawah kotak Search)
     L.control.layers({ "Peta Jalan": osm, "Satelit": satellite }, 
     { "Saluran Mikro": mikroLayer, "Saluran PHB": phbLayer, "Stasiun Hujan": stationLayer, "Wilayah Pengaruh": thiessenLayer, "Area": drawnItems }, 
     { collapsed: false, position: 'topright' }).addTo(map);
