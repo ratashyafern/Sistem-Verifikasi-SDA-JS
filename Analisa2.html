@@ -532,6 +532,28 @@ async function loadHydraulicAssets() {
             polyline: false, circle: false, rectangle: false, marker: false, circlemarker: false
         }
     });
+    var mapNoteControl = L.control({ position: 'bottomleft' });
+
+    mapNoteControl.onAdd = function (map) {
+        var div = L.DomUtil.create('div', 'map-disclaimer-note');
+        div.style.background = 'rgba(255, 255, 255, 0.85)';
+        div.style.padding = '6px 10px';
+        div.style.borderRadius = '6px';
+        div.style.border = '1px solid #cbd5e1';
+        div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.1)';
+        div.style.fontSize = '11px';
+        div.style.color = '#475569';
+        div.style.maxWidth = '300px';
+        div.style.lineHeight = '1.4';
+        div.style.pointerEvents = 'auto'; // Agar teks bisa di-select jika perlu
+        
+        div.innerHTML = '<i class="fas fa-info-circle" style="color: #2f80ed; margin-right: 4px;"></i> ' +
+                        '<b>Informasi:</b> Data pemetaan menampilkan kondisi saat ini (eksisting) ' +
+                        'dan dikembangkan secara bertahap pada fase berikutnya.';
+        return div;
+    };
+
+    mapNoteControl.addTo(map);
 
     let RAIN_DATABASE = {}; 
     let myChart = null;
