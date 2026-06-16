@@ -249,6 +249,119 @@ footer{
     font-size:13px;
     text-align:center;
 }
+
+/* ===== FLOATING BUTTON & POPUP BUKU PANDUAN ===== */
+.floating-guide-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: #2C5F9E;
+    color: white;
+    border: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    box-shadow: 0 4px 15px rgba(44,95,158,0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    transition: all 0.3s ease;
+}
+
+.floating-guide-btn:hover {
+    background: #1f3555;
+    transform: scale(1.1);
+}
+
+.guide-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(28, 43, 74, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.guide-modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.guide-modal {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    text-align: center;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.guide-modal-overlay.active .guide-modal {
+    transform: translateY(0);
+}
+
+.guide-modal h3 {
+    margin-bottom: 12px;
+    color: #1c2b4a;
+    font-size: 20px;
+}
+
+.guide-modal p {
+    font-size: 14px;
+    color: #5b6b8c;
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.guide-modal-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-guide-primary {
+    flex: 1;
+    background: #2C5F9E;
+    color: white;
+    padding: 12px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.btn-guide-primary:hover {
+    background: #1f3555;
+}
+
+.btn-guide-secondary {
+    background: #f0f3f8;
+    color: #5b6b8c;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-guide-secondary:hover {
+    background: #e2e8f0;
+}
 </style>
 </head>
 
@@ -328,6 +441,24 @@ footer{
 
         </div>
     </div>
+<!-- TOMBOL MELAYANG & POPUP BUKU PANDUAN -->
+    <button class="floating-guide-btn" onclick="toggleGuideModal(true)" title="Buku Panduan">
+        <i data-lucide="book-open"></i>
+    </button>
+
+    <div id="guide-modal-overlay" class="guide-modal-overlay" onclick="toggleGuideModal(false)">
+        <div class="guide-modal" onclick="event.stopPropagation()">
+            <div style="background: #dfe8f7; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                <i data-lucide="book-text" style="color: #2C5F9E; width: 30px; height: 30px;"></i>
+            </div>
+            <h3>Buku Panduan Sistem</h3>
+            <p>Butuh bantuan dalam mengoperasikan platform? Pelajari petunjuk teknis penggunaan sistem verifikasi melalui buku panduan digital.</p>
+            <div class="guide-modal-buttons">
+                <button class="btn-guide-secondary" onclick="toggleGuideModal(false)">Tutup</button>
+                <a href="https://heyzine.com/flip-book/65c84cf06e.html" target="_blank" class="btn-guide-primary">Buka Panduan →</a>
+            </div>
+        </div>
+    </div>
 </div>
 
 <footer>
@@ -348,6 +479,15 @@ function goToWelcome(){
     document.getElementById("menu-page").style.display = "none";
     document.getElementById("welcome-page").style.display = "block";
     window.scrollTo(0,0);
+}
+
+function toggleGuideModal(show) {
+    const overlay = document.getElementById("guide-modal-overlay");
+    if (show) {
+        overlay.classList.add("active");
+    } else {
+        overlay.classList.remove("active");
+    }
 }
 
 // Logika Pendeteksi: Hanya pindah ke menu jika ada tanda khusus dari Repository
